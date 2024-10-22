@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { getServerAuthSession } from "~/server/auth";
 import { db } from "~/server/db";
+import type { UserRole } from "~/util/UserRole";
 
 /**
  * 1. CONTEXT
@@ -127,7 +128,21 @@ export const protectedProcedure = t.procedure
     return next({
       ctx: {
         // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
+        session: { ...ctx.session, user: {...ctx.session.user, role: ctx.session.user.role } },
       },
     });
   });
+
+
+export const roleProtectionMiddleware = (role: UserRole) => t.middleware(({
+  ctx, next
+}) => {
+  if (!ctx.session || !ctx.session.user ||
+    ctx.session.user.role !== role) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You do not have the required role to access this resource'
+    })
+  }
+  return next({ ctx })
+})

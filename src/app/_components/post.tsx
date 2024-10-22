@@ -16,6 +16,9 @@ export function LatestPost() {
     },
   });
 
+  const AdminSecretMessage = api.roles.getAdminProtectedMessage.useQuery();
+  const currentUserRole = api.roles.getRole.useQuery();
+  
   return (
     <div className="w-full max-w-xs">
       {latestPost ? (
@@ -45,6 +48,8 @@ export function LatestPost() {
           {createPost.isPending ? "Submitting..." : "Submit"}
         </button>
       </form>
+      {AdminSecretMessage.data ? <p>{AdminSecretMessage.data}</p> : null}
+      {currentUserRole.data ? <p>Your role: {currentUserRole.data}</p> : null}
     </div>
   );
 }

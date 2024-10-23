@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { LatestPost } from "~/app/_components/post";
@@ -17,9 +18,21 @@ export default async function Home() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
           </h1>
-          <h1 className="text-center font-jersey_25 text-[192px] font-bold">
-            Candidates
-          </h1>
+          <div className="relative flex items-center text-center">
+            <div className="z-50 text-start">
+              <h1 className="-my-16 font-jersey_25 text-[250px] text-[#051B72]">
+                Candidates
+              </h1>
+              <h3 className="text-xl font-semibold">By RoBorregos</h3>
+            </div>
+            <Image
+              src="/images/white-logo.png"
+              width={626}
+              height={626}
+              alt="RoBorregos Official Logo. White version"
+              className="absolute -right-32 justify-end object-contain align-middle opacity-20"
+            />
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
             <Link
               className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"

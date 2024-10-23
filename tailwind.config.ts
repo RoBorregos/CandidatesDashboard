@@ -7,6 +7,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["var(--font-geist-sans)", ...fontFamily.sans],
+        jersey_25: ["var(--font-jersey-25)"],
       },
     },
   },

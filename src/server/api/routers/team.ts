@@ -14,12 +14,32 @@ export const teamRouter = createTRPCRouter({
             }
         })
 
+        if (!user?.teamId) {
+            return null
+        }
+
         const team = await ctx.db.team.findFirst({
             where: {
                 id: user?.teamId
-            }
+            },
+            include: {
+                rounds:  {
+                    include: {
+                        challenges: true
+                    }
+                }
+            },
+            
         })
 
         return team
+
+
+    }),
+
+    getRounds: protectedProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+        
     })
 })

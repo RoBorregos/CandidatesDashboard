@@ -58,8 +58,7 @@ model User {
   posts         Post[]
   sessions      Session[]
   teamId       String?
-//   team         Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-//   teamId        String @default("")
+  team       Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
 }
 
 model VerificationToken {
@@ -73,7 +72,7 @@ model VerificationToken {
 model Team {
     id          String      @id @default(cuid())
     name        String
-    // members     User[]
+    members     User[]
     rounds     Round[]
     
 }
@@ -82,15 +81,15 @@ model Round {
     id          String      @id @default(cuid())
     challenges Challenge[]
 
-    team       Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-    teamId      String
+    team       Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+    teamId      String?
 }
 
 model Challenge {
     id          String      @id @default(cuid())
     name        String
     time        DateTime
-    round      Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+    round       Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
     roundId     String
 }
 

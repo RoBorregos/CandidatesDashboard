@@ -1,5 +1,9 @@
+interface TableProps {
+    title: string;
+    data: { col1: string, col2: string }[];
+}
 
-export default function Table({ data, title }: { data: { col1: string, col2: string }[], title: string }) {
+export default function Table({ title, data }: TableProps) {
     return (
         <div className="p-10">
             <h2 className="">

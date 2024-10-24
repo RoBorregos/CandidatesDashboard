@@ -23,10 +23,12 @@ export const teamRouter = createTRPCRouter({
                 id: user?.teamId
             },
             include: {
+                members: true,
                 rounds:  {
-                    include: {
-                        challenges: true
-                    }
+                    select: {
+                        number: true,
+                        challenges: true,
+                    },
                 }
             },
             

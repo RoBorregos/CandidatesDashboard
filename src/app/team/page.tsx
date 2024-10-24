@@ -4,13 +4,6 @@ import { Field, Form, Formik } from "formik";
 import { api } from "~/trpc/react";
 import { Challenge, User } from "@prisma/client";
 
-// interface Challenge {
-//     name: string;
-//     id: string;
-//     time: Date;
-//     roundId: string;
-// }
-
 interface Data {
     col1: string;
     col2: string;

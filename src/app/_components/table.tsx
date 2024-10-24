@@ -21,19 +21,13 @@ export default function Table({ title, data }: TableProps) {
                         </tr>
                     </thead>
                     <tbody>
-                        {data ? (
-                            data.map((log, key) => (
-                                <tr key={key} className="">
-                                    <td className="p-2 border-r-2 w-min">{log.col1}</td>
-                                    <td className="p-2">{log.col2}</td>
-                                </tr>
 
-                            ))
-                        ) : (
-                            <tr>
-                                <td>No schedule</td>
+                        {data.map((log, key) => (
+                            <tr key={key} className="">
+                                <td className="p-2 border-r-2 w-min">{log.col1}</td>
+                                <td className="p-2">{log.col2}</td>
                             </tr>
-                        )}
+                        ))}
                     </tbody>
 
                 </table>

@@ -39,9 +39,4 @@ export const teamRouter = createTRPCRouter({
 
     }),
 
-    getRounds: protectedProcedure
-    .input(z.object({ teamId: z.string() }))
-    .query(async ({ ctx, input }) => {
-        
-    })
 })

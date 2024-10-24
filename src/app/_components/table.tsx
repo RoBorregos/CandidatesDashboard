@@ -16,7 +16,7 @@ export default function Table({ title, data }: TableProps) {
                 <table className="border-2 w-full self-start">
                     <thead>
                         <tr className="text-start border-2 bg-slate-200 text-black">
-                            <th className="text-start p-2 w-min">Time</th>
+                            <th className="text-start p-2 w-60">Time</th>
                             <th className="text-start">Challenge</th>
                         </tr>
                     </thead>

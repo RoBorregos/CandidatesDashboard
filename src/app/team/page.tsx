@@ -23,14 +23,14 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
     console.log("ROUNDS: ", rounds)
 
     function transformChallengeData(challenges: Challenge[]): Data[] {
-        return challenges.map(challenge => ({
+        return challenges.map((challenge,key) => ({
           col1: challenge.time.toLocaleTimeString(),  
           col2: challenge.name,
         }));
       } 
 
     function transformInterviewData(members: User[]): Data[] {
-        return members.map(member => ({
+        return members.map((member, key) => ({
           col1: member.interviewTime ? member.interviewTime.toLocaleTimeString() : "",  
           col2: member.name ? member.name : "",  
         }));
@@ -44,7 +44,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
 
                 {rounds?.map((round, key) => (
                     
-                    <Table data={transformChallengeData(round.challenges)} title={`Round ${round.number}`} />
+                    <Table key={key} data={transformChallengeData(round.challenges)} title={`Round ${round.number}`} />
                 ))}
 
                 <h1> Interviews </h1>

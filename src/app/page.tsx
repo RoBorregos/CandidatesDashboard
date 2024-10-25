@@ -1,8 +1,13 @@
 import Image from "next/image";
 import { HydrateClient } from "~/trpc/server";
 import teamPic from "../../public/images/fronPic.jpg";
+import Acuity from "../../public/images/sponsors/Acuity.png"
+import Dipole from "../../public/images/sponsors/Dipole.png"
+import Dram from "../../public/images/sponsors/Dram.png"
+import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png"
 import robologo from "../../public/images/white-logo.png";
 import Navbar from "./_components/navbar";
+import Footer from "./_components/footer";
 
 export default async function Home() {
   return (
@@ -10,16 +15,22 @@ export default async function Home() {
       <main>
         <Navbar />
         
-        <section className="flex flex-col w-screen h-screen justify-center items-center">
-          <div>
-            <h1 className="font-jersey_25 text-roboblue text-[17rem] mt-[-5rem]">CANDIDATES</h1>
-            <p className="font-anton text-white text-[3rem] mt-[-5rem] ml-[5rem]">By RoBorregos</p>
+        <section className="relative flex flex-col justify-center items-center min-h-screen overflow-hidden">
+          <div className="z-10 text-center">
+            <h1 className="font-jersey_25 text-roboblue text-[12vw] leading-none">CANDIDATES</h1>
+            <p className="font-anton text-white text-[3vw] mt-[-2vw]">By RoBorregos</p>
           </div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-[5rem] -z-10">
-            <Image src={robologo} alt="" className="w-[40rem] opacity-50" />
+          <div className="absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/2 -z-10">
+            <Image src={robologo} alt="" className="w-[40vw] max-w-[40rem] opacity-50" />
           </div>
-          <div className="w-screen h-screen absolute -z-10 bg-gradient-to-t from-black to-transparent" />
-          <Image src={teamPic} alt="" className="w-screen h-screen object-cover absolute -z-20 opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent -z-10" />
+          <Image
+            src={teamPic}
+            alt=""
+            layout="fill"
+            objectFit="cover"
+            className="opacity-30 -z-20"
+          />
         </section>
         
         <p className="text-white text-[1.5rem] text-center mx-[10rem] font-archivo">This year, the rounds are divided into 3 different <span className="text-roboblue text-[4rem] font-jersey_25">challenges.</span><br /><br />
@@ -49,7 +60,17 @@ export default async function Home() {
           </div>
         </section>
 
-        <div className="h-screen" />
+        <h2 className="mt-[10rem] text-roboblue text-[4rem] font-jersey_25 text-center">Sponsors</h2>
+        <section className="mt-[3rem] bg-white">
+          <div className="grid grid-cols-4 gap-[5rem] mx-[5rem]">
+            <Image src={Acuity} alt="" />
+            <Image src={Dipole} alt="" />
+            <Image src={Dram} alt="" />
+            <Image src={Mitutoyo} alt="" />
+          </div>
+        </section>
+
+        <Footer />
       </main>
     </HydrateClient>
   );

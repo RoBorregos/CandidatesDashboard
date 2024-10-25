@@ -1,48 +1,39 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
     provider = "prisma-client-js"
 }
 
 datasource db {
     provider  = "postgresql"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
     url       = env("DATABASE_URL")
     directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
+    id          Int      @id @default(autoincrement())
+    name        String
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
     createdById String
+    createdBy   User     @relation(fields: [createdById], references: [id])
 
     @@index([name])
 }
 
-// Necessary for Next auth
 model Account {
     id                       String  @id @default(cuid())
     userId                   String
     type                     String
     provider                 String
     providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
+    refresh_token            String?
+    access_token             String?
     expires_at               Int?
     token_type               String?
     scope                    String?
-    id_token                 String? // @db.Text
+    id_token                 String?
     session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     refresh_token_expires_in Int?
+    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@unique([provider, providerAccountId])
 }
@@ -55,22 +46,20 @@ model Session {
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum Role {
-    CONTESTANT
-    JUDGE
-    ADMIN
-}
-
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    role          Role      @default(CONTESTANT)
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
+    id                   String                 @id @default(cuid())
+    name                 String?
+    email                String?                @unique
+    emailVerified        DateTime?
+    image                String?
+    interviewTime        DateTime?
+    role                 Role                   @default(CONTESTANT)
+    teamId               String?
+    accounts             Account[]
+    posts                Post[]
+    sessions             Session[]
+    Team                 Team?                  @relation(fields: [teamId], references: [id])
+    GenericChallengeData GenericChallengeData[]
 }
 
 model VerificationToken {
@@ -79,4 +68,78 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Challenge {
+    id      String   @id
+    name    String
+    time    DateTime
+    roundId String
+    Round   Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+}
+
+model Round {
+    id        String      @id
+    number    Int
+    teamId    String?
+    Challenge Challenge[]
+    Team      Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Team {
+    id                   String                 @id
+    name                 String
+    Round                Round[]
+    User                 User[]
+    GenericChallengeData GenericChallengeData[]
+}
+
+model ChallengeA {
+    id                        String               @id @default(cuid())
+    ballContact               Boolean
+    ballSaved                 Boolean
+    finshTrack                Boolean
+    finishTrackNoCrossingLine Boolean
+    obtainedBonus             Boolean
+    genericDataId             String @unique
+    GenericChallengeData      GenericChallengeData @relation(fields: [genericDataId], references: [id], onDelete: Cascade)
+}
+
+model ChallengeB {
+    id                   String               @id @default(cuid())
+    trackPoints          Int
+    genericDataId        String @unique
+    GenericChallengeData GenericChallengeData @relation(fields: [genericDataId], references: [id], onDelete: Cascade)
+}
+
+model ChallengeC {
+    id                   String               @id @default(cuid())
+    trackPoints          Int
+    genericDataId        String? @unique
+    GenericChallengeData GenericChallengeData? @relation(fields: [genericDataId], references: [id], onDelete: Cascade)
+}
+
+model GenericChallengeData {
+    id               String @id @default(cuid())
+    roundTimeSeconds Int
+    points           Int
+    roundId          String
+    lackOfProgress   Int
+    judgeID          String
+    User             User   @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+    teamId           String
+    Team             Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+    challengeBId String? @unique
+    challengeCId String? @unique
+
+    ChallengeA ChallengeA?
+    ChallengeB ChallengeB?
+    ChallengeC ChallengeC?
+}
+
+enum Role {
+    CONTESTANT
+    JUDGE
+    ADMIN
 }

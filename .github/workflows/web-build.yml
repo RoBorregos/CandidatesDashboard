@@ -2,11 +2,11 @@ name: Node.js build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
-env:  # Define environment variables at the workflow level
+env: # Define environment variables at the workflow level
   PERSONAL_ACCOUNT: roborregosteam
 
 jobs:
@@ -17,22 +17,25 @@ jobs:
         node-version: [18.x, 20.x, 22.x]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - name: Create .env file
-      run: |
-          echo "DATABASE_URL=file:./db.sqlite" >> .env
-          echo "NEXTAUTH_SECRET=PiEq95e/hDuArOlgnCKRDHJs+chuUoKh/MOy4rKYBGU=" >> .env
-          echo "NEXTAUTH_URL=http://localhost:3000" >> .env
-          echo "DISCORD_CLIENT_ID=12345678" >> .env
-          echo "DISCORD_CLIENT_SECRET=12345678" >> .env
-    - run: cat .env 
-    - run: npm install
-    - run: npm run build
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      - name: Expose github environment as shell variables
+        env:
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
+          # VARS_CONTEXT: ${{ toJson(vars) }}
+        run: |
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          to_envs() { jq -r "to_entries[] | \"\(.key)<<$EOF\n\(.value)\n$EOF\n\""; }
+          # echo "$VARS_CONTEXT" | to_envs >> $GITHUB_ENV
+          echo "$SECRETS_CONTEXT" | to_envs >> $GITHUB_ENV
+      - run: npm install
+      - run: npm run build
 
   check-and-fork:
     runs-on: ubuntu-latest

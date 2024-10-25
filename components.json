@@ -6,15 +6,15 @@
   "tailwind": {
     "config": "tailwind.config.ts",
     "css": "src/styles/globals.css",
-    "baseColor": "gray",
+    "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "~/_components/shadcn",
+    "components": "~/app/_components/shadcn",
     "utils": "~/lib/utils",
-    "ui": "~/components/ui",
+    "ui": "~/app/_components/shadcn/ui",
     "lib": "~/lib",
-    "hooks": "~/hooks"
+    "hooks": "~/app/_components/shadcn/hooks"
   }
 }

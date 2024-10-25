@@ -26,7 +26,8 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "rbrgs/*": ["./src/*"]
+      "rbrgs/*": ["./src/*"],
+      "~/*": ["./src/*"]
     }
   },
   "include": [

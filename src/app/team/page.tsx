@@ -1,8 +1,8 @@
 "use client";
-import Table from "rbrgs/app/_components/table";
-import { Field, Form, Formik } from "formik";
-import { api } from "rbrgs/trpc/react";
 import { Challenge, User } from "@prisma/client";
+import Table from "rbrgs/app/_components/table";
+import { api } from "rbrgs/trpc/react";
+import { signIn } from "next-auth/react";
 
 interface Data {
   col1: string;

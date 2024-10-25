@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { api } from "~/trpc/react";
+import { api } from "rbrgs/trpc/react";
 
 export function LatestPost() {
   const [latestPost] = api.post.getLatest.useSuspenseQuery();
@@ -18,7 +18,7 @@ export function LatestPost() {
 
   const AdminSecretMessage = api.roles.getAdminProtectedMessage.useQuery();
   const currentUserRole = api.roles.getRole.useQuery();
-  
+
   return (
     <div className="w-full max-w-xs">
       {latestPost ? (

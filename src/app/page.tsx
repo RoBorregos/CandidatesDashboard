@@ -1,66 +1,129 @@
-import Link from "next/link";
-
-import { LatestPost } from "~/app/_components/post";
-import { getServerAuthSession } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
+import Image from "next/image";
+import { HydrateClient } from "rbrgs/trpc/server";
+import teamPic from "../../public/images/fronPic.jpg";
+import Acuity from "../../public/images/sponsors/Acuity.png";
+import Dipole from "../../public/images/sponsors/Dipole.png";
+import Dram from "../../public/images/sponsors/Dram.png";
+import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png";
+import robologo from "../../public/images/white-logo.png";
+import Navbar from "rbrgs/app/_components/navbar";
+import Footer from "rbrgs/app/_components/footer";
 
 export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-  const session = await getServerAuthSession();
-
-  void api.post.getLatest.prefetch();
-
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
+      <main>
+        <Navbar />
+
+        <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
+          <div className="z-10 text-center">
+            <h1 className="font-jersey_25 text-[12vw] leading-none text-roboblue">
+              CANDIDATES
+            </h1>
+            <p className="mt-[-2vw] font-anton text-[3vw] text-white">
+              By RoBorregos
             </p>
-
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
-              </p>
-              <Link
-                href={session ? "/api/auth/signout" : "/api/auth/signin"}
-                className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-              >
-                {session ? "Sign out" : "Sign in"}
-              </Link>
-            </div>
           </div>
+          <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 transform">
+            <Image
+              src={robologo}
+              alt=""
+              className="w-[40vw] max-w-[40rem] opacity-50"
+            />
+          </div>
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black to-transparent" />
+          <Image
+            src={teamPic}
+            alt=""
+            layout="fill"
+            objectFit="cover"
+            className="-z-20 opacity-30"
+          />
+        </section>
 
-          {session?.user && <LatestPost />}
-        </div>
+        <p className="mx-[10rem] text-center font-archivo text-[1.5rem] text-white">
+          This year, the rounds are divided into 3 different{" "}
+          <span className="font-jersey_25 text-[4rem] text-roboblue">
+            challenges.
+          </span>
+          <br />
+          <br />
+          Contrary to other years where these were all connected in a single
+          game field, teams will only have one opportunity to demonstrate their
+          work in each of them.
+        </p>
+
+        <section className="mx-[5rem] mt-[10rem] grid grid-cols-3 gap-[5rem] text-[1.25rem]">
+          <div className="relative rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
+            <div className="group relative">
+              <Image
+                src={teamPic}
+                alt=""
+                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+              />
+              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+                MAZE
+              </div>
+            </div>
+            <p className="m-[1rem] text-justify font-archivo text-white">
+              We have the traditional Maze section where robots visit all tiles
+              in a maze while detecting the colors on the ground to make points.
+              The next step is finding the exit. Finally, if the team wishes to
+              go for the bonus points, the robot must go back to a tile with the
+              color that repeats exactly 5 times in the maze.
+            </p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
+            <div className="group relative">
+              <Image
+                src={teamPic}
+                alt=""
+                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+              />
+              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+                LINE
+              </div>
+            </div>
+            <p className="m-[1rem] text-justify font-archivo text-white">
+              The classical line follower is back with a twist! Candidates can
+              choose their own difficulty by selecting the modules with the
+              lines they’ll have to follow. Then, RoBorregos staff will place
+              them on the field randomly right before the round begins.
+            </p>
+          </div>
+          <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
+            <div className="group relative">
+              <Image
+                src={teamPic}
+                alt=""
+                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+              />
+              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+                BALL
+              </div>
+            </div>
+            <p className="m-[1rem] text-justify font-archivo text-white">
+              Can you find the ball? In this challenge, robots will have to find
+              access to the ball located in the center and retrieve it to the
+              end in a controlled manner, but be careful! There are black lines
+              on the ground which your robot must not cross.
+            </p>
+          </div>
+        </section>
+
+        <h2 className="mt-[10rem] text-center font-jersey_25 text-[4rem] text-roboblue">
+          Sponsors
+        </h2>
+        <section className="mt-[3rem] bg-white">
+          <div className="mx-[5rem] grid grid-cols-4 gap-[5rem]">
+            <Image src={Acuity} alt="" />
+            <Image src={Dipole} alt="" />
+            <Image src={Dram} alt="" />
+            <Image src={Mitutoyo} alt="" />
+          </div>
+        </section>
+
+        <Footer />
       </main>
     </HydrateClient>
   );

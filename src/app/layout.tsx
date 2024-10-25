@@ -1,10 +1,10 @@
-import "~/styles/globals.css";
+import "rbrgs/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import { Jersey_25, Anton, Archivo } from "next/font/google";
 
-import { TRPCReactProvider } from "~/trpc/react";
+import { TRPCReactProvider } from "rbrgs/trpc/react";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -37,7 +37,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${jersey_25.variable} ${anton.variable} ${archivo.variable}`}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${jersey_25.variable} ${anton.variable} ${archivo.variable}`}
+    >
       <body className="bg-black">
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>

@@ -7,9 +7,9 @@ import {
 import { type Adapter } from "next-auth/adapters";
 import Google from "next-auth/providers/google";
 
-import { env } from "~/env";
-import { db } from "~/server/db";
-import type { UserRole } from "~/util/UserRole";
+import { env } from "rbrgs/env";
+import { db } from "rbrgs/server/db";
+import type { UserRole } from "rbrgs/util/UserRole";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`

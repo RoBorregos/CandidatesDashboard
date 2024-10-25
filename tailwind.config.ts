@@ -7,16 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        'blue-rbrgs': "#051B72",
+        "blue-rbrgs": "#051B72",
+        roboblue: "#0A38EF",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", ...fontFamily.sans],
         jersey_25: ["var(--font-jersey-25)"],
         anton: ["var(--font-anton)"],
         archivo: ["var(--font-archivo)"],
-      },
-      colors: {
-        roboblue: "#0A38EF",
       },
     },
   },

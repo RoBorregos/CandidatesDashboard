@@ -1,11 +1,10 @@
 import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
-import { Jersey_25 } from "next/font/google";
 import { type Metadata } from "next";
+import { Jersey_25 } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
-import Head from "next/head";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
 const jersey_25 = Jersey_25({
   subsets: ["latin"],
   display: "swap",
-  weight: "400",
+  weight: ["400"],
   variable: "--font-jersey-25",
 });
 
@@ -24,7 +23,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${jersey_25.variable}`}>
+    <html lang="en" className={`${GeistSans.variable} ${jersey_25.variable} `}>
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>

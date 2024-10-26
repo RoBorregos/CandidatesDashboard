@@ -1,5 +1,5 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -35,10 +35,11 @@ model Account {
     refresh_token_expires_in Int?
     user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
+<<<<<<< HEAD
     id           String   @id @default(cuid())
     sessionToken String   @unique
     userId       String
@@ -60,16 +61,39 @@ model User {
     sessions             Session[]
     Team                 Team?                  @relation(fields: [teamId], references: [id])
     GenericChallengeData GenericChallengeData[]
+=======
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  interviewTime DateTime?
+  role          Role      @default(CONTESTANT)
+  accounts      Account[]
+  posts         Post[]
+  sessions      Session[]
+  teamId       String?
+  team       Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+>>>>>>> main
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-    @@unique([identifier, token])
+  @@unique([identifier, token])
 }
 
+<<<<<<< HEAD
 model Challenge {
     id      String   @id
     name    String
@@ -143,3 +167,37 @@ enum Role {
     JUDGE
     ADMIN
 }
+=======
+model Team {
+    id          String      @id @default(cuid())
+    name        String
+    members     User[]
+    rounds     Round[]
+    
+}
+
+model Round {
+    id          String      @id @default(cuid())
+    number        Int
+    challenges Challenge[]
+
+    team       Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+    teamId      String?
+}
+
+model Challenge {
+    id          String      @id @default(cuid())
+    name        String
+    time        DateTime
+    round       Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+    roundId     String
+}
+
+
+enum Role {
+  CONTESTANT
+  JUDGE
+  ADMIN
+}
+
+>>>>>>> main

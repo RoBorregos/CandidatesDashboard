@@ -23,7 +23,7 @@ const FormSchema = z.object({
   }),
 })
 
-export const  InputForm = () => {
+export const  InputFormA = () => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {

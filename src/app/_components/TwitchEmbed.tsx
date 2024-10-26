@@ -1,6 +1,30 @@
 "use client"; // This line marks the component as a Client Component
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
+
+// Declare the Twitch object on the window interface
+declare global {
+  interface Window {
+    Twitch: {
+      Embed: {
+        new (
+          id: string,
+          options: {
+            width: number;
+            height: number;
+            channel: string;
+            parent: string[];
+          },
+        ): {
+          addEventListener: (event: string, callback: () => void) => void;
+          VIDEO_READY: string;
+        };
+        VIDEO_READY: string;
+        addEventListener: (event: string, callback: () => void) => void;
+      };
+    };
+  }
+}
 
 interface TwitchEmbedProps {
   channel: string;
@@ -12,7 +36,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
     const embedContainer = document.getElementById("twitch-embed");
 
     // Create a new script tag for the Twitch embed script
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = "https://embed.twitch.tv/embed/v1.js";
     script.async = true;
     if (!embedContainer?.hasChildNodes()) {
@@ -20,15 +44,15 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
     }
 
     script.onload = () => {
-      const embed = new (window as any).Twitch.Embed("twitch-embed", {
+      const embed = new window.Twitch.Embed("twitch-embed", {
         width: 854,
         height: 480,
         channel: channel,
         parent: ["localhost", "mydomain.com"], // Replace with your domain
       });
 
-      embed.addEventListener((window as any).Twitch.Embed.VIDEO_READY, () => {
-        console.log('The video is ready');
+      embed.addEventListener(window.Twitch.Embed.VIDEO_READY, () => {
+        console.log("The video is ready");
       });
     };
 
@@ -44,7 +68,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
   return (
     <div id="twitch-embed">
       {/* DO NOT DELETE THIS DIV */}
-      <div/>
+      <div />
     </div>
   );
 };

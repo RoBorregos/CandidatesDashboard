@@ -15,20 +15,20 @@ export default async function Home() {
       <main>
         <Navbar />
 
-        <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
-          <div className="z-10 text-center">
-            <h1 className="font-jersey_25 text-[12vw] leading-none text-roboblue">
+        <section className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden lg:justify-center">
+          <div className="z-10 mt-[30vw] text-center lg:mt-0">
+            <h1 className="font-jersey_25 text-[17vw] leading-none text-roboblue lg:text-[12vw]">
               CANDIDATES
             </h1>
-            <p className="mt-[-2vw] font-anton text-[3vw] text-white">
+            <p className="mt-[-2vw] font-anton text-[6vw] text-white lg:text-[3vw]">
               By RoBorregos
             </p>
           </div>
-          <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 transform">
+          <div className="absolute left-1/2 top-[80vw] -z-10 -translate-x-1/2 -translate-y-1/2 transform lg:top-1/2">
             <Image
               src={robologo}
               alt=""
-              className="w-[40vw] max-w-[40rem] opacity-50"
+              className="w-[70vw] object-cover opacity-50 lg:w-[40vw]"
             />
           </div>
           <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black to-transparent" />
@@ -41,27 +41,27 @@ export default async function Home() {
           />
         </section>
 
-        <p className="mx-[10rem] text-center font-archivo text-[1.5rem] text-white">
+        <p className="mx-[10vw] -mt-[105vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
           This year, the rounds are divided into 3 different{" "}
           <span className="font-jersey_25 text-[4rem] text-roboblue">
             challenges.
           </span>
-          <br />
-          <br />
-          Contrary to other years where these were all connected in a single
-          game field, teams will only have one opportunity to demonstrate their
-          work in each of them.
+          <p className="mt-[10vw] lg:mt-[1vw]">
+            Contrary to other years where these were all connected in a single
+            game field, teams will only have one opportunity to demonstrate
+            their work in each of them.
+          </p>
         </p>
 
-        <section className="mx-[5rem] mt-[10rem] grid grid-cols-3 gap-[5rem] text-[1.25rem]">
+        <section className="mx-[5vw] mt-[5rem] grid gap-[5rem] text-[1.25rem] lg:mx-[5rem] lg:mt-[10rem] lg:grid-cols-3">
           <div className="relative rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
             <div className="group relative">
               <Image
                 src={teamPic}
                 alt=""
-                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+                className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
                 MAZE
               </div>
             </div>
@@ -73,14 +73,15 @@ export default async function Home() {
               color that repeats exactly 5 times in the maze.
             </p>
           </div>
+
           <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
             <div className="group relative">
               <Image
                 src={teamPic}
                 alt=""
-                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+                className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
                 LINE
               </div>
             </div>
@@ -96,9 +97,9 @@ export default async function Home() {
               <Image
                 src={teamPic}
                 alt=""
-                className={`ml-5 mt-5 h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none`}
+                className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute left-5 top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0">
+              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
                 BALL
               </div>
             </div>
@@ -111,11 +112,11 @@ export default async function Home() {
           </div>
         </section>
 
-        <h2 className="mt-[10rem] text-center font-jersey_25 text-[4rem] text-roboblue">
+        <h2 className="mt-[5rem] text-center font-jersey_25 text-[4rem] text-roboblue lg:mt-[10rem]">
           Sponsors
         </h2>
         <section className="mt-[3rem] bg-white">
-          <div className="mx-[5rem] grid grid-cols-4 gap-[5rem]">
+          <div className="mx-[5vw] grid grid-cols-2 gap-[5vw] lg:mx-[5rem] lg:grid-cols-4 lg:gap-[5rem]">
             <Image src={Acuity} alt="" />
             <Image src={Dipole} alt="" />
             <Image src={Dram} alt="" />

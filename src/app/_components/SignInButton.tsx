@@ -21,7 +21,7 @@ export default function SignInButton({ session }: { session: Session | null }) {
     return (
       <div className="flex items-center justify-end">
         <p
-          className="w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white hover:bg-slate-100 hover:bg-opacity-10"
+          className="w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
           onClick={() => signIn("google")}
         >
           Log in
@@ -36,17 +36,16 @@ export default function SignInButton({ session }: { session: Session | null }) {
         <NavigationMenuList>
           <NavigationMenuItem>
             <NavigationMenuTrigger
-              className="items-center bg-transparent align-middle hover:bg-transparent data-[active]:bg-transparent data-[state=open]:bg-transparent"
+              className="items-center bg-transparent align-middle hover:bg-transparent focus:bg-transparent focus:outline-none data-[active]:bg-transparent data-[state=open]:bg-transparent"
               onClick={() => {
-                console.log("clicked");
                 router.push("/account");
               }}
             >
-              <Avatar className="">
+              <Avatar className="h-[2rem] w-[2rem]">
                 <AvatarImage src={session.user.image ?? undefined} />
                 <AvatarFallback>{session.user.name?.at(0)}</AvatarFallback>
               </Avatar>
-              <div className="hover:text-rbrgs-blue items-center self-center py-1 text-start align-middle text-white">
+              <div className="items-center self-center py-1 text-start align-middle text-white hover:text-rbrgs-blue">
                 <p className="ml-2">{session.user.name}</p>
                 <p className="ml-2 text-sm">
                   {session.user.role[0]! +

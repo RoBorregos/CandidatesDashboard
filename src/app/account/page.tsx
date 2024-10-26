@@ -18,19 +18,21 @@ export default async function AccountPage() {
 
   const data = await api.team.getTeam();
   return (
-    <div className="mt-[4rem] h-max bg-black p-10 text-white">
-      <h1>Account</h1>
+    <div className="mt-[4rem] h-max bg-black p-10 font-mono text-white">
+      <h1 className="font-anton">Account</h1>
 
       <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 text-white">
         <p>
           You are logged in as {session.user.email} - {session.user.name}
         </p>
         {session.user.role === UserRole.CONTESTANT && (
-          <p>
-            You can view the scoreboard, check your rounds&apos; times and
-            submit all of your teams documents.
+          <div>
+            <p>
+              You can view the scoreboard, check your rounds&apos; times and
+              submit all of your teams documents.
+            </p>
             <p className="font-bold">Give it your best!</p>
-          </p>
+          </div>
         )}
 
         {session.user.role === UserRole.JUDGE && (
@@ -46,12 +48,12 @@ export default async function AccountPage() {
 
       {session.user.role === UserRole.CONTESTANT && (
         <>
-          <h1>Team {data?.name}</h1>
+          <h1 className="font-anton">Team {data?.name}</h1>
 
-          <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 text-white">
+          <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 font-mono text-white">
             {data?.members.map((member, key) => (
               <div key={key}>
-                <p>{member.name}</p>
+                <p className="font-mono">{member.name}</p>
               </div>
             ))}
           </div>

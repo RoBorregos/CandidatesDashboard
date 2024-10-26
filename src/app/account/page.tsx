@@ -46,10 +46,9 @@ export default async function AccountPage() {
 
       {session.user.role === UserRole.CONTESTANT && (
         <>
-          <h1>Team </h1>
+          <h1>Team {data?.name}</h1>
 
           <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 text-white">
-            <h2 className="font-bold">Your Team {data?.name}:</h2>
             {data?.members.map((member, key) => (
               <div key={key}>
                 <p>{member.name}</p>

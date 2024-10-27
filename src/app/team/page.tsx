@@ -3,6 +3,10 @@ import Table from "rbrgs/app/_components/table";
 import { Field, Form, Formik } from "formik";
 import { api } from "rbrgs/trpc/react";
 import { Challenge, User } from "@prisma/client";
+import Header from "../_components/header";
+import Title from "../_components/title";
+import Subtitle from "../_components/subtitle";
+
 
 interface Data {
   col1: string;
@@ -32,13 +36,17 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
   }
 
   return (
-    <div className="h-max bg-black p-10 text-white">
+
+    <div className="h-96 bg-black p-10 text-white">
+      <div className="pb-20">
+
+        <Header title="Team" subtitle={team?.data?.name || ""} />
+      </div>
+
+
       {team.data?.name ? (
-        <div>
-          <h1>
-            {" "}
-            Team Page {team.data?.name} {params.teampage}
-          </h1>
+        <div className="pb-40">
+          <Title title="Rounds" />
 
           {rounds?.map((round, key) => (
             <Table
@@ -48,13 +56,13 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
             />
           ))}
 
-          <h1> Interviews </h1>
+          <Title title="Interviews" />
 
           <Table data={transformInterviewData(team.data.members)} title={""} />
         </div>
       ) : (
         <div>
-          <h1>Team not found</h1>
+         <Title title="No data found" />
         </div>
       )}
     </div>

@@ -1,3 +1,5 @@
+import Subtitle from "./subtitle";
+
 interface TableProps {
     title: string;
     data: { col1: string, col2: string }[];
@@ -6,9 +8,7 @@ interface TableProps {
 export default function Table({ title, data }: TableProps) {
     return (
         <div className="p-10">
-            <h2 className="">
-                {title}
-            </h2>
+           <Subtitle subtitle={title} /> 
 
             <div className="p-10 bg-gradient-to-r from-blue-rbrgs to-black rounded-md">
 

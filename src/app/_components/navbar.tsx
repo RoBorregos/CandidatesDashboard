@@ -9,6 +9,7 @@ export default function Navbar() {
             <p className="cursor-pointer">Scoreboard</p>
             <p className="cursor-pointer">Dashboard</p>
             <p className="cursor-pointer">Documents</p>
+            <p className="cursor-pointer">Team</p>
         </div>
         <div className="flex justify-end items-center">
             <p className="text-white w-fit cursor-pointer">Log in</p>

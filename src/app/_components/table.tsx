@@ -1,3 +1,5 @@
+import Subtitle from "./subtitle";
+
 interface TableProps {
     title: string;
     data: { col1: string, col2: string }[];
@@ -5,10 +7,8 @@ interface TableProps {
 
 export default function Table({ title, data }: TableProps) {
     return (
-        <div className="p-10">
-            <h2 className="">
-                {title}
-            </h2>
+        <div className="md:p-20">
+           <Subtitle subtitle={title} /> 
 
             <div className="p-10 bg-gradient-to-r from-blue-rbrgs to-black rounded-md">
 
@@ -16,7 +16,7 @@ export default function Table({ title, data }: TableProps) {
                 <table className="border-2 w-full self-start">
                     <thead>
                         <tr className="text-start border-2 bg-slate-200 text-black">
-                            <th className="text-start p-2 w-60">Time</th>
+                            <th className="text-start p-2 md:w-60">Time</th>
                             <th className="text-start">Challenge</th>
                         </tr>
                     </thead>

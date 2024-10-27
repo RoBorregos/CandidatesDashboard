@@ -46,7 +46,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
     <div className="mt-[4rem] h-96 bg-black p-10 text-white text-sm md:text-base">
       <div className="md:pb-20">
 
-        <Header title="Team" subtitle={team?.data?.name || ""} />
+        <Header title="Team" subtitle={team?.data?.name ?? ""} />
       </div>
 
       {team.data?.name ? (

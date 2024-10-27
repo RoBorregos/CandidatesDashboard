@@ -16,10 +16,10 @@ export default async function AccountPage() {
     );
   }
 
-  const data = await api.team.getTeam();
+  const teamData = await api.team.getTeam();
   return (
     <div className="mt-[4rem] h-max bg-black p-10 font-mono text-white">
-      <h1 className="font-anton">Account</h1>
+      <h1 className="font-anton text-[3vw]">Account</h1>
 
       <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 text-white">
         <p>
@@ -46,12 +46,12 @@ export default async function AccountPage() {
         {session.user.role === UserRole.ADMIN && <p>ADMIN</p>}
       </div>
 
-      {session.user.role === UserRole.CONTESTANT && (
+      {session.user.role === UserRole.CONTESTANT && teamData?.id && (
         <>
-          <h1 className="font-anton">Team {data?.name}</h1>
+          <h1 className="font-anton text-[3vw]">Team {teamData?.name}</h1>
 
           <div className="m-4 rounded-md bg-gradient-to-r from-blue-rbrgs to-black p-10 font-mono text-white">
-            {data?.members.map((member, key) => (
+            {teamData?.members.map((member, key) => (
               <div key={key}>
                 <p className="font-mono">{member.name}</p>
               </div>

@@ -19,7 +19,11 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
 
   function transformChallengeData(challenges: Challenge[]): Data[] {
     return challenges.map((challenge, key) => ({
-      col1: challenge.time.toLocaleTimeString(),
+      col1: challenge.time.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }),
       col2: challenge.name,
     }));
   }
@@ -27,7 +31,11 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
   function transformInterviewData(members: User[]): Data[] {
     return members.map((member, key) => ({
       col1: member.interviewTime
-        ? member.interviewTime.toLocaleTimeString()
+        ? member.interviewTime.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })
         : "",
       col2: member.name ? member.name : "",
     }));
@@ -35,8 +43,8 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
 
   return (
 
-    <div className="mt-[4rem] h-96 bg-black p-10 text-white">
-      <div className="pb-20">
+    <div className="mt-[4rem] h-96 bg-black p-10 text-white text-sm md:text-base">
+      <div className="md:pb-20">
 
         <Header title="Team" subtitle={team?.data?.name || ""} />
       </div>
@@ -63,7 +71,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
         </div>
       ) : (
         <div>
-         <Title title="No data found" />
+          <Title title="No data found" />
         </div>
       )}
     </div>

@@ -2,10 +2,8 @@
 import { Challenge, User } from "@prisma/client";
 import Table from "rbrgs/app/_components/table";
 import { api } from "rbrgs/trpc/react";
-import { Challenge, User } from "@prisma/client";
 import Header from "../_components/header";
 import Title from "../_components/title";
-import Subtitle from "../_components/subtitle";
 import { signIn } from "next-auth/react";
 
 interface Data {
@@ -37,7 +35,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
 
   return (
 
-    <div className="h-96 bg-black p-10 text-white">
+    <div className="mt-[4rem] h-96 bg-black p-10 text-white">
       <div className="pb-20">
 
         <Header title="Team" subtitle={team?.data?.name || ""} />

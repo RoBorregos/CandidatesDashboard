@@ -47,6 +47,9 @@ export const authOptions: NextAuthOptions = {
     }),
   },
   adapter: PrismaAdapter(db) as Adapter,
+  session: {
+    strategy: "database",
+  },
   providers: [
     Google({
       clientId: env.GOOGLE_CLIENT_ID,

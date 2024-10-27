@@ -6,7 +6,6 @@ import Dipole from "../../public/images/sponsors/Dipole.png";
 import Dram from "../../public/images/sponsors/Dram.png";
 import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png";
 import robologo from "../../public/images/white-logo.png";
-import Navbar from "rbrgs/app/_components/navbar";
 import Footer from "rbrgs/app/_components/footer";
 
 export default async function Home() {

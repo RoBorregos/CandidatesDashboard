@@ -1,8 +1,8 @@
 "use client";
-import Table from "rbrgs/app/_components/table";
-import { Field, Form, Formik } from "formik";
-import { api } from "rbrgs/trpc/react";
 import { Challenge, User } from "@prisma/client";
+import Table from "rbrgs/app/_components/table";
+import { api } from "rbrgs/trpc/react";
+import { signIn } from "next-auth/react";
 
 interface Data {
   col1: string;
@@ -32,7 +32,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
   }
 
   return (
-    <div className="h-max bg-black p-10 text-white">
+    <div className="mt-[4rem] h-max bg-black p-10 text-white">
       {team.data?.name ? (
         <div>
           <h1>
@@ -51,6 +51,10 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
           <h1> Interviews </h1>
 
           <Table data={transformInterviewData(team.data.members)} title={""} />
+        </div>
+      ) : team.isLoading ? (
+        <div>
+          <h1> Loading... </h1>
         </div>
       ) : (
         <div>

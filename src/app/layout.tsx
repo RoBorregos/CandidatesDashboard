@@ -5,6 +5,7 @@ import { type Metadata } from "next";
 import { Jersey_25, Anton, Archivo } from "next/font/google";
 
 import { TRPCReactProvider } from "rbrgs/trpc/react";
+import Navbar from "./_components/navbar";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -42,6 +43,7 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${jersey_25.variable} ${anton.variable} ${archivo.variable}`}
     >
       <body className="bg-black">
+        <Navbar />
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>

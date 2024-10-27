@@ -7,6 +7,7 @@ import Dram from "../../public/images/sponsors/Dram.png";
 import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png";
 import robologo from "../../public/images/white-logo.png";
 import Footer from "rbrgs/app/_components/footer";
+import ball from "../../public/images/ball.jpeg";
 
 export default async function Home() {
   return (
@@ -92,7 +93,7 @@ export default async function Home() {
           <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
             <div className="group relative">
               <Image
-                src={teamPic}
+                src={ball}
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />

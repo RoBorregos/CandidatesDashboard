@@ -12,8 +12,6 @@ export default async function Home() {
   return (
     <HydrateClient>
       <main>
-        <Navbar />
-
         <section className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden lg:justify-center">
           <div className="z-10 mt-[30vw] text-center lg:mt-0">
             <h1 className="font-jersey_25 text-[17vw] leading-none text-roboblue lg:text-[12vw]">

@@ -6,15 +6,12 @@ import Dipole from "../../public/images/sponsors/Dipole.png";
 import Dram from "../../public/images/sponsors/Dram.png";
 import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png";
 import robologo from "../../public/images/white-logo.png";
-import Navbar from "rbrgs/app/_components/navbar";
 import Footer from "rbrgs/app/_components/footer";
 
 export default async function Home() {
   return (
     <HydrateClient>
       <main>
-        <Navbar />
-
         <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
           <div className="z-10 text-center">
             <h1 className="font-jersey_25 text-[12vw] leading-none text-roboblue">

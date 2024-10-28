@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 export default function NavButtons() {
   const router = useRouter();
   return (
-    <div className="flex w-full items-center justify-evenly text-white">
+    <div className="hidden w-full items-center justify-evenly text-white lg:flex">
       <p
         className="cursor-pointer"
         onClick={() => {

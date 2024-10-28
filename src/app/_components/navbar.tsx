@@ -15,7 +15,7 @@ export default async function Navbar() {
             <p className="cursor-pointer">Team</p>
         </div>
         <div className="flex justify-end items-center">
-            <p className="text-white w-fit cursor-pointer">Log in</p>
+          <SignInButton session={session} />
         </div>
     </nav>
   );

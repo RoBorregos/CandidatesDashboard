@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <HydrateClient>
       <main>
-        <section className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden lg:justify-center">
+        <section className="relative flex min-h-[150vw] flex-col items-center justify-start overflow-hidden lg:min-h-screen lg:justify-center">
           <div className="z-10 mt-[30vw] text-center lg:mt-0">
             <h1 className="font-jersey_25 text-[17vw] leading-none text-roboblue lg:text-[12vw]">
               CANDIDATES
@@ -39,16 +39,16 @@ export default async function Home() {
           />
         </section>
 
-        <p className="mx-[10vw] -mt-[105vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
+        <p className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
           This year, the rounds are divided into 3 different{" "}
           <span className="font-jersey_25 text-[4rem] text-roboblue">
             challenges.
           </span>
-          <p className="mt-[10vw] lg:mt-[1vw]">
+          <div className="mt-[10vw] lg:mx-[10vw] lg:mt-[1vw]">
             Contrary to other years where these were all connected in a single
             game field, teams will only have one opportunity to demonstrate
             their work in each of them.
-          </p>
+          </div>
         </p>
 
         <section className="mx-[5vw] mt-[5rem] grid gap-[5rem] text-[1.25rem] lg:mx-[5rem] lg:mt-[10rem] lg:grid-cols-3">

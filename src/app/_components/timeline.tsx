@@ -1,9 +1,10 @@
 // components/Timeline.tsx
 import React from "react";
 import Image from "next/image";
-import tm1 from "r/../public/images/tm1.jpg";
-import tm2 from "r/../public/images/tm2.jpg";
-import tm3 from "r/../public/images/tm3.jpg";
+import tm1 from "public/images/tm1.jpg";
+import tm2 from "public/images/tm2.jpg";
+import tm3 from "public/images/tm3.jpg";
+import tm4 from "public/images/tm4.jpg";
 
 const Timeline: React.FC = () => {
   const eventSections = [
@@ -16,27 +17,49 @@ const Timeline: React.FC = () => {
   ];
 
   return (
-    <div className="relative mx-[vw] flex w-full justify-center">
-      {/* Left Images */}
-      <Image
-        src={tm1}
-        alt="Left decoration 1"
-        className="absolute left-[5%] top-[25%] hidden w-1/4 rotate-[10deg] rounded-xl opacity-50 lg:block"
-      />
-      <Image
-        src={tm2}
-        alt="Left decoration 2"
-        className="absolute left-[5%] top-[70%] hidden w-1/4 rotate-[-10deg] rounded-xl opacity-50 lg:block"
-      />
+    <div className="relative mt-[10rem] flex w-full justify-center">
+      {/* Background images arranged in a grid layout */}
+      <div className="absolute inset-0 grid grid-cols-2 gap-8 px-10 opacity-15">
+        <div className="relative col-span-1">
+          <Image
+            src={tm1}
+            alt="Background decoration 1"
+            layout="fill"
+            objectFit="cover"
+            className="rounded-xl"
+          />
+        </div>
+        <div className="relative col-start-2 row-start-2">
+          <Image
+            src={tm2}
+            alt="Background decoration 2"
+            layout="fill"
+            objectFit="cover"
+            className="rounded-xl"
+          />
+        </div>
+        <div className="relative col-span-1 col-start-2 row-start-1">
+          <Image
+            src={tm3}
+            alt="Background decoration 3"
+            layout="fill"
+            objectFit="cover"
+            className="rounded-xl"
+          />
+        </div>
+        <div className="relative col-span-1 col-start-1 row-start-2">
+          <Image
+            src={tm4}
+            alt="Background decoration 4"
+            layout="fill"
+            objectFit="cover"
+            className="rounded-xl"
+          />
+        </div>
+      </div>
 
-      {/* Right Image */}
-      <Image
-        src={tm3}
-        alt="Right decoration"
-        className="absolute right-[5%] top-[45%] hidden w-1/4 rotate-[5deg] rounded-xl opacity-50 lg:block"
-      />
-
-      <div className="max-w-[40rem] p-4 text-white">
+      {/* Main content */}
+      <div className="relative max-w-[40rem] p-4 text-white">
         <h2 className="mb-[1rem] mt-[5rem] text-center text-[4rem] font-bold text-roboblue">
           Event Schedule
         </h2>
@@ -47,7 +70,7 @@ const Timeline: React.FC = () => {
               className="mb-8 ml-[2rem] rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-[2vw]"
             >
               <div className="absolute -left-3 h-6 w-6 rounded-full border-2 border-white bg-roboblue"></div>
-              <time className="mb-1 block text-sm font-medium">
+              <time className="mb-1 block text-sm font-medium text-neutral-400">
                 {event.time}
               </time>
               <h3 className="text-lg font-semibold">{event.title}</h3>

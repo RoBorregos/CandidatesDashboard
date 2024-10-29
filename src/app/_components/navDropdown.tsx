@@ -4,28 +4,19 @@ import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "r/components/ui/dropdown";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "r/components/ui/navigation-menu";
 import menu from "rbrgs/../public/images/menu.svg";
 import SignInButton from "./SignInButton";
 import { Session } from "next-auth";
+import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 export default function NavDropdown({ session }: { session: Session | null }) {
   return (
     <div className="block justify-self-end lg:hidden">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Image src={menu} alt="" className="flex h-5 w-5" />
+          <Image src={menu as StaticImport} alt="" className="flex h-5 w-5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="mt-3 w-fit rounded-xl border border-white bg-black text-white">
           <DropdownMenuItem>

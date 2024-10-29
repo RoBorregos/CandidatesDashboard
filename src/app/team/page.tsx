@@ -72,7 +72,7 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
           </div>
         </div>
       ) : (
-        <div>
+        <div className="flex h-[30rem] items-center justify-center">
           <Title title="No data found" />
         </div>
       )}

@@ -1,9 +1,8 @@
-import { arch } from "os";
 import { type Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
-  darkMode: ["class"],
+  darkMode: "class",
   content: ["./src/**/*.tsx", "./r/**/*.tsx"],
   theme: {
     extend: {

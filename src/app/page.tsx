@@ -6,8 +6,10 @@ import Dipole from "../../public/images/sponsors/Dipole.png";
 import Dram from "../../public/images/sponsors/Dram.png";
 import Mitutoyo from "../../public/images/sponsors/Mitutoyo.png";
 import robologo from "../../public/images/white-logo.png";
-import Footer from "rbrgs/app/_components/footer";
 import ball from "../../public/images/ball.jpeg";
+import maze from "../../public/images/maze.jpeg";
+import line from "../../public/images/line.jpeg";
+import Footer from "./_components/footer";
 
 export default async function Home() {
   return (
@@ -36,10 +38,11 @@ export default async function Home() {
             layout="fill"
             objectFit="cover"
             className="-z-20 opacity-30"
+            // the black fade is covering the image
           />
         </section>
 
-        <p className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
+        <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
           This year, the rounds are divided into 3 different{" "}
           <span className="font-jersey_25 text-[4rem] text-roboblue">
             challenges.
@@ -49,13 +52,13 @@ export default async function Home() {
             game field, teams will only have one opportunity to demonstrate
             their work in each of them.
           </div>
-        </p>
+        </div>
 
         <section className="mx-[5vw] mt-[5rem] grid gap-[5rem] text-[1.25rem] lg:mx-[5rem] lg:mt-[10rem] lg:grid-cols-3">
           <div className="relative rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
             <div className="group relative">
               <Image
-                src={teamPic}
+                src={maze}
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
@@ -75,7 +78,7 @@ export default async function Home() {
           <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
             <div className="group relative">
               <Image
-                src={teamPic}
+                src={line}
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />

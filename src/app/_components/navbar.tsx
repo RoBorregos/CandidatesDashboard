@@ -21,6 +21,7 @@ export default async function Navbar() {
         <Link href="scoreboard">Scoreboard</Link>
         <Link href="dashboard">Dashboard</Link>
         <Link href="documents">Documents</Link>
+        <Link href="team">Team</Link>
       </div>
       <div className="hidden lg:block">
         <SignInButton session={session} />

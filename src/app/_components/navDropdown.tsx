@@ -29,18 +29,23 @@ export default function NavDropdown({ session }: { session: Session | null }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="mt-3 w-fit rounded-xl border border-white bg-black text-white">
           <DropdownMenuItem>
-            <Link href="/scoreboard" className="text-lg">
+            <Link href="/scoreboard" className="w-full text-center text-lg">
               Scoreboard
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Link href="/dashboard" className="text-lg">
+            <Link href="/dashboard" className="w-full text-center text-lg">
               Dashboard
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Link href="/documents" className="text-lg">
+            <Link href="/documents" className="w-full text-center text-lg">
               Documents
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/team" className="w-full text-center text-lg">
+              Team
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>

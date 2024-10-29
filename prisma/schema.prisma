@@ -57,8 +57,8 @@ model User {
   accounts      Account[]
   posts         Post[]
   sessions      Session[]
-  teamId       String?
-  team       Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  teamId        String?
+  team          Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 }
 
 model VerificationToken {
@@ -70,34 +70,31 @@ model VerificationToken {
 }
 
 model Team {
-    id          String      @id @default(cuid())
-    name        String
-    members     User[]
-    rounds     Round[]
-    
+  id      String  @id @default(cuid())
+  name    String
+  members User[]
+  rounds  Round[]
 }
 
 model Round {
-    id          String      @id @default(cuid())
-    number        Int
-    challenges Challenge[]
+  id         String      @id @default(cuid())
+  number     Int
+  challenges Challenge[]
 
-    team       Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
-    teamId      String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String?
 }
 
 model Challenge {
-    id          String      @id @default(cuid())
-    name        String
-    time        DateTime
-    round       Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
-    roundId     String
+  id      String   @id @default(cuid())
+  name    String
+  time    DateTime
+  round   Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  roundId String
 }
-
 
 enum Role {
   CONTESTANT
   JUDGE
   ADMIN
 }
-

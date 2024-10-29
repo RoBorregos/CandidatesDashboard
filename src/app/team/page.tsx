@@ -5,6 +5,8 @@ import { api } from "rbrgs/trpc/react";
 import Header from "../_components/header";
 import Title from "../_components/title";
 import { signIn } from "next-auth/react";
+import Footer from "../_components/footer";
+import Spinner from "../_components/spinner";
 
 interface Data {
   col1: string;
@@ -19,11 +21,11 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
 
   function transformChallengeData(challenges: Challenge[]): Data[] {
     return challenges.map((challenge, key) => ({
-      col1: challenge.time.toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        }),
+      col1: challenge.time.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
       col2: challenge.name,
     }));
   }
@@ -31,21 +33,19 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
   function transformInterviewData(members: User[]): Data[] {
     return members.map((member, key) => ({
       col1: member.interviewTime
-        ? member.interviewTime.toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })
+        ? member.interviewTime.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
         : "",
       col2: member.name ? member.name : "",
     }));
   }
 
   return (
-
-    <div className="mt-[4rem] h-96 bg-black p-10 text-white text-sm md:text-base">
+    <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <div className="md:pb-20">
-
         <Header title="Team" subtitle={team?.data?.name ?? ""} />
       </div>
 
@@ -67,13 +67,17 @@ export default function TeamPage({ params }: { params: { teampage: string } }) {
         </div>
       ) : team.isLoading ? (
         <div>
-          <h1> Loading... </h1>
+          <div className="flex h-[30rem] items-center justify-center">
+            <Spinner size="lg" />
+          </div>
         </div>
       ) : (
-        <div>
+        <div className="flex h-[30rem] items-center justify-center">
           <Title title="No data found" />
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }

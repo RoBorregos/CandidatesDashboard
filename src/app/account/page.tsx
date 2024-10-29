@@ -36,11 +36,11 @@ export default async function AccountPage() {
         )}
 
         {session.user.role === UserRole.JUDGE && (
-          <p>
+          <div>
             You can view the scoreboard, check the rounds&apos; times and submit
             your scores for each team.
             <p className="font-bold">Good luck!</p>
-          </p>
+          </div>
         )}
 
         {session.user.role === UserRole.ADMIN && <p>ADMIN</p>}

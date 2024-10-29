@@ -31,7 +31,7 @@ const Timeline: React.FC = () => {
         </div>
         <div className="relative col-start-2 row-start-2">
           <Image
-            src={tm2}
+            src={tm4}
             alt="Background decoration 2"
             layout="fill"
             objectFit="cover"
@@ -40,7 +40,7 @@ const Timeline: React.FC = () => {
         </div>
         <div className="relative col-span-1 col-start-2 row-start-1">
           <Image
-            src={tm3}
+            src={tm2}
             alt="Background decoration 3"
             layout="fill"
             objectFit="cover"
@@ -49,7 +49,7 @@ const Timeline: React.FC = () => {
         </div>
         <div className="relative col-span-1 col-start-1 row-start-2">
           <Image
-            src={tm4}
+            src={tm3}
             alt="Background decoration 4"
             layout="fill"
             objectFit="cover"

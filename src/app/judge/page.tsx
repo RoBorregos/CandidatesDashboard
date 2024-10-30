@@ -1,8 +1,5 @@
 "use client";
 
-import Head from "next/head";
-import { useForm, SubmitHandler } from "react-hook-form";
-
 import { InputFormA } from "../_components/FormChallengeA";
 
 import {
@@ -14,15 +11,11 @@ import {
 } from "~/app/_components/shadcn/ui/select";
 import { useState } from "react";
 
-import Navbar from "rbrgs/app/_components/navbar";
-import Footer from "rbrgs/app/_components/footer";
-
 const streaming: React.FC = () => {
   const [selected, setSelected] = useState<string>("Sin seleccionar");
 
   return (
     <main>
-      <Navbar />
       <div className="mt-14 min-h-[50vh] bg-white">
         <div className="p-2">
           <h1 className="mb-2 text-center text-4xl">Reto</h1>
@@ -52,7 +45,6 @@ const streaming: React.FC = () => {
           </div>
         </div>
       </div>
-      <Footer />
     </main>
   );
 };
@@ -76,7 +68,9 @@ const ShowForm = ({ selection }: { selection: string }) => {
 
 const ChallengeWrapper = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="rounded border border-black p-3 m-3 shadow-lg w-1/2 mx-auto">{children}</div>
+    <div className="m-3 mx-auto w-1/2 rounded border border-black p-3 shadow-lg">
+      {children}
+    </div>
   );
 };
 

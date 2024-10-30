@@ -73,7 +73,7 @@ export default async function TeamPage({ params }: { params: { teampage: string 
           Here you will find the schedules for your rounds and interviews.
           <br />Please make sure to be on time.
           <br />Don&apos;t forget to add the link to your documents down below.
-          <br />A link to a google drive folder is fine, but remember we can see the last time it was updated/created.
+          <br />A link to a google drive folder is fine, but remember we can see the last time it was updated/created. (Ensure permissions are correct for us to access the docs)
         </div>
 
       </div>

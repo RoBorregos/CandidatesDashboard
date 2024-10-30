@@ -5,57 +5,20 @@ import tm1 from "public/images/tm1.jpg";
 import tm2 from "public/images/tm2.jpg";
 import tm3 from "public/images/tm3.jpg";
 import tm4 from "public/images/tm4.jpg";
+import eventsData from "./events.json";
+import TimelineImg from "./timelineImg";
 
 const Timeline: React.FC = () => {
-  const eventSections = [
-    { title: "Registration", time: "9:00 AM" },
-    { title: "Opening Ceremony", time: "10:00 AM" },
-    { title: "Keynote Speech", time: "11:00 AM" },
-    { title: "Lunch Break", time: "12:30 PM" },
-    { title: "Workshop", time: "2:00 PM" },
-    { title: "Closing Remarks", time: "5:00 PM" },
-  ];
+  const eventSections = eventsData.eventSections;
 
   return (
     <div className="relative mt-[10rem] flex w-full justify-center">
       {/* Background images arranged in a grid layout */}
       <div className="absolute inset-0 grid grid-cols-2 gap-8 px-10 opacity-15">
-        <div className="relative col-span-1">
-          <Image
-            src={tm1}
-            alt="Background decoration 1"
-            layout="fill"
-            objectFit="cover"
-            className="rounded-xl"
-          />
-        </div>
-        <div className="relative col-start-2 row-start-2">
-          <Image
-            src={tm4}
-            alt="Background decoration 2"
-            layout="fill"
-            objectFit="cover"
-            className="rounded-xl"
-          />
-        </div>
-        <div className="relative col-span-1 col-start-2 row-start-1">
-          <Image
-            src={tm2}
-            alt="Background decoration 3"
-            layout="fill"
-            objectFit="cover"
-            className="rounded-xl"
-          />
-        </div>
-        <div className="relative col-span-1 col-start-1 row-start-2">
-          <Image
-            src={tm3}
-            alt="Background decoration 4"
-            layout="fill"
-            objectFit="cover"
-            className="rounded-xl"
-          />
-        </div>
+        <TimelineImg numberImage={1} col={1} row={1} />
+        <TimelineImg numberImage={2} col={2} row={1} />
+        <TimelineImg numberImage={3} col={1} row={2} />
+        <TimelineImg numberImage={4} col={2} row={2} />
       </div>
 
       {/* Main content */}

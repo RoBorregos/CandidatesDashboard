@@ -5,6 +5,7 @@ import { type Metadata } from "next";
 import { Jersey_25, Anton, Archivo } from "next/font/google";
 
 import { TRPCReactProvider } from "rbrgs/trpc/react";
+import { Toaster } from "rbrgs/app/_components/shadcn/ui/toaster";
 import Navbar from "./_components/navbar";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body className="bg-black">
         <Navbar />
         <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -7,8 +7,15 @@
     "config": "tailwind.config.ts",
     "css": "src/styles/globals.css",
     "baseColor": "neutral",
-    "cssVariables": false,
+    "cssVariables": true,
     "prefix": ""
+  },
+  "aliases_oscar": {
+    "components": "~/app/_components/shadcn",
+    "utils": "~/lib/utils",
+    "ui": "~/app/_components/shadcn/ui",
+    "lib": "~/lib",
+    "hooks": "~/app/_components/shadcn/hooks"
   },
   "aliases": {
     "components": "r/components",

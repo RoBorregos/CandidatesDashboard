@@ -32,7 +32,24 @@ export const teamRouter = createTRPCRouter({
         },
       },
     });
-
+    console.log(team);
     return team;
   }),
+
+  saveLink: protectedProcedure
+    .input(z.object({ teamId: z.string(), link: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+
+      const team = await ctx.db.team.update({
+        where: {
+          id: input.teamId,
+        },
+        data: {
+          link: input.link,
+        },
+      });
+
+      return team;
+    }),
+
 });

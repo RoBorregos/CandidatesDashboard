@@ -8,8 +8,9 @@ import { TRPCReactProvider } from "rbrgs/trpc/react";
 import Navbar from "./_components/navbar";
 
 export const metadata: Metadata = {
-  title: "Candidates",
-  description: "Candidates 2024 by RoBorregos",
+  title: "Candidates 2024",
+  description:
+    "Candidates 2024 by RoBorregos, ITESM's biggest robotics competition",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

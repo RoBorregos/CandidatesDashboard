@@ -56,6 +56,7 @@ export default {
         jersey_25: ["var(--font-jersey-25)"],
         anton: ["var(--font-anton)"],
         archivo: ["var(--font-archivo)"],
+        digital: ["digital-7", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",

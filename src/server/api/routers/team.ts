@@ -45,6 +45,7 @@ export const teamRouter = createTRPCRouter({
           id: input.teamId,
         },
         data: {
+          id: input.teamId,
           link: input.link,
         },
       });

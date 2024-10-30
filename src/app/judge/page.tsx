@@ -9,11 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/app/_components/shadcn/ui/select";
-import { useState } from "react";
 import Header from "rbrgs/app/_components/header";
+import { useState } from "react";
 
-const streaming: React.FC = () => {
-  const [selected, setSelected] = useState<string>("Sin seleccionar");
+export default function JudgePage() {
+  const [selected, setSelected] = useState("Sin seleccionar");
 
   return (
     <main className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -21,7 +21,7 @@ const streaming: React.FC = () => {
         <Header title="Judge" subtitle="" />
       </div>
       <div className="p-2">
-        <h1 className="mb-2 text-center text-4xl">Reto</h1>
+        <h1 className="mb-5 text-center text-4xl">Seleccionar Reto</h1>
         <div className="mx-auto w-1/2">
           <Select
             onValueChange={(value) => {
@@ -49,7 +49,7 @@ const streaming: React.FC = () => {
       </div>
     </main>
   );
-};
+}
 
 const ShowForm = ({ selection }: { selection: string }) => {
   switch (selection) {
@@ -64,16 +64,14 @@ const ShowForm = ({ selection }: { selection: string }) => {
     case "challengeC":
       return <div />;
     default:
-      return <p>Selecciona un reto</p>;
+      return <></>;
   }
 };
 
 const ChallengeWrapper = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="m-3 mx-auto w-1/2 rounded border border-black p-3 shadow-lg">
+    <div className="m-3 mx-auto w-1/2 rounded border border-white p-3 shadow-lg">
       {children}
     </div>
   );
 };
-
-export default streaming;

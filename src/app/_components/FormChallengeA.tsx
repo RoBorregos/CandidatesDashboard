@@ -15,53 +15,32 @@ import {
   FormMessage,
 } from "rbrgs/app/_components/shadcn/ui/form";
 import { Checkbox } from "rbrgs/app/_components/shadcn/ui/checkbox";
-import { genericFormSchema, GenericForm } from "./GenericForm";
+import { GenericForm } from "./GenericForm";
+import { challengeASchema } from "rbrgs/lib/schemas";
 
-const formSchema = z.object({
-  ballContact: z.boolean({ message: "You must select a value." }),
-  ballSaved: z.boolean({ message: "You must select a value." }),
-  finishTrack: z.boolean({ message: "You must select a value." }),
-  finishTrackNoCrossingLine: z.boolean({ message: "You must select a value." }),
-  obtainedBonus: z.boolean({ message: "You must select a value." }),
-  genericFormSchema: genericFormSchema,
-});
-
-const formSchemaB = z.object({
-  points: z.number({ message: "You must select a value." }),
-  genericFormSchema: genericFormSchema,
-});
-
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof challengeASchema>;
 export type FormControlA = Control<FormData>;
-
-type FormDataB = z.infer<typeof formSchemaB>;
-export type FormControlB = Control<FormDataB>;
 
 export const InputFormA = () => {
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(challengeASchema),
     defaultValues: {
       ballContact: false,
       ballSaved: false,
       finishTrack: false,
       finishTrackNoCrossingLine: false,
-      obtainedBonus: false,
       genericFormSchema: {
-        roundTimeSeconds: 0,
-        points: 0,
-        lackOfProgress: 0,
-        judgeID: "",
-        teamId: "",
+        obtainedBonus: false,
       },
     },
   });
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  function onSubmit(data: FormData) {
     toast({
       title: "You submitted the following values:",
       description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
+        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4 text-white">
+          {JSON.stringify(data, null, 2)}
         </pre>
       ),
     });
@@ -127,23 +106,6 @@ export const InputFormA = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Finish Track No Crossing Line</FormLabel>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="ml-3"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="obtainedBonus"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Obtained Bonus</FormLabel>
               <FormControl>
                 <Checkbox
                   checked={field.value}

@@ -7,35 +7,25 @@ import {
   FormLabel,
   FormMessage,
 } from "rbrgs/app/_components/shadcn/ui/form";
-import type { FormControlA, FormControlB } from "./FormChallengeA"; 
 import { Input } from "rbrgs/app/_components/shadcn/ui/input";
-
-export const genericFormSchema = z.object({
-  roundTimeSeconds: z.coerce
-    .number()
-    .min(0, { message: "Round time must be a positive number." }),
-  points: z.coerce
-    .number()
-    .min(0, { message: "Points must be a positive number." }),
-  lackOfProgress: z.coerce
-    .number()
-    .min(0, { message: "Lack of progress must be a positive number." }),
-  judgeID: z.string().min(1, { message: "Judge ID is required." }),
-  teamId: z.string().min(1, { message: "Team ID is required." }),
-});
+import { Checkbox } from "./shadcn/ui/checkbox";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const GenericForm = ({ control }: { control: Control<any> }) => {
   return (
     <>
-      <FormField
+      {/* <FormField
         control={control}
-        name="genericFormSchema.roundTimeSeconds"
+        name="genericFormSchema.obtainedBonus"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Round Time (Seconds)</FormLabel>
+            <FormLabel>Obtained Bonus</FormLabel>
             <FormControl>
-              <Input type="number" {...field} />
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                className="ml-3"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -43,10 +33,10 @@ export const GenericForm = ({ control }: { control: Control<any> }) => {
       />
       <FormField
         control={control}
-        name="genericFormSchema.points"
+        name="genericFormSchema.roundTimeSeconds"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Points</FormLabel>
+            <FormLabel>Round Time (Seconds)</FormLabel>
             <FormControl>
               <Input type="number" {...field} />
             </FormControl>
@@ -69,12 +59,12 @@ export const GenericForm = ({ control }: { control: Control<any> }) => {
       />
       <FormField
         control={control}
-        name="genericFormSchema.judgeID"
+        name="genericFormSchema.roundId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Judge ID</FormLabel>
+            <FormLabel>Round ID</FormLabel>
             <FormControl>
-              <Input type="text" {...field} />
+              <Input type="string" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -92,7 +82,7 @@ export const GenericForm = ({ control }: { control: Control<any> }) => {
             <FormMessage />
           </FormItem>
         )}
-      />
+      /> */}
     </>
   );
 };

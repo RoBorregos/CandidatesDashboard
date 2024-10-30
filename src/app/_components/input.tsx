@@ -11,18 +11,11 @@ const Input: React.FC<InputProps> = ({ teamId, prevLink }) => {
 
     const onSave = () => {
         const driveLink = document.getElementById("drive-link") as HTMLInputElement;
-        console.log("AX", driveLink.value);
-        // try {
             saveLink.mutate({
                 teamId: teamId,
                 link: driveLink.value
             });
-        // } catch (error) {
-        //     console.error(error);
-        //     return;
-        // }
         
-        console.log("Link saved");
         alert("Link saved");
 
     }

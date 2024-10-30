@@ -1,4 +1,3 @@
-// "use client";
 import { Challenge, User } from "@prisma/client";
 import Table from "rbrgs/app/_components/table";
 import { api } from "rbrgs/trpc/server";
@@ -68,12 +67,12 @@ export default async function TeamPage({ params }: { params: { teampage: string 
 
       <div className="px-20 pb-20 pt-10">
         <h1 className="text-xl font-semibold">
-          <span className="font-normal text-gray-200 pr-1">&lt; </span> Welcome <span className="font-jersey_25 text-blue-700 text-3xl">{session.user.name}</span> ! <span className="font-normal pl-1 text-gray-200">/&gt;</span>
+          <span className="font-normal text-gray-200 pr-1">&#60; </span> Welcome <span className="font-jersey_25 text-blue-700 text-3xl">{session.user.name}</span> ! <span className="font-normal pl-1 text-gray-200">/&#62;</span>
         </h1>
         <div>
           Here you will find the schedules for your rounds and interviews.
           <br />Please make sure to be on time.
-          <br />Don't forget to add the link to your documents down below.
+          <br />Don&apos;t forget to add the link to your documents down below.
           <br />A link to a google drive folder is fine, but remember we can see the last time it was updated/created.
         </div>
 

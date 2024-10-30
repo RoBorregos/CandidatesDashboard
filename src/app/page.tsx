@@ -10,6 +10,7 @@ import ball from "../../public/images/ball.jpeg";
 import maze from "../../public/images/maze.jpeg";
 import line from "../../public/images/line.jpeg";
 import Footer from "./_components/footer";
+import EventTimeline from "./_components/timeline";
 
 export default async function Home() {
   return (
@@ -42,7 +43,7 @@ export default async function Home() {
           />
         </section>
 
-        <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:mt-0 lg:text-[1.5rem]">
+        <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:text-[1.5rem]">
           This year, the rounds are divided into 3 different{" "}
           <span className="font-jersey_25 text-[4rem] text-roboblue">
             challenges.
@@ -112,6 +113,8 @@ export default async function Home() {
             </p>
           </div>
         </section>
+
+        <EventTimeline />
 
         <h2 className="mt-[5rem] text-center font-jersey_25 text-[4rem] text-roboblue lg:mt-[10rem]">
           Sponsors

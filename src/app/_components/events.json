@@ -1,0 +1,8 @@
+{ "eventSections": [
+    { "title": "Registration", "time": "9:00 AM" },
+    { "title": "Opening Ceremony", "time": "10:00 AM" },
+    { "title": "Keynote Speech", "time": "11:00 AM" },
+    { "title": "Lunch Break", "time": "12:30 PM" },
+    { "title": "Workshop", "time": "2:00 PM" },
+    { "title": "Closing Remarks", "time": "5:00 PM" }
+] }

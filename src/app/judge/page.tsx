@@ -10,39 +10,41 @@ import {
   SelectValue,
 } from "~/app/_components/shadcn/ui/select";
 import { useState } from "react";
+import Header from "rbrgs/app/_components/header";
 
 const streaming: React.FC = () => {
   const [selected, setSelected] = useState<string>("Sin seleccionar");
 
   return (
-    <main>
-      <div className="mt-14 min-h-[50vh] bg-white">
-        <div className="p-2">
-          <h1 className="mb-2 text-center text-4xl">Reto</h1>
-          <div className="mx-auto w-1/2">
-            <Select
-              onValueChange={(value) => {
-                setSelected(value);
-              }}
-              value={selected}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un reto" />
-              </SelectTrigger>
+    <main className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
+      <div className="md:pb-20">
+        <Header title="Judge" subtitle="" />
+      </div>
+      <div className="p-2">
+        <h1 className="mb-2 text-center text-4xl">Reto</h1>
+        <div className="mx-auto w-1/2">
+          <Select
+            onValueChange={(value) => {
+              setSelected(value);
+            }}
+            value={selected}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecciona un reto" />
+            </SelectTrigger>
 
-              <SelectContent>
-                <SelectItem value="challengeA">Pista A - Pelota</SelectItem>
-                <SelectItem value="challengeB">
-                  Pista B - Seguidor de línea
-                </SelectItem>
-                <SelectItem value="challengeC">Pista C - Laberinto</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <SelectContent>
+              <SelectItem value="challengeA">Pista A - Pelota</SelectItem>
+              <SelectItem value="challengeB">
+                Pista B - Seguidor de línea
+              </SelectItem>
+              <SelectItem value="challengeC">Pista C - Laberinto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="">
-            <ShowForm selection={selected} />
-          </div>
+        <div className="">
+          <ShowForm selection={selected} />
         </div>
       </div>
     </main>

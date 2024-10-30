@@ -106,7 +106,8 @@ enum Role {
 }
 
 model ChallengeA {
-  id                        String  @id @default(cuid())
+  id                        String   @id @default(cuid())
+  createdAt                 DateTime @default(now())
   ballContact               Boolean
   ballSaved                 Boolean
   finshTrack                Boolean
@@ -114,36 +115,43 @@ model ChallengeA {
   obtainedBonus             Boolean
   roundTimeSeconds          Int
   points                    Int
-  roundId                   String
   lackOfProgress            Int
   judgeID                   String
-  user                      User    @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+  user                      User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
   teamId                    String
-  team                      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team                      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model ChallengeB {
-  id               String @id @default(cuid())
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
   trackPoints      Int
   roundTimeSeconds Int
   points           Int
   roundId          String
   lackOfProgress   Int
   judgeID          String
-  user             User   @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
   teamId           String
-  team             Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team             Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model ChallengeC {
-  id               String @id @default(cuid())
-  trackPoints      Int
-  roundTimeSeconds Int
-  points           Int
-  roundId          String
-  lackOfProgress   Int
-  judgeID          String
-  user             User   @relation(fields: [judgeID], references: [id], onDelete: Cascade)
-  teamId           String
-  team             Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id                         String   @id @default(cuid())
+  createdAt                  DateTime @default(now())
+  detectedColors             Int
+  finishedTrack              Boolean
+  obtainedBonus              Boolean
+  passedRamp                 Boolean
+  crossedRampWithoutLOP      Boolean
+  balancedRamp               Boolean
+  crossedRampWithoutTouching Boolean
+  roundTimeSeconds           Int
+  points                     Int
+  roundId                    String
+  lackOfProgress             Int
+  judgeID                    String
+  user                       User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+  teamId                     String
+  team                       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }

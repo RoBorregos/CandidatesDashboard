@@ -3,7 +3,7 @@
 import Head from "next/head";
 import { useForm, SubmitHandler } from "react-hook-form";
 
-import { InputFormA } from "../_components/FormChallengue1";
+import { InputFormA } from "../_components/FormChallengeA";
 
 import {
   Select,
@@ -14,60 +14,70 @@ import {
 } from "~/app/_components/shadcn/ui/select";
 import { useState } from "react";
 
+import Navbar from "rbrgs/app/_components/navbar";
+import Footer from "rbrgs/app/_components/footer";
+
 const streaming: React.FC = () => {
   const [selected, setSelected] = useState<string>("Sin seleccionar");
 
   return (
-    <>
-      <Head>
-        <title>Twitch Embed Example</title>
-        <meta
-          name="description"
-          content="Embed a Twitch channel in a T3 app."
-        />
-      </Head>
-      <main className="flex flex-col items-center">
-        <h1>Testing form for challenges</h1>
-        <div>
-          <Select
-            onValueChange={(value) => {
-              setSelected(value);
-            }}
-            value={selected}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a verified email to display" />
-            </SelectTrigger>
+    <main>
+      <Navbar />
+      <div className="mt-14 min-h-[50vh] bg-white">
+        <div className="p-2">
+          <h1 className="mb-2 text-center text-4xl">Reto</h1>
+          <div className="mx-auto w-1/2">
+            <Select
+              onValueChange={(value) => {
+                setSelected(value);
+              }}
+              value={selected}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un reto" />
+              </SelectTrigger>
 
-            <SelectContent>
-              <SelectItem value="challengeA">Pista A - Pelota</SelectItem>
-              <SelectItem value="challengeB">
-                Pista B - Seguidor de línea
-              </SelectItem>
-              <SelectItem value="challengeC">Pista C - Laberinto</SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectContent>
+                <SelectItem value="challengeA">Pista A - Pelota</SelectItem>
+                <SelectItem value="challengeB">
+                  Pista B - Seguidor de línea
+                </SelectItem>
+                <SelectItem value="challengeC">Pista C - Laberinto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <ShowForm selection={selected} />
+          <div className="">
+            <ShowForm selection={selected} />
+          </div>
         </div>
-      </main>
-    </>
+      </div>
+      <Footer />
+    </main>
   );
 };
 
-const ShowForm = ({selection}: {selection: string}) => {
-
-  switch(selection) {
+const ShowForm = ({ selection }: { selection: string }) => {
+  switch (selection) {
     case "challengeA":
-      return <InputFormA />
+      return (
+        <ChallengeWrapper>
+          <InputFormA />
+        </ChallengeWrapper>
+      );
     case "challengeB":
-      return <div/>
+      return <div />;
     case "challengeC":
-      return <div />
+      return <div />;
     default:
-      return <p>Selecciona un reto</p>
+      return <p>Selecciona un reto</p>;
   }
+};
 
-}
+const ChallengeWrapper = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="rounded border border-black p-3 m-3 shadow-lg w-1/2 mx-auto">{children}</div>
+  );
+};
 
 export default streaming;

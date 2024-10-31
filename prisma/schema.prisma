@@ -72,9 +72,22 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model EmailTeam {
+  email String @unique
+  team  String
+}
+
+model Judge {
+  email String @unique
+}
+
+model Admin {
+  email String @unique
+}
+
 model Team {
   id         String       @id @default(cuid())
-  name       String
+  name       String       @unique
   link       String?
   challengeA ChallengeA[]
   challengeB ChallengeB[]
@@ -152,6 +165,7 @@ model ChallengeC {
 }
 
 enum Role {
+  UNASSIGNED
   CONTESTANT
   JUDGE
   ADMIN

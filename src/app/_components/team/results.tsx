@@ -1,11 +1,5 @@
 "use client";
-import { Challenge, Team, User } from "@prisma/client";
-import Table from "rbrgs/app/_components/table";
-import Input from "../input";
-import Spinner from "../spinner";
-import Title from "../title";
-import SwitchButton from "./switchButton";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { TeamType } from "rbrgs/server/api/routers/team";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../shadcn/ui/select";
 
@@ -21,7 +15,7 @@ const Results = ({ team }: { team: TeamType }) => {
         <div>
             <h1 className="mb-5 text-center text-4xl">Results</h1>
             <div className="mx-auto lg:w-1/2">
-            <p>Selecciona una ronda</p>
+            <p>Select a round</p>
                 <Select
                     onValueChange={(value) => {
                         setSelected(value);
@@ -60,7 +54,7 @@ const RoundResults = ({ team, selection }: { team: TeamType, selection: string }
             <div>
                 <div className="pb-10">
 
-                    <h1 className="font-anton text-lg pb-2">Challenge A - Pelota</h1>
+                    <h1 className="font-anton text-lg pb-2">Challenge A - Ball</h1>
                     {challengesA?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
                         <div key={key} className="px-5">
                             Ball contact: {challenge.ballContact ? "Yes" : "No"}
@@ -78,7 +72,7 @@ const RoundResults = ({ team, selection }: { team: TeamType, selection: string }
 
 
                 <div className="pb-10">
-                    <h1 className="font-anton text-lg pb-2">Challenge B - Seguidor de línea</h1>
+                    <h1 className="font-anton text-lg pb-2">Challenge B - Line Follower</h1>
                     {challengesB?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
                         <div key={key} className="px-5">
                             Track Points: {challenge.trackPoints}
@@ -91,7 +85,7 @@ const RoundResults = ({ team, selection }: { team: TeamType, selection: string }
                 </div>
 
 
-                <h1 className="font-anton text-lg pb-2">Challenge C - Laberinto</h1>
+                <h1 className="font-anton text-lg pb-2">Challenge C - Maze</h1>
                 {challengesC?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
                     <div key={key} className="px-5">
                         Number of detected colors: {challenge.detectedColors}

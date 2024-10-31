@@ -9,11 +9,10 @@ interface sbuttonProps {
 }
 
 const SwitchButton: React.FC<sbuttonProps> = ({ variant, onClick }) => {
-    const [selected, setSelected] = useState("DOCS");
 
     return (
         <div className="w-full flex flex-col justify-center mt-5 gap-3 pb-20">
-            <div className='flex mx-auto bg-white p-1 rounded-md shadow-md'>
+            <div className='flex mx-auto bg-neutral-800 p-1 rounded-md shadow-md'>
                 <ButtonX label="Schedule" selected={variant == "INFO"} onClick={onClick} />
                 <ButtonX label="Results" selected={variant == "RESULTS"} onClick={onClick} />
 
@@ -30,7 +29,7 @@ interface buttonProps {
 
 const ButtonX: React.FC<buttonProps> = ({ label, selected, onClick }) => {
     return (
-        <button className={`flex items-center justify-center p-2 rounded-md ${selected ? 'bg-blue-500 text-white' : 'text-gray-600'}`} onClick={onClick}>
+        <button className={`flex items-center justify-center p-2 rounded-md ${selected ? 'bg-blue-600 text-white' : 'text-gray-400'}`} onClick={onClick}>
             <span>{label}</span>
         </button>
     )

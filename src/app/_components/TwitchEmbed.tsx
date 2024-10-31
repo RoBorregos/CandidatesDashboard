@@ -66,7 +66,7 @@ const TwitchEmbed: React.FC<TwitchEmbedProps> = ({ channel }) => {
   }, [channel]); // Runs when the channel changes
 
   return (
-    <div id="twitch-embed">
+    <div id="twitch-embed" className="flex justify-center">
       {/* DO NOT DELETE THIS DIV */}
       <div />
     </div>

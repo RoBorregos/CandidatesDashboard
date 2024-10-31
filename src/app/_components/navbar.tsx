@@ -22,10 +22,10 @@ export default async function Navbar() {
         />
       </Link>
       <div className="hidden w-full items-center justify-evenly text-white lg:flex">
+        <Link href="/">Home</Link>
         <Link href="scoreboard">Scoreboard</Link>
-        <Link href="dashboard">Dashboard</Link>
-        <Link href="documents">Documents</Link>
         <Link href="team">Team</Link>
+        <Link href="https://www.roborregos.com">About us</Link>
         {canJudge && <Link href="judge">Judge</Link>}
       </div>
       <div className="hidden lg:block">

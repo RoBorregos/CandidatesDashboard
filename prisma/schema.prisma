@@ -112,6 +112,7 @@ model ChallengeA {
   roundTimeSeconds          Int
   teamId                    String
   createdAt                 DateTime @default(now())
+  roundId                   String
   user                      User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
   team                      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }

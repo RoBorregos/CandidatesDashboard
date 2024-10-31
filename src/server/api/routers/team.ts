@@ -39,7 +39,6 @@ export const teamRouter = createTRPCRouter({
   saveLink: protectedProcedure
     .input(z.object({ teamId: z.string(), link: z.string() }))
     .mutation(async ({ ctx, input }) => {
-
       const team = await ctx.db.team.update({
         where: {
           id: input.teamId,
@@ -53,4 +52,14 @@ export const teamRouter = createTRPCRouter({
       return team;
     }),
 
+  getTeamIds: protectedProcedure.query(async ({ ctx }) => {
+    const team = await ctx.db.team.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    return team;
+  }),
 });

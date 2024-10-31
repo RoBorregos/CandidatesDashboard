@@ -8,13 +8,14 @@ type Challenge = {
 type TeamScores = {
   teamId: string;
   teamName: string;
-  rounds: {
-    [key: number]: {
+  rounds: Record<
+    number,
+    {
       challengeA: number;
       challengeB: number;
       challengeC: number;
-    };
-  };
+    }
+  >;
   total: number;
 };
 

@@ -32,7 +32,7 @@ export default function ScoreboardPage() {
               </thead>
               <tbody>
                 {scores ? (
-                  scores.map((team, index) => (
+                  scores.slice(0, 5).map((team, index) => (
                     <tr key={team.teamId} className="border-b border-gray-700">
                       <td className="p-4">{index + 1}</td>
                       <td className="p-4">{team.teamName}</td>

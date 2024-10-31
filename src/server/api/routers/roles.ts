@@ -14,7 +14,7 @@ export const rolesRouter = createTRPCRouter({
     return ctx.session.user.role;
   }),
   getAdminProtectedMessage: protectedProcedure
-    .use(roleProtectionMiddleware(Role.ADMIN))
+    .use(roleProtectionMiddleware([Role.ADMIN]))
     .query(() => {
       return "you can now see this admin protected message!";
     }),

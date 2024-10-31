@@ -136,9 +136,18 @@ export const protectedProcedure = t.procedure
     });
   });
 
-export const roleProtectionMiddleware = (role: Role) =>
+export const roleProtectionMiddleware = (roles: Role[]) =>
   t.middleware(({ ctx, next }) => {
-    if (!ctx.session || !ctx.session.user || ctx.session.user.role !== role) {
+    if (!ctx.session || !ctx.session.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "No session found. Try logging in again.",
+      });
+    }
+
+    const hasRole = roles.includes(ctx.session.user.role);
+
+    if (!hasRole) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "You do not have the required role to access this resource",
@@ -146,3 +155,15 @@ export const roleProtectionMiddleware = (role: Role) =>
     }
     return next({ ctx });
   });
+
+export const contestantProcedure = protectedProcedure.use(
+  roleProtectionMiddleware([Role.CONTESTANT, Role.JUDGE, Role.ADMIN]),
+);
+
+export const judgeProcedure = protectedProcedure.use(
+  roleProtectionMiddleware([Role.JUDGE, Role.ADMIN]),
+);
+
+export const adminProcedure = protectedProcedure.use(
+  roleProtectionMiddleware([Role.ADMIN]),
+);

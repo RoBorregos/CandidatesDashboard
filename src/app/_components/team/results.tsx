@@ -9,13 +9,13 @@ const Results = ({ team }: { team: TeamType }) => {
     const challengeB = team?.challengeB;
     const challengeC = team?.challengeC;
     const [selected, setSelected] = useState("Sin seleccionar");
-    
+
 
     return (
         <div>
             <h1 className="mb-5 text-center text-4xl">Results</h1>
             <div className="mx-auto w-10/12 lg:w-1/2">
-            <p>Select a round</p>
+                <p>Select a round</p>
                 <Select
                     onValueChange={(value) => {
                         setSelected(value);

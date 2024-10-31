@@ -1,29 +1,12 @@
-import { Challenge, User } from "@prisma/client";
 import { api } from "rbrgs/trpc/server";
 import Header from "../_components/header";
-import Title from "../_components/title";
-import { signIn } from "next-auth/react";
 import Footer from "../_components/footer";
-import Spinner from "../_components/spinner";
 import { getServerAuthSession } from "rbrgs/server/auth";
-import Input from "../_components/input";
-import LoginText from "../_components/login-text";
 import CustomLoginText from "../_components/custom-login-text";
-import SwitchButton from "../_components/team/switchButton";
 import TeamInfo from "../_components/team/team";
-
-
-
-function onClick() {
-  signIn("google");
-}
 
 export default async function TeamPage({ params }: { params: { teampage: string } }) {
   const session = await getServerAuthSession();
-
-
-
-  
 
   if (!session) {
     return (
@@ -41,8 +24,6 @@ export default async function TeamPage({ params }: { params: { teampage: string 
         <Header title="Team" subtitle={team?.name ?? ""} />
       </div>
 
-
-
       <div className="px-20 pb-20 pt-10">
         <h1 className="text-xl font-semibold">
           <span className="font-normal text-gray-200 pr-1">&#60; </span> Welcome <span className="font-jersey_25 text-blue-700 text-3xl">{session.user.name}</span> ! <span className="font-normal pl-1 text-gray-200">/&#62;</span>
@@ -57,7 +38,7 @@ export default async function TeamPage({ params }: { params: { teampage: string 
       </div>
 
       {team && <TeamInfo team={team} />}
-      
+
       <Footer />
     </div>
   );

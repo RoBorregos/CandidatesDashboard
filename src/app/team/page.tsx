@@ -8,16 +8,22 @@ import Footer from "../_components/footer";
 import Spinner from "../_components/spinner";
 import { getServerAuthSession } from "rbrgs/server/auth";
 import Input from "../_components/input";
+import LoginText from "../_components/login-text";
+import CustomLoginText from "../_components/custom-login-text";
+import SwitchButton from "../_components/team/switchButton";
 
 interface Data {
   col1: string;
   col2: string;
 }
 
+function onClick() {
+  signIn("google");
+}
+
 export default async function TeamPage({ params }: { params: { teampage: string } }) {
-  const team = await api.team.getTeam();
   const session = await getServerAuthSession();
-  const rounds = team?.rounds;
+
 
 
   function transformChallengeData(challenges: Challenge[]): Data[] {
@@ -46,16 +52,13 @@ export default async function TeamPage({ params }: { params: { teampage: string 
 
   if (!session) {
     return (
-      <div className="flex items-center justify-end">
-        <p
-          className="w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
-          onClick={() => signIn("google")}
-        >
-          Please login
-        </p>
+      <div className="h-screen flex items-center justify-center">
+        <CustomLoginText text="Please login to view your team information" label={"Login"} />
       </div>
     );
   }
+  const team = await api.team.getTeam();
+  const rounds = team?.rounds;
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -78,10 +81,15 @@ export default async function TeamPage({ params }: { params: { teampage: string 
 
       </div>
 
-      {team?.name ? (
-        <div className="pb-40">
-          <Title title="Rounds" />
+      {/* <SwitchButton variant="DOCS" onClick={onClick} /> */}
 
+      {team?.name ? (
+
+
+
+        <div className="pb-40">
+          {/* <Title title="Rounds" /> */}
+          <h1 className="mb-5 text-center text-4xl ">Rounds</h1>
           {rounds?.map((round, key) => (
             <Table
               key={key}
@@ -90,12 +98,14 @@ export default async function TeamPage({ params }: { params: { teampage: string 
             />
           ))}
 
-          <Title title="Interviews" />
+          {/* <Title title="Interviews" /> */}
+          <h1 className="mb-5 text-center text-4xl mt-16">Interviews</h1>
 
           <Table data={transformInterviewData(team.members)} title={""} />
-          
-          <Title title="Documents" />
-          <Input teamId={team.id} prevLink={team.link ?? ""}/>
+
+          {/* <Title title="Documents" /> */}
+          <h1 className="mb-5 text-center text-4xl mt-16">Documents</h1>
+          <Input teamId={team.id} prevLink={team.link ?? ""} />
         </div>
       ) : !team ? (
         <div>

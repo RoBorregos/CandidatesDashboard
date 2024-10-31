@@ -9,7 +9,7 @@ import Google from "next-auth/providers/google";
 
 import { env } from "rbrgs/env";
 import { db } from "rbrgs/server/db";
-import type { UserRole } from "rbrgs/util/UserRole";
+import { Role } from "@prisma/client";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -21,12 +21,12 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
-      role: UserRole;
+      role: Role;
     } & DefaultSession["user"];
   }
 
   interface User {
-    role: UserRole;
+    role: Role;
   }
 }
 
@@ -36,6 +36,88 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authOptions: NextAuthOptions = {
+  events: {
+    signIn: async (event) => {
+      if (event.user.email) {
+        const isAdmin = await db.admin.findUnique({
+          where: {
+            email: event.user.email,
+          },
+        });
+
+        if (isAdmin) {
+          await db.user.update({
+            where: {
+              email: event.user.email,
+            },
+            data: {
+              role: Role.ADMIN,
+            },
+          });
+          return;
+        }
+
+        const isJudge = await db.judge.findUnique({
+          where: {
+            email: event.user.email,
+          },
+        });
+
+        if (isJudge) {
+          await db.user.update({
+            where: {
+              email: event.user.email,
+            },
+            data: {
+              role: Role.JUDGE,
+            },
+          });
+          return;
+        }
+
+        const isContestant = await db.emailTeam.findUnique({
+          where: {
+            email: event.user.email,
+          },
+        });
+
+        if (isContestant) {
+          const team = await db.team.findUnique({
+            where: {
+              name: isContestant.team,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          if (!team) {
+            throw new Error("Team not found");
+          }
+
+          await db.user.update({
+            where: {
+              email: event.user.email,
+            },
+            data: {
+              teamId: team.id,
+              role: Role.CONTESTANT,
+            },
+          });
+          return;
+        }
+
+        await db.user.update({
+          where: {
+            email: event.user.email,
+          },
+          data: {
+            role: Role.UNASSIGNED,
+          },
+        });
+      }
+    },
+  },
   callbacks: {
     session: ({ session, user }) => ({
       ...session,

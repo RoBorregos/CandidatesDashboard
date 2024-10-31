@@ -165,8 +165,8 @@ model ChallengeC {
 }
 
 enum Role {
-  UNASSIGNED
   CONTESTANT
   JUDGE
   ADMIN
+  UNASSIGNED
 }

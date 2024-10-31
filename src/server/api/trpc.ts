@@ -13,7 +13,7 @@ import { ZodError } from "zod";
 
 import { getServerAuthSession } from "rbrgs/server/auth";
 import { db } from "rbrgs/server/db";
-import type { UserRole } from "rbrgs/util/UserRole";
+import { Role } from "@prisma/client";
 
 /**
  * 1. CONTEXT
@@ -136,13 +136,52 @@ export const protectedProcedure = t.procedure
     });
   });
 
-export const roleProtectionMiddleware = (role: UserRole) =>
+export const roleProtectionMiddleware = (roles: Role[]) =>
   t.middleware(({ ctx, next }) => {
-    if (!ctx.session || !ctx.session.user || ctx.session.user.role !== role) {
+    if (!ctx.session || !ctx.session.user) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "No session found. Try logging in again.",
+      });
+    }
+
+    const hasRole = roles.includes(ctx.session.user.role);
+
+    if (!hasRole) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "You do not have the required role to access this resource",
       });
     }
     return next({ ctx });
+  });
+
+export const contestantProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.CONTESTANT, Role.JUDGE, Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });
+
+export const judgeProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.JUDGE, Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });
+
+export const adminProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
   });

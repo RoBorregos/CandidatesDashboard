@@ -156,14 +156,32 @@ export const roleProtectionMiddleware = (roles: Role[]) =>
     return next({ ctx });
   });
 
-export const contestantProcedure = protectedProcedure.use(
-  roleProtectionMiddleware([Role.CONTESTANT, Role.JUDGE, Role.ADMIN]),
-);
+export const contestantProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.CONTESTANT, Role.JUDGE, Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });
 
-export const judgeProcedure = protectedProcedure.use(
-  roleProtectionMiddleware([Role.JUDGE, Role.ADMIN]),
-);
+export const judgeProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.JUDGE, Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });
 
-export const adminProcedure = protectedProcedure.use(
-  roleProtectionMiddleware([Role.ADMIN]),
-);
+export const adminProcedure = protectedProcedure
+  .use(roleProtectionMiddleware([Role.ADMIN]))
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });

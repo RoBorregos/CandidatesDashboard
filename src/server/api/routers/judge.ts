@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { createTRPCRouter, protectedProcedure } from "rbrgs/server/api/trpc";
+import { createTRPCRouter, judgeProcedure } from "rbrgs/server/api/trpc";
 import {
   challengeASchema,
   challengeBSchema,
@@ -19,7 +19,7 @@ const computePointsLOP = (lackOfProgress: number) => {
 };
 
 export const judgeRouter = createTRPCRouter({
-  roundA: protectedProcedure
+  roundA: judgeProcedure
     .input(challengeASchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
@@ -58,7 +58,7 @@ export const judgeRouter = createTRPCRouter({
       });
     }),
 
-  roundB: protectedProcedure
+  roundB: judgeProcedure
     .input(challengeBSchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
@@ -78,7 +78,7 @@ export const judgeRouter = createTRPCRouter({
       });
     }),
 
-  roundC: protectedProcedure
+  roundC: judgeProcedure
     .input(challengeCSchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
@@ -113,7 +113,7 @@ export const judgeRouter = createTRPCRouter({
       });
     }),
 
-  getTeamIds: protectedProcedure.query(async ({ ctx }) => {
+  getTeamIds: judgeProcedure.query(async ({ ctx }) => {
     const team = await ctx.db.team.findMany({
       select: {
         id: true,
@@ -123,7 +123,7 @@ export const judgeRouter = createTRPCRouter({
 
     return team;
   }),
-  roundADelete: protectedProcedure
+  roundADelete: judgeProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.challengeA.delete({
@@ -132,7 +132,7 @@ export const judgeRouter = createTRPCRouter({
         },
       });
     }),
-  roundBDelete: protectedProcedure
+  roundBDelete: judgeProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.challengeB.delete({
@@ -141,7 +141,7 @@ export const judgeRouter = createTRPCRouter({
         },
       });
     }),
-  roundCDelete: protectedProcedure
+  roundCDelete: judgeProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.challengeC.delete({

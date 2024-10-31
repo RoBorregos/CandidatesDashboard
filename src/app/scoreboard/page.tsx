@@ -1,24 +1,14 @@
+"use client";
+
+import React from "react";
 import Footer from "../_components/footer";
 import Header from "../_components/header";
-import Subtitle from "../_components/subtitle";
 import Title from "../_components/title";
+import TwitchEmbed from "../_components/TwitchEmbed"; // Optional: Move TwitchEmbed to a separate file
+import { api } from "~/trpc/react";
 
-interface TwitchEmbedProps {
-  channel: string;
-}
-
-const TwitchEmbed = ({ channel }: TwitchEmbedProps) => (
-  <div className="aspect-video w-full">
-    <iframe
-      src={`https://player.twitch.tv/?channel=${channel}&parent=localhost`}
-      className="h-full w-full"
-      allowFullScreen
-    />
-  </div>
-);
-
-export default async function scoreboardPage() {
-  // const
+export default function ScoreboardPage() {
+  const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -41,21 +31,21 @@ export default async function scoreboardPage() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-gray-700">
-                  <td className="p-4">1</td>
-                  <td className="p-4">Team 1</td>
-                  <td className="p-4">100</td>
-                </tr>
-                <tr className="border-b border-gray-700">
-                  <td className="p-4">2</td>
-                  <td className="p-4">Team 2</td>
-                  <td className="p-4">90</td>
-                </tr>
-                <tr className="border-b border-gray-700">
-                  <td className="p-4">3</td>
-                  <td className="p-4">Team 3</td>
-                  <td className="p-4">80</td>
-                </tr>
+                {scores ? (
+                  scores.map((team, index) => (
+                    <tr key={team.teamId} className="border-b border-gray-700">
+                      <td className="p-4">{index + 1}</td>
+                      <td className="p-4">{team.teamName}</td>
+                      <td className="p-4">{team.total}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center">
+                      {isLoading ? "Loading..." : "No data available"}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -67,11 +57,11 @@ export default async function scoreboardPage() {
       <div className="mx-auto w-full max-w-7xl overflow-x-auto px-4">
         <table className="min-w-full border-collapse text-white">
           <colgroup>
-            <col /> {/* Team name column */}
-            <col span={3} /> {/* Round 1 */}
-            <col span={3} /> {/* Round 2 */}
-            <col span={3} /> {/* Round 3 */}
-            <col /> {/* Total */}
+            <col />
+            <col span={3} />
+            <col span={3} />
+            <col span={3} />
+            <col />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-700">
@@ -92,21 +82,41 @@ export default async function scoreboardPage() {
               </th>
             </tr>
             <tr className="border-b border-gray-700">
-              {/* Round 1 */}
               <th className="p-3 text-sm font-normal">C1</th>
               <th className="p-3 text-sm font-normal">C2</th>
               <th className="p-3 text-sm font-normal">C3</th>
-              {/* Round 2 */}
               <th className="p-3 text-sm font-normal">C1</th>
               <th className="p-3 text-sm font-normal">C2</th>
               <th className="p-3 text-sm font-normal">C3</th>
-              {/* Round 3 */}
               <th className="p-3 text-sm font-normal">C1</th>
               <th className="p-3 text-sm font-normal">C2</th>
               <th className="p-3 text-sm font-normal">C3</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            {scores?.map((team) => (
+              <tr
+                key={team.teamId}
+                className="border-b border-gray-700/50 transition-colors hover:bg-gray-800/30"
+              >
+                <td className="p-4 font-medium">{team.teamName}</td>
+                {[1, 2, 3].map((roundId) => (
+                  <React.Fragment key={roundId}>
+                    <td className="p-4 text-center">
+                      {team.rounds[roundId]?.challengeA}
+                    </td>
+                    <td className="p-4 text-center">
+                      {team.rounds[roundId]?.challengeB}
+                    </td>
+                    <td className="p-4 text-center">
+                      {team.rounds[roundId]?.challengeC}
+                    </td>
+                  </React.Fragment>
+                ))}
+                <td className="p-4 text-center font-semibold">{team.total}</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
 

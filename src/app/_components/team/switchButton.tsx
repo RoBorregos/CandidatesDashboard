@@ -12,28 +12,25 @@ const SwitchButton: React.FC<sbuttonProps> = ({ variant, onClick }) => {
     const [selected, setSelected] = useState("DOCS");
 
     return (
-        <div className="fixed w-full flex flex-col justify-center  pl-52 mt-5 gap-3">
+        <div className="w-full flex flex-col justify-center mt-5 gap-3 pb-20">
             <div className='flex mx-auto bg-white p-1 rounded-md shadow-md'>
-                <ButtonX label="My documents" icon={BsFileEarmarkText} selected={variant == "DOCS"} onClick={onClick} />
-                <ButtonX label="Chat Bot" icon={BsFileEarmarkText} selected={variant == "CHAT"} onClick={onClick} />
+                <ButtonX label="Schedule" selected={variant == "INFO"} onClick={onClick} />
+                <ButtonX label="Results" selected={variant == "RESULTS"} onClick={onClick} />
 
             </div>
-
         </div>
     )
 }
 
 interface buttonProps {
     label: string;
-    icon: any;
     selected: boolean;
     onClick: () => void;
 }
 
-const ButtonX: React.FC<buttonProps> = ({ label, icon, selected, onClick }) => {
+const ButtonX: React.FC<buttonProps> = ({ label, selected, onClick }) => {
     return (
         <button className={`flex items-center justify-center p-2 rounded-md ${selected ? 'bg-blue-500 text-white' : 'text-gray-600'}`} onClick={onClick}>
-            <span className="mr-2">{icon}</span>
             <span>{label}</span>
         </button>
     )

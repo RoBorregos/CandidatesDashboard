@@ -17,6 +17,7 @@ export default async function AccountPage() {
   }
 
   const teamData = await api.team.getTeam();
+  
   return (
     <div className="mt-[4rem] h-max bg-black p-10 font-mono text-white">
       <h1 className="font-anton text-[3vw]">Account</h1>

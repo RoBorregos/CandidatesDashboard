@@ -1,5 +1,4 @@
 import { Challenge, User } from "@prisma/client";
-import Table from "rbrgs/app/_components/table";
 import { api } from "rbrgs/trpc/server";
 import Header from "../_components/header";
 import Title from "../_components/title";
@@ -11,11 +10,9 @@ import Input from "../_components/input";
 import LoginText from "../_components/login-text";
 import CustomLoginText from "../_components/custom-login-text";
 import SwitchButton from "../_components/team/switchButton";
+import TeamInfo from "../_components/team/team";
 
-interface Data {
-  col1: string;
-  col2: string;
-}
+
 
 function onClick() {
   signIn("google");
@@ -26,29 +23,7 @@ export default async function TeamPage({ params }: { params: { teampage: string 
 
 
 
-  function transformChallengeData(challenges: Challenge[]): Data[] {
-    return challenges.map((challenge, key) => ({
-      col1: challenge.time.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      }),
-      col2: challenge.name,
-    }));
-  }
-
-  function transformInterviewData(members: User[]): Data[] {
-    return members.map((member, key) => ({
-      col1: member.interviewTime
-        ? member.interviewTime.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-        : "",
-      col2: member.name ? member.name : "",
-    }));
-  }
+  
 
   if (!session) {
     return (
@@ -83,42 +58,8 @@ export default async function TeamPage({ params }: { params: { teampage: string 
 
       {/* <SwitchButton variant="DOCS" onClick={onClick} /> */}
 
-      {team?.name ? (
-
-
-
-        <div className="pb-40">
-          {/* <Title title="Rounds" /> */}
-          <h1 className="mb-5 text-center text-4xl ">Rounds</h1>
-          {rounds?.map((round, key) => (
-            <Table
-              key={key}
-              data={transformChallengeData(round.challenges)}
-              title={`Round ${round.number}`}
-            />
-          ))}
-
-          {/* <Title title="Interviews" /> */}
-          <h1 className="mb-5 text-center text-4xl mt-16">Interviews</h1>
-
-          <Table data={transformInterviewData(team.members)} title={""} />
-
-          {/* <Title title="Documents" /> */}
-          <h1 className="mb-5 text-center text-4xl mt-16">Documents</h1>
-          <Input teamId={team.id} prevLink={team.link ?? ""} />
-        </div>
-      ) : !team ? (
-        <div>
-          <div className="flex h-[30rem] items-center justify-center">
-            <Spinner size="lg" />
-          </div>
-        </div>
-      ) : (
-        <div className="flex h-[30rem] items-center justify-center">
-          <Title title="No data found" />
-        </div>
-
-      )}
+      {team && <TeamInfo team={team} />}
+      
 
       <Footer />
     </div>

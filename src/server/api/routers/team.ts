@@ -30,6 +30,9 @@ export const teamRouter = createTRPCRouter({
             challenges: true,
           },
         },
+        challengeA: true,
+        challengeB: true,
+        challengeC: true,
       },
     });
     console.log(team);
@@ -63,3 +66,10 @@ export const teamRouter = createTRPCRouter({
     return team;
   }),
 });
+
+// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>; 
+
+// // export result type o fpromisse
+// export typeof { TeamType };
+// export
+export type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T> ? T : never;

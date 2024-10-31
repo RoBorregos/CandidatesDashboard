@@ -5,7 +5,8 @@ import {
   protectedProcedure,
   roleProtectionMiddleware,
 } from "rbrgs/server/api/trpc";
-import { UserRole } from "rbrgs/util/UserRole";
+
+import { Role } from "@prisma/client";
 
 export const rolesRouter = createTRPCRouter({
   getRole: protectedProcedure.query(async ({ ctx }) => {
@@ -13,7 +14,7 @@ export const rolesRouter = createTRPCRouter({
     return ctx.session.user.role;
   }),
   getAdminProtectedMessage: protectedProcedure
-    .use(roleProtectionMiddleware(UserRole.ADMIN))
+    .use(roleProtectionMiddleware(Role.ADMIN))
     .query(() => {
       return "you can now see this admin protected message!";
     }),

@@ -22,6 +22,7 @@ type TeamScores = {
 // server/api/routers/scores.ts
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+import { Round } from "rbrgs/lib/round";
 
 export const scoreboardRouter = createTRPCRouter({
   getScoreboard: publicProcedure.query(async ({ ctx }) => {
@@ -49,13 +50,15 @@ export const scoreboardRouter = createTRPCRouter({
         total: 0,
       };
 
-      // Initialize rounds data
-      [1, 2, 3].forEach((roundId) => {
-        scores.rounds[roundId] = {
-          challengeA: 0,
-          challengeB: 0,
-          challengeC: 0,
-        };
+      // Initialize rounds data using the Round enum
+      Object.values(Round).forEach((roundId) => {
+        if (typeof roundId === "number") {
+          scores.rounds[roundId] = {
+            challengeA: 0,
+            challengeB: 0,
+            challengeC: 0,
+          };
+        }
       });
 
       // Fill in challenge scores

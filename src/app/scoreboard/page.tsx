@@ -6,6 +6,7 @@ import Header from "../_components/header";
 import Title from "../_components/title";
 import TwitchEmbed from "../_components/TwitchEmbed"; // Optional: Move TwitchEmbed to a separate file
 import { api } from "~/trpc/react";
+import { Round } from "../../lib/round";
 
 export default function ScoreboardPage() {
   const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
@@ -97,22 +98,24 @@ export default function ScoreboardPage() {
             {scores?.map((team) => (
               <tr
                 key={team.teamId}
-                className="border-b border-gray-700/50 transition-colors hover:bg-gray-800/30"
+                className="border-b border-gray-700 transition-colors hover:bg-gray-800/30"
               >
                 <td className="p-4 font-medium">{team.teamName}</td>
-                {[1, 2, 3].map((roundId) => (
-                  <React.Fragment key={roundId}>
-                    <td className="p-4 text-center">
-                      {team.rounds[roundId]?.challengeA}
-                    </td>
-                    <td className="p-4 text-center">
-                      {team.rounds[roundId]?.challengeB}
-                    </td>
-                    <td className="p-4 text-center">
-                      {team.rounds[roundId]?.challengeC}
-                    </td>
-                  </React.Fragment>
-                ))}
+                {Object.values(Round)
+                  .filter((value): value is number => typeof value === "number") // Filter only numeric values
+                  .map((roundId) => (
+                    <React.Fragment key={roundId}>
+                      <td className="p-4 text-center">
+                        {team.rounds[roundId]?.challengeA ?? "-"}
+                      </td>
+                      <td className="p-4 text-center">
+                        {team.rounds[roundId]?.challengeB ?? "-"}
+                      </td>
+                      <td className="p-4 text-center">
+                        {team.rounds[roundId]?.challengeC ?? "-"}
+                      </td>
+                    </React.Fragment>
+                  ))}
                 <td className="p-4 text-center font-semibold">{team.total}</td>
               </tr>
             ))}

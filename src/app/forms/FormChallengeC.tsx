@@ -106,7 +106,7 @@ export const FormChallengeC = () => {
           name="finishedTrack"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Passed ramp</FormLabel>
+              <FormLabel>Finished maze</FormLabel>
               <FormControl>
                 <Checkbox
                   checked={field.value}

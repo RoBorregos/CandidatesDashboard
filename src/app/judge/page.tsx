@@ -1,6 +1,6 @@
 "use client";
 
-import { InputFormA } from "../_components/FormChallengeA";
+import { FormChallengeA } from "../forms/FormChallengeA";
 
 import {
   Select,
@@ -11,6 +11,8 @@ import {
 } from "~/app/_components/shadcn/ui/select";
 import Header from "rbrgs/app/_components/header";
 import { useState } from "react";
+import { FormChallengeB } from "../forms/FormChallengeB";
+import { FormChallengeC } from "../forms/FormChallengeC";
 
 export default function JudgePage() {
   const [selected, setSelected] = useState("Sin seleccionar");
@@ -22,7 +24,7 @@ export default function JudgePage() {
       </div>
       <div className="p-2">
         <h1 className="mb-5 text-center text-4xl">Seleccionar Reto</h1>
-        <div className="mx-auto w-1/2">
+        <div className="mx-auto lg:w-1/2">
           <Select
             onValueChange={(value) => {
               setSelected(value);
@@ -56,13 +58,21 @@ const ShowForm = ({ selection }: { selection: string }) => {
     case "challengeA":
       return (
         <ChallengeWrapper>
-          <InputFormA />
+          <FormChallengeA />
         </ChallengeWrapper>
       );
     case "challengeB":
-      return <div />;
+      return (
+        <ChallengeWrapper>
+          <FormChallengeB />
+        </ChallengeWrapper>
+      );
     case "challengeC":
-      return <div />;
+      return (
+        <ChallengeWrapper>
+          <FormChallengeC />
+        </ChallengeWrapper>
+      );
     default:
       return <></>;
   }
@@ -70,7 +80,7 @@ const ShowForm = ({ selection }: { selection: string }) => {
 
 const ChallengeWrapper = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="m-3 mx-auto w-1/2 rounded border border-white p-3 shadow-lg">
+    <div className="m-8 mx-auto rounded border border-white p-3 shadow-lg lg:w-1/2">
       {children}
     </div>
   );

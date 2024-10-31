@@ -7,10 +7,7 @@ import Title from "../title";
 import SwitchButton from "./switchButton";
 import { useCallback, useState } from "react";
 import { TeamType } from "rbrgs/server/api/routers/team";
-
-interface TeamInfoProps {
-    team?: TeamType & { rounds: Round[] } & { members: User[] } & { challengeA: Challenge } & { challengeB: Challenge } & { challengeC: Challenge };
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../shadcn/ui/select";
 
 interface Round {
     number: number;
@@ -51,8 +48,8 @@ function transformInterviewData(members: User[]): Data[] {
     }));
 }
 
-const TeamInfo = ({ team }: {team: TeamType}) => {
-    
+const TeamInfo = ({ team }: { team: TeamType }) => {
+
 
     const [variant, setSelected] = useState("INFO");
     const toggleVariant = useCallback(() => {
@@ -69,7 +66,7 @@ const TeamInfo = ({ team }: {team: TeamType}) => {
                     {variant === "INFO" ? (
                         <Schedules team={team} />
                     ) : (
-                        <Results />
+                        <Results team={team} />
                     )}
 
 
@@ -92,7 +89,7 @@ const TeamInfo = ({ team }: {team: TeamType}) => {
     )
 }
 
-const Schedules = ({ team } : {team: TeamType}) => {
+const Schedules = ({ team }: { team: TeamType }) => {
     const rounds = team?.rounds;
     return (
         <div>
@@ -113,17 +110,106 @@ const Schedules = ({ team } : {team: TeamType}) => {
     )
 }
 
-const Results: React.FC<TeamInfoProps> = ({ team }) => {
-   const challengeA = team?.challengeA;
+const Results = ({ team }: { team: TeamType }) => {
+    const challengeA = team?.challengeA;
     const challengeB = team?.challengeB;
     const challengeC = team?.challengeC;
+    const [selected, setSelected] = useState("Sin seleccionar");
     
+
     return (
         <div>
             <h1 className="mb-5 text-center text-4xl">Results</h1>
-            <Table data={[]} title={""} />
+            <div className="mx-auto lg:w-1/2">
+                <Select
+                    onValueChange={(value) => {
+                        setSelected(value);
+                    }}
+                    value={selected}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una ronda" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                        <SelectItem value="1">Ronda 1</SelectItem>
+                        <SelectItem value="2">Ronda 2</SelectItem>
+                        <SelectItem value="3">Ronda 3</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {selected != "Sin seleccionar" && (
+                    <RoundResults team={team} selection={selected} />
+                )}
+
+
+            </div>
         </div>
     )
 }
+
+const RoundResults = ({ team, selection }: { team: TeamType, selection: string }) => {
+
+    const challengesA = team?.challengeA;
+    const challengesB = team?.challengeB;
+    const challengesC = team?.challengeC;
+
+    return (
+        <div className="pt-10">
+            <div>
+                <div className="pb-10">
+
+                    <h1 className="font-anton text-lg pb-2">Challenge A - Pelota</h1>
+                    {challengesA?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
+                        <div key={key} className="px-5">
+                            Ball contact: {challenge.ballContact ? "Yes" : "No"}
+                            <br />Ball saved: {challenge.ballSaved ? "Yes" : "No"}
+                            <br />Finish track: {challenge.finshTrack ? "Yes" : "No"}
+                            <br />Finish track (No crossing line): {challenge.finishTrackNoCrossingLine ? "Yes" : "No"}
+                            <br />Bonus: {challenge.obtainedBonus ? "Yes" : "No"}
+                            <br />Time: {challenge.roundTimeSeconds} seconds
+                            <br />Lack of progress: {challenge.lackOfProgress ? "Yes" : "No"}
+                            <hr className="py-1" />
+                            Points: {challenge.points}
+                        </div>
+                    ))}
+                </div>
+
+
+                <div className="pb-10">
+                    <h1 className="font-anton text-lg pb-2">Challenge B - Seguidor de línea</h1>
+                    {challengesB?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
+                        <div key={key} className="px-5">
+                            Track Points: {challenge.trackPoints}
+                            <br />Time: {challenge.roundTimeSeconds} seconds
+                            <br />Lack of progress: {challenge.lackOfProgress ? "Yes" : "No"}
+                            <hr className="py-1" />
+                            Points: {challenge.points}
+                        </div>
+                    ))}
+                </div>
+
+
+                <h1 className="font-anton text-lg pb-2">Challenge C - Laberinto</h1>
+                {challengesC?.filter((challenge) => challenge.roundId === selection).map((challenge, key) => (
+                    <div key={key} className="px-5">
+                        Number of detected colors: {challenge.detectedColors}
+                        <br />Passed ramp: {challenge.passedRamp ? "Yes" : "No"}
+                        <br />Passed ramp (No lack of progress): {challenge.crossedRampWithoutLOP ? "Yes" : "No"}
+                        <br />Passed ramp (No touching walls): {challenge.crossedRampWithoutTouching ? "Yes" : "No"}
+                        <br />Balanced in ramp: {challenge.balancedRamp ? "Yes" : "No"}
+                        <br />Bonus: {challenge.obtainedBonus ? "Yes" : "No"}
+                        <br />Time: {challenge.roundTimeSeconds} seconds
+                        <br />Lack of progress: {challenge.lackOfProgress ? "Yes" : "No"}
+                        <hr className="py-1" />
+                        Points: {challenge.points}
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+
 
 export default TeamInfo;

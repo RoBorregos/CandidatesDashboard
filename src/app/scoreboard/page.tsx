@@ -10,7 +10,7 @@ import { Round } from "../../lib/round";
 const TwitchEmbed = ({ channel }: { channel: string }) => (
   <div className="aspect-video w-full">
     <iframe
-      src={`https://player.twitch.tv/?channel=${channel}&parent=https://candidates.roborregos.com/scoreboard`}
+      src={`https://player.twitch.tv/?channel=${channel}&parent=candidates.roborregos.com/scoreboard`}
       className="h-full w-full"
       height={"100%"}
       width={"100%"}

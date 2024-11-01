@@ -7,6 +7,7 @@ import Title from "../_components/title";
 import TwitchEmbed from "../_components/TwitchEmbed"; // Optional: Move TwitchEmbed to a separate file
 import { api } from "~/trpc/react";
 import { Round } from "../../lib/round";
+import RandomText from "../_components/random-text";
 
 export default function ScoreboardPage() {
   const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
@@ -104,22 +105,28 @@ export default function ScoreboardPage() {
                 <td className="p-4 font-medium">{team.teamName}</td>
                 {Object.values(Round)
                   .filter((value): value is number => typeof value === "number") // Filter only numeric values
-                  .map((roundId) => (
+                  .map((roundId: Round) => (
                     <React.Fragment key={roundId}>
                       <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C
-                          ? "-"
-                          : (team.rounds[roundId]?.challengeA ?? "-")}
+                        {isFrozen && roundId === Round.C ? (
+                          <RandomText />
+                        ) : (
+                          (team.rounds[roundId]?.challengeA ?? "-")
+                        )}
                       </td>
                       <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C
-                          ? "-"
-                          : (team.rounds[roundId]?.challengeB ?? "-")}
+                        {isFrozen && roundId === Round.C ? (
+                          <RandomText />
+                        ) : (
+                          (team.rounds[roundId]?.challengeB ?? "-")
+                        )}
                       </td>
                       <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C
-                          ? "-"
-                          : (team.rounds[roundId]?.challengeC ?? "-")}
+                        {isFrozen && roundId === Round.C ? (
+                          <RandomText />
+                        ) : (
+                          (team.rounds[roundId]?.challengeC ?? "-")
+                        )}
                       </td>
                     </React.Fragment>
                   ))}

@@ -16,7 +16,7 @@ export default function ScoreboardPage() {
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <Header title="Scoreboard" />
-      <div className="container mx-auto overflow-x-scroll p-4">
+      <div className="scrollbar-thin scrollbar-thumb-roboblue scrollbar-track-gray-700 container mx-auto overflow-x-scroll p-4">
         <div className="grid gap-4 md:grid-cols-2">
           {/* Stream section */}
           <div className="w-full">
@@ -57,7 +57,7 @@ export default function ScoreboardPage() {
 
       <Title title="General" />
 
-      <div className="mx-auto w-full max-w-7xl overflow-x-auto px-4">
+      <div className="scrollbar-thin scrollbar-thumb-roboblue scrollbar-track-gray-700 mx-auto w-full max-w-7xl overflow-x-auto px-4">
         <table className="min-w-full border-collapse text-white">
           <colgroup>
             <col />

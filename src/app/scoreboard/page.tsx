@@ -16,7 +16,7 @@ export default function ScoreboardPage() {
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <Header title="Scoreboard" />
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto overflow-x-scroll p-4">
         <div className="grid gap-4 md:grid-cols-2">
           {/* Stream section */}
           <div className="w-full">

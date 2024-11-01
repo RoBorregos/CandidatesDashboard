@@ -8,8 +8,8 @@ import YoutubeLogo from "rbrgs/app/_components/YoutubeLogo";
 export default function Footer() {
   return (
     <footer className="mt-[5rem] flex w-full max-w-full flex-col items-center gap-2 bg-gradient-to-tr from-neutral-950 to-neutral-800 px-10 py-[5vw] text-center font-archivo text-white md:flex-row">
-      <div>
-        <p className="font-anton text-[2rem] text-white">
+      <div className="mt-[1rem] lg:mt-0">
+        <p className="w-[10rem] font-anton text-[2rem] leading-normal text-white lg:w-[20rem]">
           More about RoBorregos
         </p>
         <div className="mt-[1rem] flex w-full flex-col flex-wrap gap-2">
@@ -21,7 +21,7 @@ export default function Footer() {
           </Link>
         </div>
       </div>
-      <div className="flex w-full flex-col items-center gap-2">
+      <div className="mt-[1rem] flex w-full flex-col items-center gap-2 lg:mt-0">
         <div>
           <p>RoBorregos</p>
           <p>
@@ -31,7 +31,7 @@ export default function Footer() {
             International Representative Robotics team
           </p>
         </div>
-        <div className="flex gap-4 sm:flex-wrap lg:ml-[5rem]">
+        <div className="flex gap-4 sm:flex-wrap">
           <Link href="https://www.instagram.com/RoBorregos/">
             <Instagram className="h-12 w-12 hover:text-rbrgs-blue" />
           </Link>
@@ -51,7 +51,7 @@ export default function Footer() {
       </div>
       <Link
         href="https://www.roborregos.com/"
-        className="flex h-[8rem] w-fit items-center justify-center self-center justify-self-center object-contain lg:ml-auto"
+        className="mt-[1rem] flex h-[8rem] w-fit items-center justify-center self-center justify-self-center object-contain lg:ml-auto lg:mt-0"
       >
         <Image
           src={robologo}

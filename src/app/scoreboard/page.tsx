@@ -12,6 +12,8 @@ const TwitchEmbed = ({ channel }: { channel: string }) => (
     <iframe
       src={`https://player.twitch.tv/?channel=${channel}&parent=https://candidates.roborregos.com/scoreboard`}
       className="h-full w-full"
+      height={"100%"}
+      width={"100%"}
       allowFullScreen
     />
   </div>

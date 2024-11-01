@@ -10,6 +10,7 @@ import { Round } from "../../lib/round";
 
 export default function ScoreboardPage() {
   const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
+  const { data: isFrozen } = api.scoreboard.isScoreboardFrozen.useQuery();
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -106,13 +107,19 @@ export default function ScoreboardPage() {
                   .map((roundId) => (
                     <React.Fragment key={roundId}>
                       <td className="p-4 text-center">
-                        {team.rounds[roundId]?.challengeA ?? "-"}
+                        {isFrozen && roundId === Round.C
+                          ? "-"
+                          : (team.rounds[roundId]?.challengeA ?? "-")}
                       </td>
                       <td className="p-4 text-center">
-                        {team.rounds[roundId]?.challengeB ?? "-"}
+                        {isFrozen && roundId === Round.C
+                          ? "-"
+                          : (team.rounds[roundId]?.challengeB ?? "-")}
                       </td>
                       <td className="p-4 text-center">
-                        {team.rounds[roundId]?.challengeC ?? "-"}
+                        {isFrozen && roundId === Round.C
+                          ? "-"
+                          : (team.rounds[roundId]?.challengeC ?? "-")}
                       </td>
                     </React.Fragment>
                   ))}

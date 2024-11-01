@@ -102,4 +102,9 @@ export const scoreboardRouter = createTRPCRouter({
     // Sort by total score descending
     return teamScores.sort((a, b) => b.total - a.total);
   }),
+
+  isScoreboardFrozen: publicProcedure.query(async ({ ctx }) => {
+    const config = await ctx.db.config.findFirst();
+    return config?.freeze ?? false;
+  }),
 });

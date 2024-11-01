@@ -170,3 +170,8 @@ enum Role {
   ADMIN
   UNASSIGNED
 }
+
+model config {
+  id     Int     @id @default(autoincrement())
+  freeze Boolean @default(true)
+}

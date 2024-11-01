@@ -4,9 +4,18 @@ import React from "react";
 import Footer from "../_components/footer";
 import Header from "../_components/header";
 import Title from "../_components/title";
-import TwitchEmbed from "../_components/TwitchEmbed"; // Optional: Move TwitchEmbed to a separate file
 import { api } from "~/trpc/react";
 import { Round } from "../../lib/round";
+
+const TwitchEmbed = ({ channel }: { channel: string }) => (
+  <div className="aspect-video w-full">
+    <iframe
+      src={`https://player.twitch.tv/?channel=${channel}&parent=localhost`}
+      className="h-full w-full"
+      allowFullScreen
+    />
+  </div>
+);
 
 export default function ScoreboardPage() {
   const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();

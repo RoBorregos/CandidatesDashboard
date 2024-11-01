@@ -4,10 +4,21 @@ import React from "react";
 import Footer from "../_components/footer";
 import Header from "../_components/header";
 import Title from "../_components/title";
-import TwitchEmbed from "../_components/TwitchEmbed"; // Optional: Move TwitchEmbed to a separate file
 import { api } from "~/trpc/react";
 import { Round } from "../../lib/round";
 import RandomText from "../_components/random-text";
+
+const TwitchEmbed = ({ channel }: { channel: string }) => (
+  <div className="aspect-video w-full">
+    <iframe
+      src={`https://player.twitch.tv/?channel=${channel}&parent=candidates.roborregos.com`}
+      className="h-full w-full"
+      height={"100%"}
+      width={"100%"}
+      allowFullScreen
+    />
+  </div>
+);
 
 export default function ScoreboardPage() {
   const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
@@ -20,7 +31,7 @@ export default function ScoreboardPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {/* Stream section */}
           <div className="w-full">
-            <TwitchEmbed channel="sinatraa" />
+            <TwitchEmbed channel="RoBorregosTeam" />
           </div>
 
           {/* Leaderboard section */}

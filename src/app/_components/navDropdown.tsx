@@ -27,7 +27,7 @@ export default function NavDropdown({ session }: { session: Session | null }) {
           <Image src={menu as StaticImport} alt="" className="flex h-5 w-5" />
         </SheetTrigger>
         <SheetContent
-          className="flex flex-col items-center justify-center bg-black text-white"
+          className="flex w-screen flex-col items-center justify-center bg-black text-white"
           side={"top"}
         >
           <div>

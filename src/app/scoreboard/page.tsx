@@ -10,7 +10,7 @@ import { Round } from "../../lib/round";
 const TwitchEmbed = ({ channel }: { channel: string }) => (
   <div className="aspect-video w-full">
     <iframe
-      src={`https://player.twitch.tv/?channel=${channel}&parent=localhost`}
+      src={`https://player.twitch.tv/?channel=${channel}&parent=www.candidates.roborregos.com&parent=localhost`}
       className="h-full w-full"
       allowFullScreen
     />
@@ -27,7 +27,7 @@ export default function ScoreboardPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {/* Stream section */}
           <div className="w-full">
-            <TwitchEmbed channel="sinatraa" />
+            <TwitchEmbed channel="RoBorregosTeam" />
           </div>
 
           {/* Leaderboard section */}

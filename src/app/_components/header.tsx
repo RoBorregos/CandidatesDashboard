@@ -6,7 +6,7 @@ export default function Header({
   subtitle,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
 }) {
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden p-10 lg:py-20">

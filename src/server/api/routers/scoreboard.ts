@@ -61,7 +61,7 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            if (roundId === Round.C && isFrozen) {
+            if ((roundId as Round) === Round.C && isFrozen) {
               scores.rounds[roundId].challengeA = 0;
             } else {
               scores.rounds[roundId].challengeA = challenge.points;
@@ -74,7 +74,7 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            if (roundId === Round.C && isFrozen) {
+            if ((roundId as Round) === Round.C && isFrozen) {
               scores.rounds[roundId].challengeB = 0;
             } else {
               scores.rounds[roundId].challengeB = challenge.points;
@@ -87,7 +87,7 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            if (roundId === Round.C && isFrozen) {
+            if ((roundId as Round) === Round.C && isFrozen) {
               scores.rounds[roundId].challengeC = 0;
             } else {
               scores.rounds[roundId].challengeC = challenge.points;

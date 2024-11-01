@@ -1,10 +1,3 @@
-// types.ts
-type Challenge = {
-  roundId: number;
-  points: number;
-  teamId: string;
-};
-
 type TeamScores = {
   teamId: string;
   teamName: string;
@@ -19,13 +12,15 @@ type TeamScores = {
   total: number;
 };
 
-// server/api/routers/scores.ts
-import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { Round } from "rbrgs/lib/round";
 
 export const scoreboardRouter = createTRPCRouter({
   getScoreboard: publicProcedure.query(async ({ ctx }) => {
+    // Check if scoreboard frozen
+    const config = await ctx.db.config.findFirst();
+    const isFrozen = config?.freeze ?? false;
+
     // Fetch all teams
     const teams = await ctx.db.team.findMany({
       select: {
@@ -66,7 +61,11 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            scores.rounds[roundId].challengeA = challenge.points;
+            if (roundId === Round.C && isFrozen) {
+              scores.rounds[roundId].challengeA = 0;
+            } else {
+              scores.rounds[roundId].challengeA = challenge.points;
+            }
           }
         }
       });
@@ -75,7 +74,11 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            scores.rounds[roundId].challengeB = challenge.points;
+            if (roundId === Round.C && isFrozen) {
+              scores.rounds[roundId].challengeB = 0;
+            } else {
+              scores.rounds[roundId].challengeB = challenge.points;
+            }
           }
         }
       });
@@ -84,7 +87,11 @@ export const scoreboardRouter = createTRPCRouter({
         if (challenge.teamId === team.id) {
           const roundId = Number(challenge.roundId);
           if (!isNaN(roundId) && scores.rounds[roundId]) {
-            scores.rounds[roundId].challengeC = challenge.points;
+            if (roundId === Round.C && isFrozen) {
+              scores.rounds[roundId].challengeC = 0;
+            } else {
+              scores.rounds[roundId].challengeC = challenge.points;
+            }
           }
         }
       });

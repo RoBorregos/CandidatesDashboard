@@ -18,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "r/components/ui/sheet";
+import { Role } from "@prisma/client";
 
 export default function NavDropdown({ session }: { session: Session | null }) {
   return (
@@ -45,6 +46,21 @@ export default function NavDropdown({ session }: { session: Session | null }) {
               Team
             </Link>
           </div>
+          {(session?.user.role === Role.ADMIN ||
+            session?.user.role === Role.JUDGE) && (
+            <div>
+              <Link href="/judge" className="w-full text-center text-lg">
+                Judge
+              </Link>
+            </div>
+          )}
+          {session?.user.role === Role.ADMIN && (
+            <div>
+              <Link href="/admin" className="w-full text-center text-lg">
+                Admin
+              </Link>
+            </div>
+          )}
           <div>
             <Link
               href="https://www.roborregos.com"

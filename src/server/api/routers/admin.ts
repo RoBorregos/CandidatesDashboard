@@ -1,8 +1,6 @@
-import {
-  adminProcedure,
-  createTRPCRouter,
-  publicProcedure,
-} from "rbrgs/server/api/trpc";
+/* eslint-disable */
+
+import { adminProcedure, createTRPCRouter } from "rbrgs/server/api/trpc";
 import { parse } from "csv-parse";
 import fs from "fs";
 

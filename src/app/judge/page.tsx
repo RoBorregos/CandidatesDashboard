@@ -32,7 +32,7 @@ export default function JudgePage() {
         </div>
         <div className="p-2">
           <h1 className="mb-5 text-center text-4xl">
-            You don't have permission to access this page.
+            You don&apos;t have permission to access this page.
           </h1>
         </div>
       </main>

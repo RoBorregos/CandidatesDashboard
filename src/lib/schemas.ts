@@ -12,7 +12,7 @@ export const genericDataSchema = z.object({
   lackOfProgress: z.coerce.number().int().min(0, {
     message: "La falta de progreso tiene que ser mayor o igual a 0",
   }),
-  roundId: z.string().min(1),
+  roundId: z.enum(["1", "2", "3"]),
   teamId: z.string().min(1),
 });
 

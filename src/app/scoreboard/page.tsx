@@ -21,13 +21,25 @@ const TwitchEmbed = ({ channel }: { channel: string }) => (
 );
 
 export default function ScoreboardPage() {
-  const { data: scores, isLoading } = api.scoreboard.getScoreboard.useQuery();
+  const {
+    data: scores,
+    isLoading,
+    refetch,
+  } = api.scoreboard.getScoreboard.useQuery();
+
   const { data: isFrozen } = api.scoreboard.isScoreboardFrozen.useQuery();
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      refetch().catch(console.error);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <Header title="Scoreboard" />
-      <div className="scrollbar-thin scrollbar-thumb-roboblue scrollbar-track-gray-700 container mx-auto overflow-x-scroll p-4">
+      <div className="container mx-auto overflow-x-scroll p-4 scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-roboblue">
         <div className="grid gap-4 md:grid-cols-2">
           {/* Stream section */}
           <div className="w-full">
@@ -68,7 +80,7 @@ export default function ScoreboardPage() {
 
       <Title title="General" />
 
-      <div className="scrollbar-thin scrollbar-thumb-roboblue scrollbar-track-gray-700 mx-auto w-full max-w-7xl overflow-x-auto px-4">
+      <div className="mx-auto w-full max-w-7xl overflow-x-auto px-4 scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-roboblue">
         <table className="min-w-full border-collapse text-white">
           <colgroup>
             <col />

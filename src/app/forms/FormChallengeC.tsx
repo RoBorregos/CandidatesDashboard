@@ -237,7 +237,7 @@ export const FormChallengeC = () => {
           name="genericFormSchema.roundId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Round ID</FormLabel>
+              <FormLabel>Round Number (1, 2, or 3)</FormLabel>
               <FormControl>
                 <Input type="string" {...field} />
               </FormControl>

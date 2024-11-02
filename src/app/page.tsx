@@ -9,6 +9,8 @@ import robologo from "../../public/images/white-logo.png";
 import ball from "../../public/images/ball.jpeg";
 import maze from "../../public/images/maze.jpeg";
 import line from "../../public/images/line.jpeg";
+import Rocket from "../../public/images/sponsors/Rocket.jpg";
+import Apply from "../../public/images/Apply.jpeg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
 
@@ -120,13 +122,25 @@ export default async function Home() {
           Sponsors
         </h2>
         <section className="mt-[3rem] bg-white">
-          <div className="mx-[5vw] grid grid-cols-2 gap-[5vw] lg:mx-[5rem] lg:grid-cols-4 lg:gap-[5rem]">
+          <div className="mx-[5vw] grid grid-cols-2 gap-[5vw] lg:mx-[5rem] lg:grid-cols-5 lg:gap-[5rem]">
             <Image src={Acuity} alt="" />
             <Image src={Dipole} alt="" />
             <Image src={Dram} alt="" />
             <Image src={Mitutoyo} alt="" />
+            <Image src={Rocket} alt="" />
           </div>
         </section>
+
+        <h2 className="mt-[5rem] text-center font-jersey_25 text-[4rem] text-roboblue lg:mt-[10rem]">
+          Interested in job opportunities?
+        </h2>
+        <section className="mt-[3rem] bg-white">
+          <div className="mx-[5vw] flex justify-center">
+            <Image src={Apply} alt="" />
+          </div>
+        </section>
+
+        
 
         <Footer />
       </main>

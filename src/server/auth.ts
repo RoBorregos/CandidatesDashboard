@@ -39,7 +39,6 @@ export const authOptions: NextAuthOptions = {
   events: {
     signIn: async (event) => {
       if (event.user.email) {
-        event.user.email = event.user.email.toLowerCase();
         const isAdmin = await db.admin.findUnique({
           where: {
             email: event.user.email,
@@ -58,9 +57,12 @@ export const authOptions: NextAuthOptions = {
           return;
         }
 
-        const isJudge = await db.judge.findUnique({
+        const isJudge = await db.judge.findFirst({
           where: {
-            email: event.user.email,
+            email: {
+              equals: event.user.email,
+              mode: "insensitive",
+            },
           },
         });
 
@@ -76,9 +78,12 @@ export const authOptions: NextAuthOptions = {
           return;
         }
 
-        const isContestant = await db.emailTeam.findUnique({
+        const isContestant = await db.emailTeam.findFirst({
           where: {
-            email: event.user.email,
+            email: {
+              equals: event.user.email,
+              mode: "insensitive",
+            },
           },
         });
 

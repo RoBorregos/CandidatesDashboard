@@ -80,7 +80,10 @@ export const FormChallengeB = () => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="w-2/3 space-y-6 text-white"
+      >
         <FormField
           control={form.control}
           name="trackPoints"
@@ -141,7 +144,7 @@ export const FormChallengeB = () => {
               <FormLabel>Team</FormLabel>
               <FormControl>
                 <Select
-                  className="basic-single text-black"
+                  className="basic-single"
                   classNamePrefix="select"
                   defaultValue={{ value: "", label: "Elegir un equipo" }}
                   isLoading={isLoading}

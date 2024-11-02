@@ -97,11 +97,37 @@ export const scoreboardRouter = createTRPCRouter({
       });
 
       // Calculate total
-      scores.total = Object.values(scores.rounds).reduce(
-        (sum, round) =>
-          sum + round.challengeA + round.challengeB + round.challengeC,
-        0,
-      );
+      //total is best two for each challenge
+
+      const challenge_scores_sorted = {
+        A: [] as number[],
+        B: [] as number[],
+        C: [] as number[],
+      }
+
+      for (const round of Object.values(scores.rounds)) {
+        challenge_scores_sorted.A.push(round.challengeA);
+        challenge_scores_sorted.B.push(round.challengeB);
+        challenge_scores_sorted.C.push(round.challengeC);
+      }
+
+      challenge_scores_sorted.A.sort((a, b) => b - a);
+      challenge_scores_sorted.B.sort((a, b) => b - a);
+      challenge_scores_sorted.C.sort((a, b) => b - a);
+      // remove the lowest score
+      challenge_scores_sorted.A.pop();
+      challenge_scores_sorted.B.pop();
+      challenge_scores_sorted.C.pop();
+
+      // scores.total = Object.values(scores.rounds).reduce(
+      //   (sum, round) =>
+      //     sum + round.challengeA + round.challengeB + round.challengeC,
+      //   0,
+      // );
+
+      scores.total = challenge_scores_sorted.A.reduce((sum, score) => sum + score, 0) +
+        challenge_scores_sorted.B.reduce((sum, score) => sum + score, 0) +
+        challenge_scores_sorted.C.reduce((sum, score) => sum + score, 0);
 
       return scores;
     });

@@ -12,6 +12,7 @@ type TeamScores = {
   total: number;
 };
 
+import { Role } from "@prisma/client";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { Round } from "rbrgs/lib/round";
 
@@ -19,7 +20,11 @@ export const scoreboardRouter = createTRPCRouter({
   getScoreboard: publicProcedure.query(async ({ ctx }) => {
     // Check if scoreboard frozen
     const config = await ctx.db.config.findFirst();
-    const isFrozen = config?.freeze ?? false;
+    const isAdmin = ctx.session?.user.role == Role.ADMIN;
+    let isFrozen = config?.freeze ?? false;
+    if (isAdmin) {
+      isFrozen = false;
+    }
 
     // Fetch all teams
     const teams = await ctx.db.team.findMany({
@@ -103,7 +108,7 @@ export const scoreboardRouter = createTRPCRouter({
         A: [] as number[],
         B: [] as number[],
         C: [] as number[],
-      }
+      };
 
       for (const round of Object.values(scores.rounds)) {
         challenge_scores_sorted.A.push(round.challengeA);
@@ -125,7 +130,8 @@ export const scoreboardRouter = createTRPCRouter({
       //   0,
       // );
 
-      scores.total = challenge_scores_sorted.A.reduce((sum, score) => sum + score, 0) +
+      scores.total =
+        challenge_scores_sorted.A.reduce((sum, score) => sum + score, 0) +
         challenge_scores_sorted.B.reduce((sum, score) => sum + score, 0) +
         challenge_scores_sorted.C.reduce((sum, score) => sum + score, 0);
 
@@ -138,6 +144,10 @@ export const scoreboardRouter = createTRPCRouter({
 
   isScoreboardFrozen: publicProcedure.query(async ({ ctx }) => {
     const config = await ctx.db.config.findFirst();
+    const isAdmin = ctx.session?.user.role == Role.ADMIN;
+    if (isAdmin) {
+      return false;
+    }
     return config?.freeze ?? false;
   }),
 });

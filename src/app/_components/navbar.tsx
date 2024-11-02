@@ -25,8 +25,9 @@ export default async function Navbar() {
         <Link href="/">Home</Link>
         <Link href="scoreboard">Scoreboard</Link>
         <Link href="team">Team</Link>
-        <Link href="https://www.roborregos.com">About us</Link>
         {canJudge && <Link href="judge">Judge</Link>}
+        {session?.user.role === Role.ADMIN && <Link href="admin">Admin</Link>}
+        <Link href="https://www.roborregos.com">About us</Link>
       </div>
       <div className="hidden lg:block">
         <SignInButton session={session} />

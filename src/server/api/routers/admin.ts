@@ -1,20 +1,10 @@
-import { z } from "zod";
-
-import { createTRPCRouter, adminProcedure } from "rbrgs/server/api/trpc";
-import { PrismaClient } from "@prisma/client";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  publicProcedure,
+} from "rbrgs/server/api/trpc";
 import { parse } from "csv-parse";
 import fs from "fs";
-
-const computePointsLOP = (lackOfProgress: number) => {
-  if (lackOfProgress == 0) {
-    return 20;
-  } else if (lackOfProgress == 1) {
-    return 10;
-  } else if (lackOfProgress == 2) {
-    return 5;
-  }
-  return 0;
-};
 
 export const adminRouter = createTRPCRouter({
   uploadTeamData: adminProcedure.mutation(async ({ ctx }) => {
@@ -26,23 +16,20 @@ export const adminRouter = createTRPCRouter({
       let record;
       while ((record = parser.read())) {
         console.log(record);
+        if (record[0] === "Nombre") {
+          continue;
+        }
         records.push(record);
       }
     });
     // R1_PistaA,R1_PistaB,R1_PistaC,R2_PistaA,R2_PistaB,R2_PistaC,R3_PistaA,R3_PistaB,R3_PistaC
-
-    const filePath =
-      "/home/oscar/Repositories/CandidatesDashboard/public/test.csv";
+    const filePath = "public/schedule.csv";
 
     fs.createReadStream(filePath).pipe(parser);
 
     parser.on("end", async function () {
-      // console.log(records);
-
       for await (const row of records) {
         // Create 3 rounds
-
-        console.log("asdasd");
 
         const teamObject = await ctx.db.team.findFirst({
           where: {
@@ -50,13 +37,11 @@ export const adminRouter = createTRPCRouter({
           },
         });
 
-        const vals = await ctx.db.round.deleteMany({
+        await ctx.db.round.deleteMany({
           where: {
             teamId: teamObject?.id,
           },
         });
-
-        console.log("Del:", vals);
 
         await ctx.db.round.create({
           data: {
@@ -106,5 +91,23 @@ export const adminRouter = createTRPCRouter({
 });
 
 const ComputeDate = ({ date }: { date: string | undefined }) => {
-  return new Date();
+  if (date === undefined) {
+    const inv = new Date();
+    inv.setHours(0);
+    inv.setMinutes(0);
+    return inv;
+  }
+
+  const timeParts = date.split(":");
+  var hour = parseInt(timeParts[0] ?? "0");
+  const minute = timeParts[1];
+
+  if (hour < 8) {
+    hour += 12;
+  }
+
+  var d = new Date();
+  d.setHours(hour);
+  d.setMinutes(parseInt(minute ?? "0"));
+  return d;
 };

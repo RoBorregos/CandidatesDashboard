@@ -39,6 +39,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     signIn: async (event) => {
       if (event.user.email) {
+        event.user.email = event.user.email.toLowerCase();
         const isAdmin = await db.admin.findUnique({
           where: {
             email: event.user.email,

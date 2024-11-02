@@ -6,15 +6,15 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 
 export default function AdminPage() {
-  const createEvaluation = api.admin.uploadTeamData.useMutation({
-    onSuccess() {
-      toast("Data uploaded.");
-    },
-    onError(error) {
-      toast("Error. Check console");
-      console.error(error);
-    },
-  });
+  // const createEvaluation = api.admin.uploadTeamData.useMutation({
+  //   onSuccess() {
+  //     toast("Data uploaded.");
+  //   },
+  //   onError(error) {
+  //     toast("Error. Check console");
+  //     console.error(error);
+  //   },
+  // });
   return (
     <main className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <div className="md:pb-20">
@@ -23,7 +23,7 @@ export default function AdminPage() {
       <div className="p-2">
         <button
           onClick={() => {
-            createEvaluation.mutate();
+            // createEvaluation.mutate();
           }}
           className="mt-9 rounded-lg bg-roboblue p-2"
         >

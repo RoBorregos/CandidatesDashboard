@@ -65,11 +65,25 @@ export const teamRouter = createTRPCRouter({
 
     return team;
   }),
+
+  getLinks: protectedProcedure.query(async ({ ctx }) => {
+    const team = await ctx.db.team.findMany({
+      select: {
+        name: true,
+        link: true,
+      },
+    });
+
+    return team;
+  }),
 });
 
-// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>; 
+// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
 
 // // export result type o fpromisse
 // export typeof { TeamType };
 // export
-export type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T> ? T : never;
+export type TeamType =
+  ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
+    ? T
+    : never;

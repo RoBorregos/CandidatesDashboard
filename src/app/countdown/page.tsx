@@ -6,7 +6,7 @@ import Footer from "../_components/footer";
 import { CountdownTimer } from "../_components/CountdownTimer";
 
 export default async function Countdown() {
-  const targetDate = new Date("2024-11-02T15:00:00Z");
+  const targetDate = new Date("2024-12-04T15:00:00Z");
 
   return (
     <HydrateClient>

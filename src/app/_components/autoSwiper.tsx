@@ -8,10 +8,11 @@ export default function AutoSwiper({ className = "" }) {
     { id: 2, image: "/images/teamPhotos/TMR.JPG" },
     { id: 3, image: "/images/teamPhotos/Home.JPG" },
     { id: 4, image: "/images/teamPhotos/Home2.JPG" },
-    { id: 5, image: "/images/teamPhotos/LARC.JPG" },
-    { id: 6, image: "/images/teamPhotos/LightWeight.JPG" },
-    { id: 7, image: "/images/teamPhotos/Open.JPG" },
-    { id: 8, image: "/images/teamPhotos/Maze.JPG" },
+    { id: 5, image: "/images/teamPhotos/LARCFULL.JPG" },
+    { id: 6, image: "/images/teamPhotos/VSSS_resize.jpg" },
+    { id: 7, image: "/images/teamPhotos/LightWeight.JPG" },
+    { id: 8, image: "/images/teamPhotos/Open.JPG" },
+    { id: 9, image: "/images/teamPhotos/Maze.JPG" },
   ]
 
   const extendedSlides = [...slides, slides[0]]

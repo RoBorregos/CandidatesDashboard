@@ -9,7 +9,7 @@ import { Toaster } from "rbrgs/app/_components/shadcn/ui/sonner";
 import Navbar from "./_components/navbar";
 
 export const metadata: Metadata = {
-  title: "Candidates 2024",
+  title: "Candidates 2025",
   description:
     "Candidates 2024 by RoBorregos, ITESM's biggest robotics competition",
   icons: [{ rel: "icon", url: "/favicon.ico" }],

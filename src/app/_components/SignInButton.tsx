@@ -21,7 +21,7 @@ export default function SignInButton({ session }: { session: Session | null }) {
     return (
       <div className="flex items-center justify-end">
         <p
-          className="w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
+          className="text-2xl w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
           onClick={() => signIn("google")}
         >
           Log in

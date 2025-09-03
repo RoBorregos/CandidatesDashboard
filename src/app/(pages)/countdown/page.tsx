@@ -1,7 +1,5 @@
 import Image from "next/image";
 import { HydrateClient } from "rbrgs/trpc/server";
-import teamPic from "../../../public/images/fronPic.jpg";
-import robologo from "../../../public/images/white-logo.png";
 import Footer from "../../_components/footer";
 import { CountdownTimer } from "../../_components/CountdownTimer";
 
@@ -22,14 +20,14 @@ export default async function Countdown() {
           </div>
           <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 transform">
             <Image
-              src={robologo}
+              src="/images/white-logo.png"
               alt=""
               className="w-[40vw] object-cover opacity-15 lg:w-[40vw]"
             />
           </div>
           <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black to-transparent" />
           <Image
-            src={teamPic}
+            src="/images/fronPic.jpg"
             alt=""
             layout="fill"
             objectFit="cover"

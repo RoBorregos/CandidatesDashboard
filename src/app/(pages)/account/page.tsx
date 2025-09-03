@@ -1,6 +1,6 @@
 import { getServerAuthSession } from "rbrgs/server/auth";
 import { signOut } from "next-auth/react";
-import LoginText from "../_components/login-text";
+import LoginText from "../../_components/login-text";
 import { Role } from "@prisma/client";
 import { api } from "rbrgs/trpc/server";
 import { Separator } from "r/components/ui/separator";

@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import Footer from "../_components/footer";
-import Header from "../_components/header";
-import Title from "../_components/title";
+import Footer from "../../_components/footer";
+import Header from "../../_components/header";
+import Title from "../../_components/title";
 import { api } from "~/trpc/react";
-import { Round } from "../../lib/round";
-import RandomText from "../_components/random-text";
+import { Round } from "../../../lib/round";
+import RandomText from "../../_components/random-text";
 
 const TwitchEmbed = ({ channel }: { channel: string }) => (
   <div className="aspect-video w-full">

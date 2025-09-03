@@ -2,8 +2,8 @@ import Image from "next/image";
 import { HydrateClient } from "rbrgs/trpc/server";
 import teamPic from "../../../public/images/fronPic.jpg";
 import robologo from "../../../public/images/white-logo.png";
-import Footer from "../_components/footer";
-import { CountdownTimer } from "../_components/CountdownTimer";
+import Footer from "../../_components/footer";
+import { CountdownTimer } from "../../_components/CountdownTimer";
 
 export default async function Countdown() {
   const targetDate = new Date("2024-12-04T15:00:00Z");

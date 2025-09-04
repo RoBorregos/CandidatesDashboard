@@ -61,6 +61,7 @@ export const authOptions: NextAuthOptions = {
           where: {
             email: {
               equals: event.user.email,
+              // Warning: If developing with mysql this will cause build to fail
               mode: "insensitive",
             },
           },

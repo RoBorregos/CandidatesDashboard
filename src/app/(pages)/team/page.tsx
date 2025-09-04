@@ -1,9 +1,9 @@
 import { api } from "rbrgs/trpc/server";
-import Header from "../_components/header";
-import Footer from "../_components/footer";
+import Header from "../../_components/header";
+import Footer from "../../_components/footer";
 import { getServerAuthSession } from "rbrgs/server/auth";
-import CustomLoginText from "../_components/custom-login-text";
-import TeamInfo from "../_components/team/team";
+import CustomLoginText from "../../_components/custom-login-text";
+import TeamInfo from "../../_components/team/team";
 
 export default async function TeamPage({ params }: { params: { teampage: string } }) {
   const session = await getServerAuthSession();

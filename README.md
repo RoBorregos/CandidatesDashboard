@@ -16,6 +16,7 @@ This is a web page for competitors, visitors and judges to be used during the Ca
 | Name                       | Email                                                               | Github                                 | Role       |
 | -------------------------- | ------------------------------------------------------------------- | -------------------------------------- | ---------- |
 | Gilberto Malagamba Montejo | [gilberto.malagamba@gmail.com](mailto:gilberto.malagamba@gmail.com) | [@GilMM27](https://github.com/GilMM27) | Programmer |
+| Hector Eduardo Tovar Mendoza | [h.tovarm07@gmail.com](mailto:h.tovarm07@gmail.com) | [@htovarm7](https://github.com/htovarm7) | Programmer
 
 ## License
 

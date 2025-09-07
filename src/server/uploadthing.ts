@@ -23,6 +23,7 @@ export const ourFileRouter = {
       const session = await getServerAuthSession();
 
       // If you throw, the user will not be able to upload
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       if (!session) throw new UploadThingError("Unauthorized");
 
       // Whatever is returned here is accessible in onUploadComplete as `metadata`
@@ -45,6 +46,7 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await getServerAuthSession();
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       if (!session) throw new UploadThingError("Unauthorized");
       return { userId: session.user.id };
     })

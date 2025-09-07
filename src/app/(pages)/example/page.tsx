@@ -1,3 +1,5 @@
+// TODO: Remove this example page once the upload functionality is used in the right place
+
 "use client";
 
 import { Role } from "@prisma/client";

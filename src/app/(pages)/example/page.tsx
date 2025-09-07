@@ -26,7 +26,7 @@ export default function Home() {
         onClientUploadComplete={(res) => {
           // Do something with the response
           console.log("Files: ", res);
-          setUrl(res[0]?.ufsUrl || null);
+          setUrl(res[0]?.ufsUrl ?? null);
         }}
         onUploadError={(error: Error) => {
           // Do something with the error.

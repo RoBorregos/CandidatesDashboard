@@ -22,6 +22,7 @@ This is a web page for competitors, visitors and judges to be used during the Ca
 | Leonardo Llanas |  | [@lleo-13](https://github.com/lleo-13) | Programmer |
 | Oscar Arreola |  | [@Oscar-gg](https://github.com/Oscar-gg) | Programmer |
 | Alejandra Coeto | [alecoetos@gmail.com](mailto:alecoetos@gmail.com) | [@Ale-Coeto](https://github.com/Ale-Coeto) | Programmer |
+| Efrain Vazquez | [efrain.vh.21.12@gmail.com](mailto:efrain.vh.21.12@gmail.com) | [@EfraH2O](https://github.com/EfrainH2O) | Programmer
 
 ## License
 

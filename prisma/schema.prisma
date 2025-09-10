@@ -74,14 +74,15 @@ model Admin {
 }
 
 model Team {
-  id         String       @id @default(cuid())
-  name       String       @unique
-  link       String?
-  challengeA ChallengeA[]
-  challengeB ChallengeB[]
-  challengeC ChallengeC[]
-  rounds     Round[]
-  members    User[]
+  id           String       @id @default(cuid())
+  name         String       @unique
+  link         String?
+  binnacleLink String?
+  challengeA   ChallengeA[]
+  challengeB   ChallengeB[]
+  challengeC   ChallengeC[]
+  rounds       Round[]
+  members      User[]
 }
 
 model Round {

@@ -9,6 +9,7 @@ import { useCallback, useState } from "react";
 import { TeamType } from "rbrgs/server/api/routers/team";
 import Results from "./results";
 import interviewData from "./interview.json";
+import Upload from "./upload";
 
 interface Data {
   col1: string;
@@ -23,19 +24,6 @@ function transformChallengeData(challenges: Challenge[]): Data[] {
       hour12: true,
     }),
     col2: challenge.name,
-  }));
-}
-
-function transformInterviewData(members: User[]): Data[] {
-  return members.map((member, key) => ({
-    col1: member.interviewTime
-      ? member.interviewTime.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : "",
-    col2: member.name ? member.name : "",
   }));
 }
 
@@ -59,6 +47,7 @@ const TeamInfo = ({ team }: { team: TeamType }) => {
           <h1 className="mb-5 mt-16 text-center font-archivo text-4xl">
             Documents
           </h1>
+          <Upload binnacleLink={team.binnacleLink} />
           <Input teamId={team.id} prevLink={team.link ?? ""} />
         </div>
       ) : !team ? (

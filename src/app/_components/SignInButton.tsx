@@ -21,7 +21,7 @@ export default function SignInButton({ session }: { session: Session | null }) {
     return (
       <div className="flex items-center justify-end">
         <p
-          className="text-2xl w-fit cursor-pointer rounded-md p-2 px-6 font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
+          className="w-fit cursor-pointer rounded-md p-2 px-6 text-xl font-semibold text-white transition duration-300 hover:bg-slate-100 hover:bg-opacity-10"
           onClick={() => signIn("google")}
         >
           Log in
@@ -36,7 +36,7 @@ export default function SignInButton({ session }: { session: Session | null }) {
         <NavigationMenuList>
           <NavigationMenuItem>
             <NavigationMenuTrigger
-              className="items-center bg-transparent align-middle hover:bg-transparent focus:bg-transparent focus:outline-none data-[active]:bg-transparent data-[state=open]:bg-transparent"
+              className="items-center bg-transparent align-middle data-[active]:bg-transparent data-[state=open]:bg-transparent hover:bg-transparent focus:bg-transparent focus:outline-none"
               onClick={() => {
                 router.push("/account");
               }}

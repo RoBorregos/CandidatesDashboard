@@ -1,16 +1,13 @@
 import Image from "next/image";
 import { HydrateClient } from "rbrgs/trpc/server";
-import capitalOne from "../../public/images/sponsors/CapitalOne.png"
-import stanser from "../../public/images/sponsors/Stanser.png"
+import capitalOne from "../../public/images/sponsors/CapitalOne.png";
+import stanser from "../../public/images/sponsors/Stanser.png";
 import robologo from "../../public/images/white-logo.png";
 import ball from "../../public/images/ball.jpeg";
 import maze from "../../public/images/maze.jpeg";
 import line from "../../public/images/line.jpeg";
-import Rocket from "../../public/images/sponsors/Rocket.jpg";
-import Apply from "../../public/images/Apply.jpeg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
-import {Swiper, SwiperSlide} from "swiper/react"
 import AutoSwiper from "./_components/autoSwiper";
 
 export default async function Home() {
@@ -34,7 +31,7 @@ export default async function Home() {
             />
           </div>
           <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black to-transparent" />
-          <AutoSwiper/>
+          <AutoSwiper className="-z-20" />
         </section>
 
         <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:text-[1.5rem]">
@@ -114,34 +111,23 @@ export default async function Home() {
           Sponsors
         </h2>
         <section className="mt-[3rem] bg-white">
-          <div className="mx-[5vw] grid grid-cols-1 gap-5 lg:mx-[5rem] lg:grid-cols-2">
+          <div className="mx-[5vw] grid grid-cols-1 gap-5 py-10 lg:mx-[5rem] lg:grid-cols-2">
             <div className="flex items-center justify-center">
               <Image
                 src={capitalOne}
                 alt="Capital One"
-                className="w-full max-w-[400px] h-auto object-contain"
+                className="h-auto w-full max-w-[400px] object-contain"
               />
             </div>
             <div className="flex items-center justify-center">
               <Image
                 src={stanser}
                 alt="Stanser"
-                className="w-full max-w-[400px] h-auto object-contain"
+                className="h-auto w-full max-w-[400px] object-contain"
               />
             </div>
           </div>
         </section>
-
-        <h2 className="mt-[5rem] text-center font-jersey_25 text-[4rem] text-roboblue lg:mt-[10rem]">
-          Interested in job opportunities?
-        </h2>
-        <section className="mt-[3rem] bg-white">
-          <div className="mx-[5vw] flex justify-center">
-            <Image src={Apply} alt="" />
-          </div>
-        </section>
-
-        
 
         <Footer />
       </main>

@@ -1,52 +1,29 @@
-# **ROBORREGOS CONFIDENTIAL**
-# Project Name
-
-
+# Candidates Dashboard
 
 ## Description
 
+This is a web page for competitors, visitors and judges to be used during the Candidates anual competition we host. Features include:
 
-
-## Table of contents
-
-- [Project Name](#project-name)
-  - [Description](#description)
-  - [Table of contents](#table-of-contents)
-  - [Installation](#installation)
-  - [Usage](#usage)
-  - [Development team](#development-team)
-  - [References/Support links](#references-support-links)
-  - [License](#license) 
-
-## Installation
-
-1. Clone the project repository on your local machine.
-
-   SSH:
-
-   ```bash
-   $ git clone --recurse-submodules https://github.com/RoBorregos/
-   ```
-
-
-## Usage
-
-How to use the project after installation.
-Pictures of the project working.
-
+- Informational landing page.
+- Live scoreboard and Twitch stream.
+- Informational dashboard for teams.
+- Documantation upload forms.
+- Match points registration for judges.
+- Admin management.
 
 ## Development team
 
-| Name                    | Email                                                               | Github                                                       | Role      |
-| ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ | --------- |
+| Name                       | Email                                                               | Github                                 | Role       |
+| -------------------------- | ------------------------------------------------------------------- | -------------------------------------- | ---------- |
 | Gilberto Malagamba Montejo | [gilberto.malagamba@gmail.com](mailto:gilberto.malagamba@gmail.com) | [@GilMM27](https://github.com/GilMM27) | Programmer |
-
-
-## References/Support links
-
-- [Support CODEOWNERS](https://docs.github.com/es/github/creating-cloning-and-archiving-repositories/about-code-owners)
-- [Creating a pull request template](https://docs.github.com/es/github-ae@latest/github/building-a-strong-community/creating-a-pull-request-template-for-your-repository)
-- [Branch naming convention](https://deepsource.io/blog/git-branch-naming-conventions/)
+| Hector Eduardo Tovar Mendoza | [h.tovarm07@gmail.com](mailto:h.tovarm07@gmail.com) | [@htovarm7](https://github.com/htovarm7) | Programmer |
+| Luis Benvenuto | [luiss.benvenuto@gmail.com](mailto:luiss.benvenuto@gmail.com) | [@biweep863](https://github.com/biweep863) | Programmer |
+| Ivan Romero |  | [@IvanRomero03](https://github.com/IvanRomero03) | Programmer |
+| Leonardo Llanas |  | [@lleo-13](https://github.com/lleo-13) | Programmer |
+| Oscar Arreola |  | [@Oscar-gg](https://github.com/Oscar-gg) | Programmer |
+| Alejandra Coeto | [alecoetos@gmail.com](mailto:alecoetos@gmail.com) | [@Ale-Coeto](https://github.com/Ale-Coeto) | Programmer |
+| Efrain Vazquez | [efrain.vh.21.12@gmail.com](mailto:efrain.vh.21.12@gmail.com) | [@EfraH2O](https://github.com/EfrainH2O) | Programmer
 
 ## License
-License used.
+
+MIT license.

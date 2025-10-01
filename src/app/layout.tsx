@@ -7,6 +7,9 @@ import { Jersey_25, Anton, Archivo } from "next/font/google";
 import { TRPCReactProvider } from "rbrgs/trpc/react";
 import { Toaster } from "rbrgs/app/_components/shadcn/ui/sonner";
 import Navbar from "./_components/navbar";
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { extractRouterConfig } from "uploadthing/server";
+import { ourFileRouter } from "rbrgs/server/uploadthing";
 
 export const metadata: Metadata = {
   title: "Candidates 2025",
@@ -45,6 +48,7 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${jersey_25.variable} ${anton.variable} ${archivo.variable}`}
     >
       <body className="bg-black">
+        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <Navbar />
         <Toaster />
         <TRPCReactProvider>{children}</TRPCReactProvider>

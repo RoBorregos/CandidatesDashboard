@@ -35,6 +35,24 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+
+model TeamRequest {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestedTeam String
+  message       String?
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id               String       @id @default(cuid())
   name             String?
@@ -50,6 +68,7 @@ model User {
   judgedChallengeC ChallengeC[]
   sessions         Session[]
   team             Team?        @relation(fields: [teamId], references: [id])
+  teamRequests     TeamRequest[]
 }
 
 model VerificationToken {

@@ -8,7 +8,7 @@ import maze from "../../public/images/maze.jpeg";
 import line from "../../public/images/line.jpeg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
-import AutoSwiper from "./_components/autoSwiper";
+import ImageFade from "./_components/imageFade";
 
 export default async function Home() {
   return (
@@ -31,7 +31,7 @@ export default async function Home() {
             />
           </div>
           <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black to-transparent" />
-          <AutoSwiper className="-z-20" />
+          <ImageFade className="-z-20" />
         </section>
 
         <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:text-[1.5rem]">

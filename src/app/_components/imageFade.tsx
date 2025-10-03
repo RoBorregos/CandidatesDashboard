@@ -37,7 +37,7 @@ export default function ImageFade({ className = "" }) {
             transition={{ duration: 0.8, ease: "easeInOut" }}
           >
             <Image
-              src={slides[currentSlide] || ""}
+              src={slides[currentSlide] ?? ""}
               alt={`Team photo ${currentSlide + 1}`}
               fill
               className="object-cover"

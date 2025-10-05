@@ -30,7 +30,7 @@ export default function TeamRequestPage() {
       toast("Please select a team");
       return;
     }
-    
+
     requestTeam.mutate({
       requestedTeam,
       message: message.trim() || undefined,
@@ -43,10 +43,14 @@ export default function TeamRequestPage() {
         <div className="pt-16">
           <Header title="Team Assignment" subtitle="Already Assigned" />
         </div>
-        <div className="container mx-auto p-4 max-w-2xl">
-          <div className="bg-green-800 p-6 rounded-lg text-center">
-            <h3 className="text-xl font-semibold mb-2">You're already assigned!</h3>
-            <p>You are part of team: <strong>{user.team.name}</strong></p>
+        <div className="container mx-auto max-w-2xl p-4">
+          <div className="rounded-lg bg-green-800 p-6 text-center">
+            <h3 className="mb-2 text-xl font-semibold">
+              You're already assigned!
+            </h3>
+            <p>
+              You are part of team: <strong>{user.team.name}</strong>
+            </p>
           </div>
         </div>
       </main>
@@ -58,35 +62,39 @@ export default function TeamRequestPage() {
       <div className="pt-16">
         <Header title="Team Request" subtitle="Request Team Assignment" />
       </div>
-      
-      <div className="container mx-auto p-4 max-w-2xl space-y-6">
-        
+
+      <div className="container mx-auto max-w-2xl space-y-6 p-4">
         {userRequest ? (
-          <div className="bg-yellow-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">Request Pending</h3>
-            <p>You have already requested to join: <strong>{userRequest.requestedTeam}</strong></p>
-            <p className="text-sm text-gray-300 mt-2">
+          <div className="rounded-lg bg-yellow-800 p-6">
+            <h3 className="mb-2 text-xl font-semibold">Request Pending</h3>
+            <p>
+              You have already requested to join:{" "}
+              <strong>{userRequest.requestedTeam}</strong>
+            </p>
+            <p className="mt-2 text-sm text-gray-300">
               Status: Pending admin approval
             </p>
             {userRequest.message && (
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="mt-2 text-sm text-gray-400">
                 Your message: {userRequest.message}
               </p>
             )}
           </div>
         ) : (
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Request Team Assignment</h3>
-            
+          <div className="rounded-lg bg-gray-800 p-6">
+            <h3 className="mb-4 text-xl font-semibold">
+              Request Team Assignment
+            </h3>
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="mb-2 block text-sm font-medium">
                   Select Team
                 </label>
                 <select
                   value={requestedTeam}
                   onChange={(e) => setRequestedTeam(e.target.value)}
-                  className="w-full p-3 bg-gray-700 rounded border border-gray-600"
+                  className="w-full rounded border border-gray-600 bg-gray-700 p-3"
                 >
                   <option value="">Choose a team...</option>
                   {teams?.map((team: any) => (
@@ -98,32 +106,32 @@ export default function TeamRequestPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="mb-2 block text-sm font-medium">
                   Message (Optional)
                 </label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Why do you want to join this team?"
-                  className="w-full p-3 bg-gray-700 rounded border border-gray-600 h-24"
+                  className="h-24 w-full rounded border border-gray-600 bg-gray-700 p-3"
                 />
               </div>
 
               <button
                 onClick={handleSubmitRequest}
                 disabled={!requestedTeam || requestTeam.isPending}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50"
+                className="w-full rounded bg-blue-600 py-3 hover:bg-blue-700 disabled:opacity-50"
               >
                 {requestTeam.isPending ? "Submitting..." : "Submit Request"}
               </button>
             </div>
           </div>
         )}
-        <div className="bg-gray-800 p-6 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">Available Teams</h3>
+        <div className="rounded-lg bg-gray-800 p-6">
+          <h3 className="mb-4 text-xl font-semibold">Available Teams</h3>
           <div className="space-y-3">
             {teams?.map((team: any) => (
-              <div key={team.id} className="bg-gray-700 p-4 rounded">
+              <div key={team.id} className="rounded bg-gray-700 p-4">
                 <h4 className="font-semibold">{team.name}</h4>
                 <p className="text-sm text-gray-400">
                   {team._count?.members || 0} members

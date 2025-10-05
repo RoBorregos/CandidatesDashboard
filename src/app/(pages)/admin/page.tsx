@@ -11,10 +11,15 @@ export default function AdminPage() {
   const { data: users, refetch: refetchUsers } = api.admin.getAllUsers.useQuery();
   const { data: teams, refetch: refetchTeams } = api.admin.getAllTeams.useQuery();
   const { data: pendingRequests, refetch: refetchRequests } = api.admin.getPendingRequests.useQuery();
+
+  const getDisplayName = (user: any) => {
+    return user.name || user.email;
+  };
   const assignUser = api.admin.assignUserToTeam.useMutation({
     onSuccess() {
       toast("User assigned successfully!");
       refetchUsers();
+      refetchTeams();
       refetchRequests();
     },
     onError(error) {
@@ -22,6 +27,18 @@ export default function AdminPage() {
       console.error(error);
     },
   });
+  const removeUser = api.admin.removeUserFromTeam.useMutation({
+    onSuccess() {
+      toast("User removed from team successfully!");
+      refetchUsers();
+      refetchTeams();
+    },
+    onError(error) {
+      toast("Error removing user from team");
+      console.error(error);
+    },
+  });
+  
   const createTeam = api.admin.createTeam.useMutation({
     onSuccess() {
       toast("Team created successfully!");
@@ -37,6 +54,7 @@ export default function AdminPage() {
     onSuccess() {
       toast("Request approved!");
       refetchUsers();
+      refetchTeams();
       refetchRequests();
     },
     onError(error) {
@@ -73,6 +91,12 @@ export default function AdminPage() {
     }
   };
 
+  const handleRemoveUser = (userId: string, userEmail: string) => {
+    if (window.confirm(`Are you sure you want to remove ${userEmail} from their team?`)) {
+      removeUser.mutate({ userId });
+    }
+  };
+
   const handleCreateTeam = () => {
     if (!newTeamName.trim()) {
       toast("Please enter a team name");
@@ -80,7 +104,6 @@ export default function AdminPage() {
     }
     createTeam.mutate({ name: newTeamName.trim() });
   };
-
   return (
     <main className="min-h-screen bg-black text-sm text-white md:text-base">
       <div className="pt-16">
@@ -95,7 +118,10 @@ export default function AdminPage() {
               {pendingRequests.map((request: any) => (
                 <div key={request.id} className="bg-yellow-800 p-4 rounded flex justify-between items-center">
                   <div>
-                    <p className="font-semibold">{request.user.email}</p>
+                    <p className="font-semibold">{getDisplayName(request.user)}</p>
+                    {request.user.name && (
+                      <p className="text-sm text-gray-400">{request.user.email}</p>
+                    )}
                     <p className="text-sm text-gray-300">Requested team: {request.requestedTeam}</p>
                     {request.message && (
                       <p className="text-sm text-gray-400">Message: {request.message}</p>
@@ -120,6 +146,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
         <div className="bg-gray-800 p-6 rounded-lg">
           <h3 className="text-xl font-semibold mb-4">Create New Team</h3>
           <div className="flex gap-4">
@@ -143,10 +170,13 @@ export default function AdminPage() {
         <div className="bg-gray-800 p-6 rounded-lg">
           <h3 className="text-xl font-semibold mb-4">Users Without Teams</h3>
           <div className="space-y-3">
-            {users?.filter((user: any) => !user.team).map((user: any) => (
+            {users?.filter((user: any) => !user.team && user.role !== 'ADMIN').map((user: any) => (
               <div key={user.id} className="bg-gray-700 p-4 rounded flex justify-between items-center">
                 <div>
-                  <p className="font-semibold">{user.email}</p>
+                  <p className="font-semibold">{getDisplayName(user)}</p>
+                  {user.name && (
+                    <p className="text-sm text-gray-500">{user.email}</p>
+                  )}
                   <p className="text-sm text-gray-400">Role: {user.role}</p>
                 </div>
                 <div className="flex gap-2 items-center">
@@ -174,6 +204,7 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
         <div className="bg-gray-800 p-6 rounded-lg">
           <h3 className="text-xl font-semibold mb-4">Teams Overview</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -183,12 +214,28 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-400 mb-2">
                   Members: {team._count?.members || 0}
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {team.members?.map((member: any) => (
-                    <div key={member.id} className="text-sm">
-                      {member.email}
+                    <div key={member.id} className="flex justify-between items-center text-sm bg-gray-600 p-2 rounded">
+                      <div className="flex-1">
+                        <div className="font-medium">{getDisplayName(member)}</div>
+                        {member.name && (
+                          <div className="text-xs text-gray-400">{member.email}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveUser(member.id, member)}
+                        disabled={removeUser.isPending}
+                        className="px-2 py-1 bg-red-500 hover:bg-red-600 rounded text-xs disabled:opacity-50 ml-2"
+                        title={`Remove ${getDisplayName(member)} from team`}
+                      >
+                        {removeUser.isPending ? "..." : "×"}
+                      </button>
                     </div>
                   ))}
+                  {(!team.members || team.members.length === 0) && (
+                    <p className="text-sm text-gray-500 italic">No members</p>
+                  )}
                 </div>
               </div>
             ))}

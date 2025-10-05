@@ -133,6 +133,21 @@ export const adminRouter = createTRPCRouter({
 
       return { success: true };
     }),
+  removeUserFromTeam: adminProcedure
+    .input(z.object({
+      userId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.user.update({
+        where: { id: input.userId },
+        data: {
+          teamId: null,
+          role: Role.UNASSIGNED,
+        },
+      });
+
+      return { success: true };
+    }),
 
   uploadTeamData: adminProcedure.mutation(async ({ ctx }) => {
     const records: string[][] = [];

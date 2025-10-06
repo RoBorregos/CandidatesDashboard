@@ -56,10 +56,15 @@ export const adminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const team = await ctx.db.team.findUnique({
         where: { name: input.teamName },
+        include: { _count: { select: { members: true } } },
       });
 
       if (!team) {
         throw new Error("Team not found");
+      }
+
+      if (team._count.members >= 4) {
+        throw new Error("Team is full. Maximum 4 members allowed.");
       }
 
       await ctx.db.user.update({

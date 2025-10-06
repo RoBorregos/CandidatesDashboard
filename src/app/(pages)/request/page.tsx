@@ -98,8 +98,9 @@ export default function TeamRequestPage() {
                 >
                   <option value="">Choose a team...</option>
                   {teams?.map((team: any) => (
-                    <option key={team.id} value={team.name}>
-                      {team.name} ({team._count?.members || 0} members)
+                    <option key={team.id} value={team.name} disabled={team._count?.members >= 4}>
+                      {team.name} ({team._count?.members || 0}/4 members)
+                      {team._count?.members >= 4 ? " - Full" : ""}
                     </option>
                   ))}
                 </select>
@@ -127,14 +128,24 @@ export default function TeamRequestPage() {
             </div>
           </div>
         )}
-        <div className="rounded-lg bg-gray-800 p-6">
-          <h3 className="mb-4 text-xl font-semibold">Available Teams</h3>
-          <div className="space-y-3">
+        <div className="bg-gray-800 p-6 rounded-lg">
+          <h3 className="text-xl font-semibold mb-4">Available Teams</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {teams?.map((team: any) => (
-              <div key={team.id} className="rounded bg-gray-700 p-4">
-                <h4 className="font-semibold">{team.name}</h4>
-                <p className="text-sm text-gray-400">
-                  {team._count?.members || 0} members
+              <div 
+                key={team.id} 
+                className={`p-4 rounded border-l-4 ${
+                  team._count?.members >= 4 
+                    ? 'bg-red-900 border-red-500' 
+                    : 'bg-gray-700 border-blue-500'
+                }`}
+              >
+                <h4 className="font-semibold text-lg">{team.name}</h4>
+                <p className={`text-sm ${
+                  team._count?.members >= 4 ? 'text-red-300' : 'text-gray-400'
+                }`}>
+                  {team._count?.members || 0}/4 members
+                  {team._count?.members >= 4 && " - FULL"}
                 </p>
               </div>
             ))}

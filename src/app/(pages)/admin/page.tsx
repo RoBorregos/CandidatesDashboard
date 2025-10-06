@@ -83,9 +83,17 @@ export default function AdminPage() {
       [userId]: teamName,
     }));
   };
+  const isTeamFull = (teamName: string) => {
+    const team = teams?.find((t: any) => t.name === teamName);
+    return team && team._count.members >= 4;
+  };
   const handleAssignUser = (userId: string) => {
     const selectedTeam = userTeamSelections[userId];
     if (selectedTeam) {
+      if (isTeamFull(selectedTeam)) {
+        toast("Team is full. Maximum 4 members allowed.");
+        return;
+      }
       assignUser.mutate({ userId, teamName: selectedTeam });
       setUserTeamSelections((prev) => {
         const newSelections = { ...prev };
@@ -217,15 +225,16 @@ export default function AdminPage() {
                     >
                       <option value="">Select team</option>
                       {teams?.map((team: any) => (
-                        <option key={team.id} value={team.name}>
-                          {team.name}
+                        <option key={team.id} value={team.name} disabled={isTeamFull(team.name)}>
+                          {team.name} ({team._count.members}/4)
+                          {team._count.members >= 4 ? " - Full" : ""}
                         </option>
                       ))}
                     </select>
                     <button
                       onClick={() => handleAssignUser(user.id)}
                       disabled={
-                        !userTeamSelections[user.id] || assignUser.isPending
+                        !userTeamSelections[user.id] || assignUser.isPending || isTeamFull(userTeamSelections[user.id] || "")
                       }
                       className="rounded bg-green-600 px-3 py-2 hover:bg-green-700 disabled:opacity-50"
                     >
@@ -244,7 +253,8 @@ export default function AdminPage() {
               <div key={team.id} className="rounded bg-gray-700 p-4">
                 <h4 className="mb-2 font-semibold">{team.name}</h4>
                 <p className="mb-2 text-sm text-gray-400">
-                  Members: {team._count?.members || 0}
+                  Members: {team._count?.members || 0} / 4
+                  {team._count?.members >= 4 ? " - Full" : ""}
                 </p>
                 <div className="space-y-2">
                   {team.members?.map((member: any) => (

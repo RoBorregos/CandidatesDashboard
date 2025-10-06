@@ -6,6 +6,7 @@ import {
   publicProcedure,
 } from "rbrgs/server/api/trpc";
 
+
 export const teamRouter = createTRPCRouter({
   getTeam: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findFirst({
@@ -120,6 +121,18 @@ export const teamRouter = createTRPCRouter({
 
       if (existingRequest) {
         throw new Error("User already has a pending request");
+      }
+
+      const team = await ctx.db.team.findUnique({
+        where: { name: input.requestedTeam },
+        include: {
+          _count: {
+            select: { members: true },
+          },
+        },
+      });
+      if (team && team._count.members >= 4) {
+        throw new Error("Team is full. Please choose another team.");
       }
 
       return ctx.db.teamRequest.create({

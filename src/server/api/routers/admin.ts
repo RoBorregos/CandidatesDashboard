@@ -13,7 +13,7 @@ export const adminRouter = createTRPCRouter({
         team: true,
       },
       orderBy: {
-        email: 'asc',
+        email: "asc",
       },
     });
   }),
@@ -27,7 +27,7 @@ export const adminRouter = createTRPCRouter({
         },
       },
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
   }),
@@ -35,22 +35,24 @@ export const adminRouter = createTRPCRouter({
   getPendingRequests: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.teamRequest.findMany({
       where: {
-        status: 'PENDING',
+        status: "PENDING",
       },
       include: {
         user: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
   }),
 
   assignUserToTeam: adminProcedure
-    .input(z.object({
-      userId: z.string(),
-      teamName: z.string(),
-    }))
+    .input(
+      z.object({
+        userId: z.string(),
+        teamName: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const team = await ctx.db.team.findUnique({
         where: { name: input.teamName },
@@ -72,9 +74,11 @@ export const adminRouter = createTRPCRouter({
     }),
 
   createTeam: adminProcedure
-    .input(z.object({
-      name: z.string(),
-    }))
+    .input(
+      z.object({
+        name: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.team.create({
         data: {
@@ -84,9 +88,11 @@ export const adminRouter = createTRPCRouter({
     }),
 
   approveTeamRequest: adminProcedure
-    .input(z.object({
-      requestId: z.string(),
-    }))
+    .input(
+      z.object({
+        requestId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const request = await ctx.db.teamRequest.findUnique({
         where: { id: input.requestId },
@@ -115,28 +121,33 @@ export const adminRouter = createTRPCRouter({
 
       await ctx.db.teamRequest.update({
         where: { id: input.requestId },
-        data: { status: 'APPROVED' },
+        data: { status: "APPROVED" },
       });
 
       return { success: true };
     }),
 
   rejectTeamRequest: adminProcedure
-    .input(z.object({
-      requestId: z.string(),
-    }))
+    .input(
+      z.object({
+        requestId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.teamRequest.update({
         where: { id: input.requestId },
-        data: { status: 'REJECTED' },
+        data: { status: "REJECTED" },
       });
 
       return { success: true };
     }),
+
   removeUserFromTeam: adminProcedure
-    .input(z.object({
-      userId: z.string(),
-    }))
+    .input(
+      z.object({
+        userId: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await ctx.db.user.update({
         where: { id: input.userId },

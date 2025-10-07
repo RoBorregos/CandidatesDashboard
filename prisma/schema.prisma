@@ -35,16 +35,15 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model TeamRequest {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   requestedTeam String
   message       String?
   status        RequestStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 enum RequestStatus {
@@ -68,7 +67,7 @@ model User {
   judgedChallengeC ChallengeC[]
   sessions         Session[]
   team             Team?        @relation(fields: [teamId], references: [id])
-  teamRequests     TeamRequest[]
+  teamRequests     TeamRequest?
 }
 
 model VerificationToken {

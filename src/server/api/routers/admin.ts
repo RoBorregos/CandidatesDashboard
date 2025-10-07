@@ -75,6 +75,11 @@ export const adminRouter = createTRPCRouter({
         },
       });
 
+      // Eliminar solicitud pendiente si existe
+      await ctx.db.teamRequest.deleteMany({
+        where: { userId: input.userId },
+      });
+
       return { success: true };
     }),
 
@@ -139,9 +144,8 @@ export const adminRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.teamRequest.update({
+      await ctx.db.teamRequest.delete({
         where: { id: input.requestId },
-        data: { status: "REJECTED" },
       });
 
       return { success: true };

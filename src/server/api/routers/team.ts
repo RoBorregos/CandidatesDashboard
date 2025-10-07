@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { Role } from "@prisma/client";
 
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
-} from "rbrgs/server/api/trpc";
-
+} from "~/server/api/trpc";
 
 export const teamRouter = createTRPCRouter({
   getTeam: protectedProcedure.query(async ({ ctx }) => {
@@ -83,7 +84,7 @@ export const teamRouter = createTRPCRouter({
         },
       },
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
   }),
@@ -92,16 +93,17 @@ export const teamRouter = createTRPCRouter({
     return ctx.db.teamRequest.findFirst({
       where: {
         userId: ctx.session.user.id,
-        status: 'PENDING',
       },
     });
   }),
 
   requestTeamAssignment: protectedProcedure
-    .input(z.object({
-      requestedTeam: z.string(),
-      message: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        requestedTeam: z.string(),
+        message: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({
         where: { id: ctx.session.user.id },
@@ -110,17 +112,6 @@ export const teamRouter = createTRPCRouter({
 
       if (user?.team) {
         throw new Error("User already has a team");
-      }
-
-      const existingRequest = await ctx.db.teamRequest.findFirst({
-        where: {
-          userId: ctx.session.user.id,
-          status: 'PENDING',
-        },
-      });
-
-      if (existingRequest) {
-        throw new Error("User already has a pending request");
       }
 
       const team = await ctx.db.team.findUnique({
@@ -135,20 +126,86 @@ export const teamRouter = createTRPCRouter({
         throw new Error("Team is full. Please choose another team.");
       }
 
-      return ctx.db.teamRequest.create({
-        data: {
-          userId: ctx.session.user.id,
-          requestedTeam: input.requestedTeam,
-          message: input.message,
-        },
+      // Verificar si el usuario ya tiene una solicitud
+      const existingRequest = await ctx.db.teamRequest.findFirst({
+        where: { userId: ctx.session.user.id },
       });
+
+      if (existingRequest) {
+        // Actualizar la solicitud existente
+        return ctx.db.teamRequest.update({
+          where: { id: existingRequest.id },
+          data: {
+            requestedTeam: input.requestedTeam,
+            message: input.message,
+            status: "PENDING",
+          },
+        });
+      } else {
+        // Crear nueva solicitud
+        return ctx.db.teamRequest.create({
+          data: {
+            userId: ctx.session.user.id,
+            requestedTeam: input.requestedTeam,
+            message: input.message,
+          },
+        });
+      }
     }),
 
+  // AGREGAR: Nuevos endpoints necesarios
+  cancelTeamRequest: protectedProcedure.mutation(async ({ ctx }) => {
+    // Primero buscar la solicitud
+    const existingRequest = await ctx.db.teamRequest.findFirst({
+      where: { userId: ctx.session.user.id },
+    });
+
+    if (!existingRequest) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No team request found to cancel.",
+      });
+    }
+
+    // Eliminar usando el ID
+    await ctx.db.teamRequest.delete({
+      where: { id: existingRequest.id },
+    });
+
+    return { success: true };
+  }),
+
+  leaveTeam: protectedProcedure.mutation(async ({ ctx }) => {
+    // Buscar y eliminar solicitud de equipo pendiente si existe
+    const teamRequest = await ctx.db.teamRequest.findFirst({
+      where: { userId: ctx.session.user.id },
+    });
+
+    if (teamRequest) {
+      await ctx.db.teamRequest.delete({
+        where: { id: teamRequest.id },
+      });
+    }
+
+    // Actualizar usuario para removerlo del equipo
+    await ctx.db.user.update({
+      where: { id: ctx.session.user.id },
+      data: {
+        teamId: null,
+        role: Role.UNASSIGNED,
+      },
+    });
+
+    return { success: true };
+  }),
 });
 
-// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>; 
+// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
 
 // // export result type o fpromisse
 // export typeof { TeamType };
 // export
-export type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T> ? T : never;
+export type TeamType =
+  ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
+    ? T
+    : never;

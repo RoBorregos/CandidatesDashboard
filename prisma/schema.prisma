@@ -92,14 +92,15 @@ model Admin {
 }
 
 model Team {
-  id         String       @id @default(cuid())
-  name       String       @unique
-  link       String?
-  challengeA ChallengeA[]
-  challengeB ChallengeB[]
-  challengeC ChallengeC[]
-  rounds     Round[]
-  members    User[]
+  id           String       @id @default(cuid())
+  name         String       @unique
+  link         String?
+  binnacleLink String?
+  challengeA   ChallengeA[]
+  challengeB   ChallengeB[]
+  challengeC   ChallengeC[]
+  rounds       Round[]
+  members      User[]
 }
 
 model Round {
@@ -171,8 +172,9 @@ model ChallengeC {
 }
 
 model config {
-  id     Int     @id @default(autoincrement())
-  freeze Boolean @default(true)
+  id                 Int     @id @default(autoincrement())
+  freeze             Boolean @default(true)
+  competitionStarted Boolean @default(false)
 }
 
 enum Role {

@@ -23,6 +23,7 @@ export default async function TeamPage({
       </div>
     );
   }
+
   const team = await api.team.getTeam();
   if (!team) {
     redirect("/request");
@@ -56,9 +57,7 @@ export default async function TeamPage({
           for us to access the docs)
         </div>
       </div>
-
-      {team && <TeamInfo team={team} />}
-
+      <TeamInfo team={team} />
       <Footer />
     </div>
   );

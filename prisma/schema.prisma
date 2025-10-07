@@ -102,21 +102,19 @@ model Challenge {
 }
 
 model ChallengeA {
-  id                        String   @id @default(cuid())
-  ballContact               Boolean
-  ballSaved                 Boolean
-  finshTrack                Boolean
-  finishTrackNoCrossingLine Boolean
-  obtainedBonus             Boolean
-  judgeID                   String
-  lackOfProgress            Int
-  points                    Int
-  roundTimeSeconds          Int
-  teamId                    String
-  createdAt                 DateTime @default(now())
-  roundId                   String
-  user                      User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
-  team                      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  flagsAccomplished Int
+  finishedTrack     Boolean
+  obtainedBonus     Boolean
+  judgeID           String
+  lackOfProgress    Int
+  points            Int
+  roundTimeSeconds  Int
+  teamId            String
+  createdAt         DateTime @default(now())
+  roundId           String
+  user              User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+  team              Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model ChallengeB {

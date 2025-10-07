@@ -25,7 +25,6 @@ export default function TeamRequestPage() {
       setRequestedTeam("");
       setMessage("");
       setIsSubmitting(false);
-      // Invalidar las queries para refrescar la UI inmediatamente
       void utils.team.getUserRequest.invalidate();
       void utils.team.getCurrentUser.invalidate();
     },

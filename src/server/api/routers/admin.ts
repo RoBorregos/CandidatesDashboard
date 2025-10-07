@@ -73,7 +73,6 @@ export const adminRouter = createTRPCRouter({
         },
       });
 
-      // Eliminar solicitud pendiente si existe
       await ctx.db.teamRequest.deleteMany({
         where: { userId: input.userId },
       });

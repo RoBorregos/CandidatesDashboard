@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "~/trpc/react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Header from "~/app/_components/header";
+import { api } from "~/trpc/react";
 
-export default function TeamRequestPage() {
+type TeamOption = {
+  id: string;
+  name: string;
+  _count?: { members: number };
+};
+
+export default function RequestPage() {
   const [requestedTeam, setRequestedTeam] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +63,7 @@ export default function TeamRequestPage() {
         <div className="container mx-auto max-w-2xl p-4">
           <div className="rounded-lg bg-green-800 p-6 text-center">
             <h3 className="mb-2 text-xl font-semibold">
-              You're already assigned!
+                You&apos;re already assigned!
             </h3>
             <p>
               You are part of team: <strong>{user.team.name}</strong>
@@ -111,14 +118,14 @@ export default function TeamRequestPage() {
                     className="w-full rounded border border-gray-600 bg-gray-700 p-3"
                   >
                     <option value="">Choose a team...</option>
-                    {teams?.map((team: any) => (
+                    {teams?.map((team: TeamOption) => (
                       <option
                         key={team.id}
                         value={team.name}
-                        disabled={team._count?.members >= 4}
+                        disabled={(team._count?.members ?? 0) >= 4}
                       >
-                        {team.name} ({team._count?.members || 0}/4 members)
-                        {team._count?.members >= 4 ? " - Full" : ""}
+                        {team.name} ({team._count?.members ?? 0}/4 members)
+                        {(team._count?.members ?? 0) >= 4 ? " - Full" : ""}
                       </option>
                     ))}
                   </select>
@@ -170,7 +177,7 @@ export default function TeamRequestPage() {
                   className="w-full rounded border border-gray-600 bg-gray-700 p-3"
                 >
                   <option value="">Choose a team...</option>
-                  {teams?.map((team: any) => (
+                  {teams?.map((team) => (
                     <option
                       key={team.id}
                       value={team.name}
@@ -215,7 +222,7 @@ export default function TeamRequestPage() {
         <div className="rounded-lg bg-gray-800 p-6">
           <h3 className="mb-4 text-xl font-semibold">Available Teams</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {teams?.map((team: any) => (
+            {teams?.map((team) => (
               <div
                 key={team.id}
                 className={`rounded border-l-4 p-4 ${

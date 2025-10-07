@@ -1,9 +1,24 @@
 "use client";
 
-import Header from "rbrgs/app/_components/header";
+import Header from "~/app/_components/header";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
+
+type UserDisplay = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role?: string;
+  team?: { name: string } | null;
+};
+
+type TeamDisplay = {
+  id: string;
+  name: string;
+  _count: { members: number };
+  members: UserDisplay[];
+};
 
 export default function AdminPage() {
   const [newTeamName, setNewTeamName] = useState<string>("");
@@ -17,15 +32,14 @@ export default function AdminPage() {
   const { data: pendingRequests, refetch: refetchRequests } =
     api.admin.getPendingRequests.useQuery();
 
-  const getDisplayName = (user: any) => {
-    return user.name || user.email;
-  };
+  // Funciones helper con tipos específicos
+  const getDisplayName = (user: UserDisplay) => user.name ?? user.email;
   const assignUser = api.admin.assignUserToTeam.useMutation({
     onSuccess() {
       toast("User assigned successfully!");
-      refetchUsers();
-      refetchTeams();
-      refetchRequests();
+      void refetchUsers();
+      void refetchTeams();
+      void refetchRequests();
     },
     onError(error) {
       toast("Error assigning user");
@@ -35,8 +49,8 @@ export default function AdminPage() {
   const removeUser = api.admin.removeUserFromTeam.useMutation({
     onSuccess() {
       toast("User removed from team successfully!");
-      refetchUsers();
-      refetchTeams();
+      void refetchUsers();
+      void refetchTeams();
     },
     onError(error) {
       toast("Error removing user from team");
@@ -48,7 +62,7 @@ export default function AdminPage() {
     onSuccess() {
       toast("Team created successfully!");
       setNewTeamName("");
-      refetchTeams();
+      void refetchTeams();
     },
     onError(error) {
       toast("Error creating team");
@@ -58,9 +72,9 @@ export default function AdminPage() {
   const approveRequest = api.admin.approveTeamRequest.useMutation({
     onSuccess() {
       toast("Request approved!");
-      refetchUsers();
-      refetchTeams();
-      refetchRequests();
+      void refetchUsers();
+      void refetchTeams();
+      void refetchRequests();
     },
     onError(error) {
       toast("Error approving request");
@@ -70,7 +84,7 @@ export default function AdminPage() {
   const rejectRequest = api.admin.rejectTeamRequest.useMutation({
     onSuccess() {
       toast("Request rejected!");
-      refetchRequests();
+      void refetchRequests();
     },
     onError(error) {
       toast("Error rejecting request");
@@ -84,7 +98,7 @@ export default function AdminPage() {
     }));
   };
   const isTeamFull = (teamName: string) => {
-    const team = teams?.find((t: any) => t.name === teamName);
+    const team = teams?.find((t: TeamDisplay) => t.name === teamName);
     return team && team._count.members >= 4;
   };
   const handleAssignUser = (userId: string) => {
@@ -102,10 +116,11 @@ export default function AdminPage() {
       });
     }
   };
-  const handleRemoveUser = (userId: string, userEmail: string) => {
+  const handleRemoveUser = (userId: string, userName: string | null, userEmail: string | null) => {
+    const displayName = userName ?? userEmail;
     if (
       window.confirm(
-        `Are you sure you want to remove ${getDisplayName(userEmail)} from their team?`,
+        `Are you sure you want to remove ${displayName} from their team?`,
       )
     ) {
       removeUser.mutate({ userId });
@@ -131,7 +146,7 @@ export default function AdminPage() {
               Pending Team Requests
             </h3>
             <div className="space-y-3">
-              {pendingRequests.map((request: any) => (
+              {pendingRequests?.map((request) => (
                 <div
                   key={request.id}
                   className="flex items-center justify-between rounded bg-yellow-800 p-4"
@@ -202,8 +217,8 @@ export default function AdminPage() {
           <h3 className="mb-4 text-xl font-semibold">Users Without Teams</h3>
           <div className="space-y-3">
             {users
-              ?.filter((user: any) => !user.team && user.role !== "ADMIN")
-              .map((user: any) => (
+              ?.filter((user) => !user.team && user.role !== "ADMIN")
+              .map((user) => (
                 <div
                   key={user.id}
                   className="flex items-center justify-between rounded bg-gray-700 p-4"
@@ -217,14 +232,14 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <select
-                      value={userTeamSelections[user.id] || ""}
+                      value={userTeamSelections[user.id] ?? ""}
                       onChange={(e) =>
                         handleTeamSelection(user.id, e.target.value)
                       }
                       className="rounded border border-gray-500 bg-gray-600 p-2"
                     >
                       <option value="">Select team</option>
-                      {teams?.map((team: any) => (
+                      {teams?.map((team) => (
                         <option key={team.id} value={team.name} disabled={isTeamFull(team.name)}>
                           {team.name} ({team._count.members}/4)
                           {team._count.members >= 4 ? " - Full" : ""}
@@ -234,7 +249,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => handleAssignUser(user.id)}
                       disabled={
-                        !userTeamSelections[user.id] || assignUser.isPending || isTeamFull(userTeamSelections[user.id] || "")
+                        !userTeamSelections[user.id] || assignUser.isPending || isTeamFull(userTeamSelections[user.id] ?? "")
                       }
                       className="rounded bg-green-600 px-3 py-2 hover:bg-green-700 disabled:opacity-50"
                     >
@@ -249,15 +264,15 @@ export default function AdminPage() {
         <div className="rounded-lg bg-gray-800 p-6">
           <h3 className="mb-4 text-xl font-semibold">Teams Overview</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {teams?.map((team: any) => (
+            {teams?.map((team) => (
               <div key={team.id} className="rounded bg-gray-700 p-4">
                 <h4 className="mb-2 font-semibold">{team.name}</h4>
                 <p className="mb-2 text-sm text-gray-400">
-                  Members: {team._count?.members || 0} / 4
+                  Members: {team._count?.members ?? 0} / 4
                   {team._count?.members >= 4 ? " - Full" : ""}
                 </p>
                 <div className="space-y-2">
-                  {team.members?.map((member: any) => (
+                  {team.members?.map((member) => (
                     <div
                       key={member.id}
                       className="flex items-center justify-between rounded bg-gray-600 p-2 text-sm"
@@ -273,7 +288,7 @@ export default function AdminPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => handleRemoveUser(member.id, member)}
+                        onClick={() => handleRemoveUser(member.id, member.name, member.email)}
                         disabled={removeUser.isPending}
                         className="ml-2 rounded bg-red-500 px-2 py-1 text-xs hover:bg-red-600 disabled:opacity-50"
                         title={`Remove ${getDisplayName(member)} from team`}

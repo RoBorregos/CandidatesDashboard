@@ -95,13 +95,19 @@ export default function ScoreboardPage() {
       <Title title="General" />
 
       <div className="mx-auto w-full max-w-7xl overflow-x-auto px-4 scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-roboblue">
-        <table className="min-w-full border-collapse text-white">
+        <table className="w-full table-fixed border-collapse text-white">
           <colgroup>
-            <col />
-            <col span={3} />
-            <col span={3} />
-            <col span={3} />
-            <col />
+            <col className="w-48" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-20" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-700">

@@ -27,9 +27,9 @@ export default function ScoreboardPage() {
     refetch,
   } = api.scoreboard.getScoreboard.useQuery();
 
-  const { data: isFrozen } = api.scoreboard.isScoreboardFrozen.useQuery();
+  const { data: isFrozen } = api.config.isScoreboardFrozen.useQuery();
   const { data: competitionStarted } =
-    api.scoreboard.isCompetitionStarted.useQuery();
+    api.config.isCompetitionStarted.useQuery();
 
   React.useEffect(() => {
     const interval = setInterval(() => {

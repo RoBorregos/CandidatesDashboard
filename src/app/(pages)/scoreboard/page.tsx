@@ -27,7 +27,9 @@ export default function ScoreboardPage() {
     refetch,
   } = api.scoreboard.getScoreboard.useQuery();
 
-  const { data: isFrozen } = api.scoreboard.isScoreboardFrozen.useQuery();
+  const { data: isFrozen } = api.config.isScoreboardFrozen.useQuery();
+  const { data: competitionStarted } =
+    api.config.isCompetitionStarted.useQuery();
 
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -35,6 +37,18 @@ export default function ScoreboardPage() {
     }, 20000);
     return () => clearInterval(interval);
   }, [refetch]);
+
+  if (!competitionStarted) {
+    return (
+      <div className="mt-[4rem] h-96 bg-black text-white">
+        <Header title="Scoreboard" />
+        <p className="my-10 text-center text-lg">
+          The competition will start soon!
+        </p>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -81,13 +95,19 @@ export default function ScoreboardPage() {
       <Title title="General" />
 
       <div className="mx-auto w-full max-w-7xl overflow-x-auto px-4 scrollbar-thin scrollbar-track-gray-700 scrollbar-thumb-roboblue">
-        <table className="min-w-full border-collapse text-white">
+        <table className="w-full table-fixed border-collapse text-white">
           <colgroup>
-            <col />
-            <col span={3} />
-            <col span={3} />
-            <col span={3} />
-            <col />
+            <col className="w-48" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-16" />
+            <col className="w-20" />
           </colgroup>
           <thead>
             <tr className="border-b border-gray-700">

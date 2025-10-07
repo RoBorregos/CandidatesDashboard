@@ -1,6 +1,7 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { getServerAuthSession } from "./auth";
+import { db } from "./db";
 
 const f = createUploadthing();
 
@@ -38,7 +39,7 @@ export const ourFileRouter = {
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
       return { uploadedBy: metadata.userId };
     }),
-  pdfUploader: f({
+  binnacleUploader: f({
     pdf: {
       maxFileSize: "4MB",
       maxFileCount: 1,
@@ -46,12 +47,19 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await getServerAuthSession();
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      if (!session) throw new UploadThingError("Unauthorized");
-      return { userId: session.user.id };
+      if (!session?.user?.teamId)
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw new UploadThingError("User isn't in a team");
+      return { teamId: session.user.teamId };
     })
-    .onUploadComplete(async ({ metadata }) => {
-      return { uploadedBy: metadata.userId };
+    .onUploadComplete(async ({ metadata, file }) => {
+      await db.team.update({
+        where: { id: metadata.teamId },
+        data: { binnacleLink: file.ufsUrl },
+      });
+
+      // Return the updated data for client callback
+      return { binnacleLink: file.ufsUrl, teamId: metadata.teamId };
     }),
 } satisfies FileRouter;
 

@@ -15,5 +15,5 @@ export default function RandomText() {
     }, 100);
     return () => clearInterval(interval);
   }, []);
-  return <p className="min-w-5 max-w-5">{randomText}</p>;
+  return <span className="inline-block w-8 text-center">{randomText}</span>;
 }

@@ -150,4 +150,9 @@ export const scoreboardRouter = createTRPCRouter({
     }
     return config?.freeze ?? false;
   }),
+
+  isCompetitionStarted: publicProcedure.query(async ({ ctx }) => {
+    const config = await ctx.db.config.findFirst();
+    return config?.competitionStarted ?? false;
+  }),
 });

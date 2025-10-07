@@ -154,8 +154,9 @@ model ChallengeC {
 }
 
 model config {
-  id     Int     @id @default(autoincrement())
-  freeze Boolean @default(true)
+  id                 Int     @id @default(autoincrement())
+  freeze             Boolean @default(true)
+  competitionStarted Boolean @default(false)
 }
 
 enum Role {

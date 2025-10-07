@@ -28,6 +28,8 @@ export default function ScoreboardPage() {
   } = api.scoreboard.getScoreboard.useQuery();
 
   const { data: isFrozen } = api.scoreboard.isScoreboardFrozen.useQuery();
+  const { data: competitionStarted } =
+    api.scoreboard.isCompetitionStarted.useQuery();
 
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -35,6 +37,18 @@ export default function ScoreboardPage() {
     }, 20000);
     return () => clearInterval(interval);
   }, [refetch]);
+
+  if (!competitionStarted) {
+    return (
+      <div className="mt-[4rem] h-96 bg-black text-white">
+        <Header title="Scoreboard" />
+        <p className="my-10 text-center text-lg">
+          The competition will start soon!
+        </p>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">

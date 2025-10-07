@@ -2,11 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@prisma/client";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const teamRouter = createTRPCRouter({
   getTeam: protectedProcedure.query(async ({ ctx }) => {
@@ -53,19 +49,16 @@ export const teamRouter = createTRPCRouter({
           link: input.link,
         },
       });
-
       return team;
     }),
 
   getTeamIds: protectedProcedure.query(async ({ ctx }) => {
-    const team = await ctx.db.team.findMany({
+    return ctx.db.team.findMany({
       select: {
         id: true,
         name: true,
       },
     });
-
-    return team;
   }),
   getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.user.findUnique({
@@ -126,13 +119,11 @@ export const teamRouter = createTRPCRouter({
         throw new Error("Team is full. Please choose another team.");
       }
 
-      // Verificar si el usuario ya tiene una solicitud
       const existingRequest = await ctx.db.teamRequest.findFirst({
         where: { userId: ctx.session.user.id },
       });
 
       if (existingRequest) {
-        // Actualizar la solicitud existente
         return ctx.db.teamRequest.update({
           where: { id: existingRequest.id },
           data: {
@@ -142,7 +133,6 @@ export const teamRouter = createTRPCRouter({
           },
         });
       } else {
-        // Crear nueva solicitud
         return ctx.db.teamRequest.create({
           data: {
             userId: ctx.session.user.id,
@@ -153,9 +143,7 @@ export const teamRouter = createTRPCRouter({
       }
     }),
 
-  // AGREGAR: Nuevos endpoints necesarios
   cancelTeamRequest: protectedProcedure.mutation(async ({ ctx }) => {
-    // Primero buscar la solicitud
     const existingRequest = await ctx.db.teamRequest.findFirst({
       where: { userId: ctx.session.user.id },
     });
@@ -167,7 +155,6 @@ export const teamRouter = createTRPCRouter({
       });
     }
 
-    // Eliminar usando el ID
     await ctx.db.teamRequest.delete({
       where: { id: existingRequest.id },
     });
@@ -176,7 +163,6 @@ export const teamRouter = createTRPCRouter({
   }),
 
   leaveTeam: protectedProcedure.mutation(async ({ ctx }) => {
-    // Buscar y eliminar solicitud de equipo pendiente si existe
     const teamRequest = await ctx.db.teamRequest.findFirst({
       where: { userId: ctx.session.user.id },
     });
@@ -187,7 +173,6 @@ export const teamRouter = createTRPCRouter({
       });
     }
 
-    // Actualizar usuario para removerlo del equipo
     await ctx.db.user.update({
       where: { id: ctx.session.user.id },
       data: {
@@ -200,11 +185,6 @@ export const teamRouter = createTRPCRouter({
   }),
 });
 
-// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
-
-// // export result type o fpromisse
-// export typeof { TeamType };
-// export
 export type TeamType =
   ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
     ? T

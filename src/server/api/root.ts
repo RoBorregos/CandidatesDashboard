@@ -4,6 +4,7 @@ import { teamRouter } from "rbrgs/server/api/routers/team";
 import { judgeRouter } from "rbrgs/server/api/routers/judge";
 import { scoreboardRouter } from "./routers/scoreboard";
 import { adminRouter } from "./routers/admin";
+import { configRouter } from "./routers/config";
 
 /**
  * This is the primary router for your server.
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   judge: judgeRouter,
   scoreboard: scoreboardRouter,
   admin: adminRouter,
+  config: configRouter,
 });
 
 // export type definition of API

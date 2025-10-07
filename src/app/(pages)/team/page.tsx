@@ -1,7 +1,7 @@
-import { api } from "rbrgs/trpc/server";
+import { api } from "~/trpc/server";
 import Header from "../../_components/header";
 import Footer from "../../_components/footer";
-import { getServerAuthSession } from "rbrgs/server/auth";
+import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import TeamInfo from "../../_components/team/team";
 import { redirect } from "next/navigation";

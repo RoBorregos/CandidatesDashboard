@@ -58,11 +58,15 @@ export default function JudgePage() {
             </SelectTrigger>
 
             <SelectContent>
-              <SelectItem value="challengeA">Pista A - Pelota</SelectItem>
-              <SelectItem value="challengeB">
+              <SelectItem value="challengeA" className="cursor-pointer">
+                Pista A - Pelota
+              </SelectItem>
+              <SelectItem value="challengeB" className="cursor-pointer">
                 Pista B - Seguidor de línea
               </SelectItem>
-              <SelectItem value="challengeC">Pista C - Laberinto</SelectItem>
+              <SelectItem value="challengeC" className="cursor-pointer">
+                Pista C - Laberinto
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>

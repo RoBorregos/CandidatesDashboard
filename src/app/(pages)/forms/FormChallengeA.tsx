@@ -228,12 +228,28 @@ export const FormChallengeA = () => {
                     control: (provided) => ({
                       ...provided,
                       backgroundColor: "black",
+                      color: "white",
+                      cursor: "pointer",
                     }),
                     menu: (provided) => ({
                       ...provided,
                       backgroundColor: "black",
                     }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      backgroundColor: state.isFocused ? "#333" : "black",
+                      color: "white",
+                      cursor: "pointer",
+                    }),
                     singleValue: (provided) => ({
+                      ...provided,
+                      color: "white",
+                    }),
+                    placeholder: (provided) => ({
+                      ...provided,
+                      color: "white",
+                    }),
+                    input: (provided) => ({
                       ...provided,
                       color: "white",
                     }),

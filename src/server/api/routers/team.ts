@@ -65,11 +65,31 @@ export const teamRouter = createTRPCRouter({
 
     return team;
   }),
+
+  getPublicSchedule: publicProcedure.query(async ({ ctx }) => {
+    const teams = await ctx.db.team.findMany({
+      select: {
+        id: true,
+        name: true,
+        rounds: {
+          select: {
+            number: true,
+            challenges: true,
+          },
+        },
+      },
+    });
+
+    return teams;
+  }),
 });
 
-// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>; 
+// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
 
 // // export result type o fpromisse
 // export typeof { TeamType };
 // export
-export type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T> ? T : never;
+export type TeamType =
+  ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
+    ? T
+    : never;

@@ -35,6 +35,11 @@ export const adminRouter = createTRPCRouter({
           },
         });
 
+        if (!teamObject) {
+          console.log(`Team not found: ${row[0]?.trim()}`);
+          continue;
+        }
+
         await ctx.db.round.deleteMany({
           where: {
             teamId: teamObject?.id,
@@ -85,6 +90,46 @@ export const adminRouter = createTRPCRouter({
     });
 
     return "Finished";
+  }),
+
+  createMissingTeams: adminProcedure.mutation(async ({ ctx }) => {
+    const records: string[][] = [];
+    const parser = parse({
+      delimiter: ",",
+    });
+    parser.on("readable", function () {
+      let record;
+      while ((record = parser.read())) {
+        if (record[0] === "Nombre") {
+          continue;
+        }
+        records.push(record);
+      }
+    });
+
+    const filePath = "public/schedule.csv";
+    fs.createReadStream(filePath).pipe(parser);
+
+    parser.on("end", async function () {
+      for await (const row of records) {
+        const teamName = row[0]?.trim() ?? "";
+
+        const existingTeam = await ctx.db.team.findFirst({
+          where: { name: teamName },
+        });
+
+        if (!existingTeam && teamName) {
+          await ctx.db.team.create({
+            data: {
+              name: teamName,
+            },
+          });
+          console.log(`Created team: ${teamName}`);
+        }
+      }
+    });
+
+    return "Teams created";
   }),
 });
 

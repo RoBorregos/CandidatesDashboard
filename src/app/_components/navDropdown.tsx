@@ -42,6 +42,11 @@ export default function NavDropdown({ session }: { session: Session | null }) {
             </Link>
           </div>
           <div>
+            <Link href="/schedule" className="w-full text-center text-lg">
+              Schedule
+            </Link>
+          </div>
+          <div>
             <Link href="/team" className="w-full text-center text-lg">
               Team
             </Link>

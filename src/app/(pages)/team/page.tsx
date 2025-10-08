@@ -29,8 +29,6 @@ export default async function TeamPage({
     redirect("/request");
   }
 
-  const rounds = team?.rounds;
-
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
       <div className="md:pb-20">

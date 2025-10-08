@@ -1,12 +1,10 @@
 import React from "react";
 import Footer from "../../_components/footer";
 import Header from "../../_components/header";
-import Title from "../../_components/title";
-import { api } from "~/trpc/react";
-import { Round } from "../../../lib/round";
-import RandomText from "../../_components/random-text";
 import Image from "next/image";
 
+// 1. Corregimos la ruta de importación para que sea más limpia y robusta.
+import scoreboardData from "../../../data/PastEditions.json";
 
 type Edition = {
   year: number;
@@ -15,26 +13,19 @@ type Edition = {
 };
 
 const pastEditions: Edition[] = [
-{
-  year: 2024,
-  winner: "Foreños",
-  imageUrl: "/images/forexos.jpg", // Example path, replace with your actual images
-},
-{
-  year: 2023,
-  winner: "--------",
-  imageUrl: "/images/fronPic.jpg", // Example path, replace with your actual images
-},
+  {
+    year: 2024,
+    winner: "Foreños",
+    imageUrl: "/images/forexos.jpg",
+  },
 ];
 
 export default function HistoryPage() {
   return (
     <main className="bg-black text-white">
-      {/* HERO SECTION: Title of the page */}
+      {/* HERO SECTION */}
       <section className="relative flex min-h-[60vh] flex-col items-center justify-center overflow-hidden text-center">
-        <h1 className="font-jersey_25 text-[15vw] leading-none text-roboblue lg:text-[10vw]">
-          PAST EDITIONS
-        </h1>
+        <Header title="PAST EDITIONS" />
         <p className="mt-[-2vw] font-anton text-[6vw] text-white lg:text-[3vw]">
           A Legacy of Innovation
         </p>
@@ -48,14 +39,15 @@ export default function HistoryPage() {
         />
       </section>
 
-      {/* GRID SECTION: Displays the list of past editions */}
+      {/* CONTENT SECTION */}
       <section className="mx-auto max-w-7xl px-4 py-16">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {/* GRID DE EDICIONES ANTERIORES */}
+        <div className="flex flex-wrap justify-center gap-8">
           {/* We map over the data array to create a card for each edition */}
           {pastEditions.map((edition) => (
             <div
-              key={edition.year} // The 'key' must be unique for each item
-              className="group overflow-hidden rounded-lg bg-gray-900 shadow-lg transition-transform duration-300 hover:scale-105"
+              key={edition.year}
+              className="group w-full max-w-sm overflow-hidden rounded-lg bg-gray-900 shadow-lg transition-transform duration-300 hover:scale-105 md:w-1/2 lg:w-1/3"
             >
               <div className="relative h-56 w-full">
                 <Image
@@ -73,97 +65,61 @@ export default function HistoryPage() {
                 <p className="mt-2 font-anton text-2xl text-white">
                   Winner: {edition.winner}
                 </p>
-                {/* <p className="mt-1 text-lg text-gray-400">
-                  Winner: {edition.winner}
-                </p> */}
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-12 text-center">
-          {/* Lista de candidates del año pasado */}
-          
-          {/* Example candidates data */}
-          {[
-            {
-              year: 2024,
-              candidates: [
-                { name: "Foreños", score: 95 },
-                { name: "-----", score: 88 },
-                { name: "-----", score: 80 },
-              ],
-            },
-            {
-              year: 2023,
-              candidates: [
-                { name: "------", score: 92 },
-                { name: "---", score: 85 },
-                { name: "----", score: 78 },
-              ],
-            },
-          ].map((edition) => (
-            <div key={edition.year} className="mb-8">
-              <h3 className="font-jersey_25 text-3xl text-roboblue mb-2">
-                Candidates {edition.year}
-              </h3>
-              <ul className="mx-auto max-w-md text-left">
-                {edition.candidates.map((candidate) => (
-                  <li
-                    key={candidate.name}
-                    className="flex justify-between py-2 border-b border-gray-700"
-                  >
-                    <span className="font-anton text-xl">{candidate.name}</span>
-                    <span className="text-roboblue font-bold">{candidate.score}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-          
-        </div>
 
-        {/* Lista de equipos con cada 4 miembros */}
-        <div className="mt-16">
-          <h3 className="font-jersey_25 text-3xl text-roboblue mb-4 text-center">
-            Teams & Members
+        <div className="mt-12 text-center">
+          <h3 className="mb-4 font-jersey_25 text-4xl text-roboblue">
+            Scoreboard 2024
           </h3>
-          {/* Example teams data */}
-          {[
-            {
-              team: "Foreños",
-              members: ["Ana", "Luis", "Carlos", "María", "Pedro", "Sofía", "Juan", "Lucía"],
-            },
-            {
-              team: "------",
-              members: ["Miguel", "Elena", "Raúl", "Valeria", "Andrés", "Paola"],
-            },
-            {
-              team: "-----",
-              members: ["Jorge", "Camila", "Roberto", "Fernanda"],
-            },
-          ].map(({ team, members }) => (
-            <div key={team} className="mb-8">
-              <h4 className="font-anton text-2xl text-white mb-2">{team}</h4>
-              <ul className="mx-auto max-w-md text-left">
-                {Array.from({ length: Math.ceil(members.length / 4) }).map((_, idx) => (
-                  <li key={idx} className="py-2 border-b border-gray-700 flex flex-wrap gap-4">
-                    {members.slice(idx * 4, idx * 4 + 4).map((member) => (
-                      <span key={member} className="font-anton text-lg text-roboblue">
-                        {member}
-                      </span>
-                    ))}
-                  </li>
+          
+          <div className="space-y-4 md:hidden">
+            {scoreboardData.map((team, index) => (
+              <div key={team.nombreEquipo} className="rounded-lg bg-gray-800 p-4 border border-gray-700">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold text-gray-400">#{index + 1}</span>
+                  <h3 className="font-anton text-2xl text-white">{team.nombreEquipo}</h3>
+                  <span className="font-bold text-2xl text-roboblue">{team.puntajeFinal}</span>
+                </div>
+                <div className="flex justify-around text-center border-t border-gray-600 pt-2">
+                  <div><p className="text-xs uppercase text-gray-400">Pista A</p><p className="text-lg font-semibold">{team.puntajePistaA}</p></div>
+                  <div><p className="text-xs uppercase text-gray-400">Pista B</p><p className="text-lg font-semibold">{team.puntajePistaB}</p></div>
+                  <div><p className="text-xs uppercase text-gray-400">Pista C</p><p className="text-lg font-semibold">{team.puntajePistaC}</p></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-700">
+            <table className="w-full text-left">
+              <thead className="bg-gray-800 text-sm uppercase tracking-wider text-roboblue">
+                <tr>
+                  <th scope="col" className="p-4 text-center font-anton">#</th>
+                  <th scope="col" className="p-4 font-anton">Equipo</th>
+                  <th scope="col" className="p-4 text-center font-anton">Pista A</th>
+                  <th scope="col" className="p-4 text-center font-anton">Pista B</th>
+                  <th scope="col" className="p-4 text-center font-anton">Pista C</th>
+                  <th scope="col" className="p-4 text-center font-anton">Puntaje Final</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scoreboardData.map((team, index) => (
+                  <tr key={team.nombreEquipo} className="border-b border-gray-700 transition-colors hover:bg-gray-800/50">
+                    <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
+                    <td className="p-4 font-anton text-xl font-bold text-white">{team.nombreEquipo}</td>
+                    <td className="p-4 text-center text-lg text-gray-300">{team.puntajePistaA}</td>
+                    <td className="p-4 text-center text-lg text-gray-300">{team.puntajePistaB}</td>
+                    <td className="p-4 text-center text-lg text-gray-300">{team.puntajePistaC}</td>
+                    <td className="p-4 text-center text-xl font-bold text-roboblue">{team.puntajeFinal}</td>
+                  </tr>
                 ))}
-              </ul>
-            </div>
-          ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
-
-
-  
-
-
 
       <Footer />
     </main>

@@ -63,7 +63,7 @@ export default function RequestPage() {
         <div className="container mx-auto max-w-2xl p-4">
           <div className="rounded-lg bg-green-800 p-6 text-center">
             <h3 className="mb-2 text-xl font-semibold">
-                You&apos;re already assigned!
+              You&apos;re already assigned!
             </h3>
             <p>
               You are part of team: <strong>{user.team.name}</strong>

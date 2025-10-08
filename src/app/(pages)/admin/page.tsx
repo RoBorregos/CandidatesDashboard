@@ -32,7 +32,6 @@ export default function AdminPage() {
   const { data: pendingRequests, refetch: refetchRequests } =
     api.admin.getPendingRequests.useQuery();
 
-  // Funciones helper con tipos específicos
   const getDisplayName = (user: UserDisplay) => user.name ?? user.email;
   const assignUser = api.admin.assignUserToTeam.useMutation({
     onSuccess() {
@@ -116,7 +115,11 @@ export default function AdminPage() {
       });
     }
   };
-  const handleRemoveUser = (userId: string, userName: string | null, userEmail: string | null) => {
+  const handleRemoveUser = (
+    userId: string,
+    userName: string | null,
+    userEmail: string | null,
+  ) => {
     const displayName = userName ?? userEmail;
     if (
       window.confirm(
@@ -240,7 +243,11 @@ export default function AdminPage() {
                     >
                       <option value="">Select team</option>
                       {teams?.map((team) => (
-                        <option key={team.id} value={team.name} disabled={isTeamFull(team.name)}>
+                        <option
+                          key={team.id}
+                          value={team.name}
+                          disabled={isTeamFull(team.name)}
+                        >
                           {team.name} ({team._count.members}/4)
                           {team._count.members >= 4 ? " - Full" : ""}
                         </option>
@@ -249,7 +256,9 @@ export default function AdminPage() {
                     <button
                       onClick={() => handleAssignUser(user.id)}
                       disabled={
-                        !userTeamSelections[user.id] || assignUser.isPending || isTeamFull(userTeamSelections[user.id] ?? "")
+                        !userTeamSelections[user.id] ||
+                        assignUser.isPending ||
+                        isTeamFull(userTeamSelections[user.id] ?? "")
                       }
                       className="rounded bg-green-600 px-3 py-2 hover:bg-green-700 disabled:opacity-50"
                     >
@@ -288,7 +297,9 @@ export default function AdminPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => handleRemoveUser(member.id, member.name, member.email)}
+                        onClick={() =>
+                          handleRemoveUser(member.id, member.name, member.email)
+                        }
                         disabled={removeUser.isPending}
                         className="ml-2 rounded bg-red-500 px-2 py-1 text-xs hover:bg-red-600 disabled:opacity-50"
                         title={`Remove ${getDisplayName(member)} from team`}

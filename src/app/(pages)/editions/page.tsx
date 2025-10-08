@@ -4,6 +4,7 @@ import Header from "../../_components/header";
 import Image from "next/image";
 
 import scoreboardData from "../../../data/PastEditions.json";
+import { Sub } from "@radix-ui/react-dropdown-menu";
 
 type Edition = {
   year: number;

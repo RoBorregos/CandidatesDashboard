@@ -3,7 +3,6 @@ import Footer from "../../_components/footer";
 import Header from "../../_components/header";
 import Image from "next/image";
 
-// 1. Corregimos la ruta de importación para que sea más limpia y robusta.
 import scoreboardData from "../../../data/PastEditions.json";
 
 type Edition = {

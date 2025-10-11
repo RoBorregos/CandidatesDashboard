@@ -1,11 +1,16 @@
-import { api } from "rbrgs/trpc/server";
+import { api } from "~/trpc/server";
 import Header from "../../_components/header";
 import Footer from "../../_components/footer";
-import { getServerAuthSession } from "rbrgs/server/auth";
+import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import TeamInfo from "../../_components/team/team";
+import { redirect } from "next/navigation";
 
-export default async function TeamPage() {
+export default async function TeamPage({
+  params,
+}: {
+  params: { teampage: string };
+}) {
   const session = await getServerAuthSession();
 
   if (!session) {
@@ -21,23 +26,7 @@ export default async function TeamPage() {
 
   const team = await api.team.getTeam();
   if (!team) {
-    return (
-      <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
-        <div className="md:pb-20">
-          <Header title="Team" subtitle="" />
-        </div>
-        <div className="flex h-96 flex-col items-center justify-center gap-4">
-          <h1 className="text-2xl font-bold text-white">
-            You are not assigned to a team yet.
-          </h1>
-          <p className="text-center text-white">
-            Please contact your mentors or website administrators if you think
-            this is a mistake.
-          </p>
-        </div>
-        <Footer />
-      </div>
-    );
+    redirect("/request");
   }
 
   return (

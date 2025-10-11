@@ -135,18 +135,19 @@ model ChallengeC {
   id                         String   @id @default(cuid())
   judgeID                    String
   lackOfProgress             Int
+  detectedColors             Int
+  passedObstacles            Int
+  obtainedBonus              Boolean
+  finishedTrack              Boolean
+  passedRamp                 Boolean
+  reverseRamp                Boolean
   points                     Int
   roundId                    String
   roundTimeSeconds           Int
   teamId                     String
-  balancedRamp               Boolean
   createdAt                  DateTime @default(now())
   crossedRampWithoutLOP      Boolean
   crossedRampWithoutTouching Boolean
-  detectedColors             Int
-  finishedTrack              Boolean
-  obtainedBonus              Boolean
-  passedRamp                 Boolean
   user                       User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
   team                       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }

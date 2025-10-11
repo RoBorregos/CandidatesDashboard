@@ -80,13 +80,14 @@ export const judgeRouter = createTRPCRouter({
     .input(challengeCSchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
-      points += input.detectedColors * 5;
-      points += input.finishedTrack ? 40 : 0;
-      points += input.genericFormSchema.obtainedBonus ? 45 : 0;
+      points += input.detectedColors * 3;
+      points += input.passedObstacles * 8;
+      points += input.finishedTrack ? 35 : 0;
+      points += input.genericFormSchema.obtainedBonus ? 41 : 0;
 
       points += input.passedRamp ? 10 : 0;
       points += input.crossedRampWithoutLOP ? 10 : 0;
-      points += input.balancedRamp ? 40 : 0;
+      points += input.reverseRamp ? 40 : 0;
       points += input.crossedRampWithoutTouching ? 20 : 0;
       points += computePointsLOP(input.genericFormSchema.lackOfProgress);
 
@@ -96,10 +97,11 @@ export const judgeRouter = createTRPCRouter({
           finishedTrack: input.finishedTrack,
           obtainedBonus: input.genericFormSchema.obtainedBonus,
 
+          passedObstacles: input.passedObstacles,
           passedRamp: input.passedRamp,
           crossedRampWithoutLOP: input.crossedRampWithoutLOP,
-          balancedRamp: input.balancedRamp,
           crossedRampWithoutTouching: input.crossedRampWithoutTouching,
+          reverseRamp: input.reverseRamp,
 
           lackOfProgress: input.genericFormSchema.lackOfProgress,
           points: points,

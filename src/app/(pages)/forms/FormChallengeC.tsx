@@ -20,6 +20,10 @@ import { Input } from "rbrgs/app/_components/shadcn/ui/input";
 import Select from "react-select";
 
 import { api } from "~/trpc/react";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "rbrgs/app/_components/shadcn/ui/radio-group";
 
 type FormData = z.infer<typeof challengeCSchema>;
 export type FormControlA = Control<FormData>;
@@ -28,15 +32,17 @@ export const FormChallengeC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(challengeCSchema),
     defaultValues: {
-      balancedRamp: false,
       crossedRampWithoutLOP: false,
       crossedRampWithoutTouching: false,
       detectedColors: 0,
+      passedObstacles: 0,
       finishedTrack: false,
       passedRamp: false,
+      reverseRamp: false,
 
       genericFormSchema: {
         obtainedBonus: false,
+        roundId: "1",
       },
     },
   });
@@ -106,10 +112,40 @@ export const FormChallengeC = () => {
         />
         <FormField
           control={form.control}
+          name="passedObstacles"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Number of passed bumpers/debris</FormLabel>
+              <FormControl>
+                <Input type="number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="finishedTrack"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Finished maze</FormLabel>
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  className="ml-3"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="genericFormSchema.obtainedBonus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Obtained Bonus</FormLabel>
               <FormControl>
                 <Checkbox
                   checked={field.value}
@@ -174,27 +210,10 @@ export const FormChallengeC = () => {
         />
         <FormField
           control={form.control}
-          name="balancedRamp"
+          name="reverseRamp"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Balanced in ramp</FormLabel>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="ml-3"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="genericFormSchema.obtainedBonus"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Obtained Bonus</FormLabel>
+              <FormLabel>Crossed ramp in reverse</FormLabel>
               <FormControl>
                 <Checkbox
                   checked={field.value}
@@ -237,9 +256,22 @@ export const FormChallengeC = () => {
           name="genericFormSchema.roundId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Round Number (1, 2, or 3)</FormLabel>
+              <FormLabel>Round ID</FormLabel>
               <FormControl>
-                <Input type="string" {...field} />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value.toString()}
+                  className="flex flex-col"
+                >
+                  {[1, 2, 3].map((value) => (
+                    <FormItem key={value} className="flex items-center gap-3">
+                      <FormControl>
+                        <RadioGroupItem value={value.toString()} />
+                      </FormControl>
+                      <FormLabel className="font-normal">{value}</FormLabel>
+                    </FormItem>
+                  ))}
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>

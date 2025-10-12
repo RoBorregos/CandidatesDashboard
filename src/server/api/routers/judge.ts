@@ -23,37 +23,35 @@ export const judgeRouter = createTRPCRouter({
     .input(challengeASchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
-      if (input.ballContact) {
-        points += 15;
+
+      // Calculate points for flags (20, 25, 30, 35)
+      for (let i = 0; i < input.flagsAccomplished; i++) {
+        points += 20 + i * 5;
       }
-      if (input.ballSaved) {
-        points += 45;
-      }
-      if (input.finishTrack) {
+
+      // Add points for finishing the track
+      if (input.finishedTrack) {
         points += 10;
       }
-      if (input.finishTrackNoCrossingLine) {
-        points += 30;
-      }
+
+      // Add points for bonus
       if (input.genericFormSchema.obtainedBonus) {
-        points += 50;
+        points += 30;
       }
 
       points += computePointsLOP(input.genericFormSchema.lackOfProgress);
 
       return await ctx.db.challengeA.create({
         data: {
-          ballContact: input.ballContact,
-          ballSaved: input.ballSaved,
-          finshTrack: input.finishTrack,
-          finishTrackNoCrossingLine: input.finishTrackNoCrossingLine,
-          lackOfProgress: input.genericFormSchema.lackOfProgress,
+          flagsAccomplished: input.flagsAccomplished,
+          finishedTrack: input.finishedTrack,
           obtainedBonus: input.genericFormSchema.obtainedBonus,
-          points: points,
           roundTimeSeconds: input.genericFormSchema.roundTimeSeconds,
+          lackOfProgress: input.genericFormSchema.lackOfProgress,
+          roundId: input.genericFormSchema.roundId,
           teamId: input.genericFormSchema.teamId,
           judgeID: ctx.session.user.id,
-          roundId: input.genericFormSchema.roundId,
+          points: points,
         },
       });
     }),

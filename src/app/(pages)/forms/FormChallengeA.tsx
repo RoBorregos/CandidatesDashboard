@@ -20,6 +20,10 @@ import { Input } from "rbrgs/app/_components/shadcn/ui/input";
 import Select from "react-select";
 
 import { api } from "~/trpc/react";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "rbrgs/app/_components/shadcn/ui/radio-group";
 
 type FormData = z.infer<typeof challengeASchema>;
 export type FormControlA = Control<FormData>;
@@ -28,12 +32,11 @@ export const FormChallengeA = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(challengeASchema),
     defaultValues: {
-      ballContact: false,
-      ballSaved: false,
-      finishTrack: false,
-      finishTrackNoCrossingLine: false,
+      flagsAccomplished: 0,
+      finishedTrack: false,
       genericFormSchema: {
         obtainedBonus: false,
+        roundId: "1",
       },
     },
   });
@@ -90,16 +93,25 @@ export const FormChallengeA = () => {
       >
         <FormField
           control={form.control}
-          name="ballContact"
+          name="flagsAccomplished"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ball Contact</FormLabel>
+              <FormLabel>Flags accomplished</FormLabel>
               <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="ml-3"
-                />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value.toString()}
+                  className="flex flex-col"
+                >
+                  {[0, 1, 2, 3, 4].map((value) => (
+                    <FormItem key={value} className="flex items-center gap-3">
+                      <FormControl>
+                        <RadioGroupItem value={value.toString()} />
+                      </FormControl>
+                      <FormLabel className="font-normal">{value}</FormLabel>
+                    </FormItem>
+                  ))}
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,44 +119,10 @@ export const FormChallengeA = () => {
         />
         <FormField
           control={form.control}
-          name="ballSaved"
+          name="finishedTrack"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ball Saved</FormLabel>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="ml-3"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="finishTrack"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Finish Track</FormLabel>
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="ml-3"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="finishTrackNoCrossingLine"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Finish Track No Crossing Line</FormLabel>
+              <FormLabel>Finished Track</FormLabel>
               <FormControl>
                 <Checkbox
                   checked={field.value}
@@ -204,9 +182,22 @@ export const FormChallengeA = () => {
           name="genericFormSchema.roundId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Round Number (1, 2, or 3)</FormLabel>
+              <FormLabel>Round ID</FormLabel>
               <FormControl>
-                <Input type="string" {...field} />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value.toString()}
+                  className="flex flex-col"
+                >
+                  {[1, 2, 3].map((value) => (
+                    <FormItem key={value} className="flex items-center gap-3">
+                      <FormControl>
+                        <RadioGroupItem value={value.toString()} />
+                      </FormControl>
+                      <FormLabel className="font-normal">{value}</FormLabel>
+                    </FormItem>
+                  ))}
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -215,7 +206,7 @@ export const FormChallengeA = () => {
         <FormField
           control={form.control}
           name="genericFormSchema.teamId"
-          render={({ field }) => (
+          render={() => (
             <FormItem>
               <FormLabel>Team</FormLabel>
               <FormControl>

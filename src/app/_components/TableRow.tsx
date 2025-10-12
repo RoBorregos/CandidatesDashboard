@@ -1,6 +1,17 @@
 import React from "react";
 
-const TableRow = ({ team, index }) => {
+type TableRowProps = {
+  team: {
+    nombreEquipo: string;
+    puntajePistaA: number;
+    puntajePistaB: number;
+    puntajePistaC: number;
+    puntajeFinal: number;
+  };
+  index: number;
+};
+
+const TableRow = ({ team, index }: TableRowProps) => {
   return (
     <tr className="border-b border-gray-700 transition-colors hover:bg-gray-800/50">
       <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>

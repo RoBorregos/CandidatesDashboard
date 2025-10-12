@@ -1,7 +1,23 @@
 import React from "react";
-import scoreboard from "../../../public/PastEditions.json";
+import scoreboardJson from "../../../public/PastEditions.json";
 
-const ScoreboardTable = ({ year }) => {
+
+type Team = {
+  nombreEquipo: string;
+  puntajePistaA: number;
+  puntajePistaB: number;
+  puntajePistaC: number;
+  puntajeFinal: number;
+};
+
+type ScoreboardJSON = {
+  [year: string]: Team[];
+};
+
+const scoreboard: Record<string, Team[]> = scoreboardJson;
+
+
+const ScoreboardTable = ({ year }: { year: number }) => {
   // Obtiene los datos del año desde el JSON
   const scoreboardData = scoreboard[year] || [];
 
@@ -27,7 +43,7 @@ const ScoreboardTable = ({ year }) => {
               </tr>
             </thead>
             <tbody>
-              {scoreboardData.map((team, index) => (
+              {scoreboardData.map((team: Team, index: number) => (
                 <tr
                   key={team.nombreEquipo}
                   className="border-b border-gray-700 transition-colors hover:bg-gray-800/50"

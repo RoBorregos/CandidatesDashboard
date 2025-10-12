@@ -1,6 +1,5 @@
-import React from "react";
+// ScoreboardTable.tsx
 import scoreboardJson from "../../../public/PastEditions.json";
-
 
 type Team = {
   nombreEquipo: string;
@@ -10,16 +9,14 @@ type Team = {
   puntajeFinal: number;
 };
 
-type ScoreboardJSON = {
-  [year: string]: Team[];
-};
+const scoreboard: Record<number, Team[]> = scoreboardJson;
 
-const scoreboard: Record<string, Team[]> = scoreboardJson;
+interface ScoreboardTableProps {
+  year: number;
+}
 
-
-const ScoreboardTable = ({ year }: { year: number }) => {
-  // Obtiene los datos del año desde el JSON
-  const scoreboardData = scoreboard[year] || [];
+const ScoreboardTable = ({ year }: ScoreboardTableProps) => {
+  const scoreboardData = scoreboard[year] ?? [];
 
   return (
     <div className="my-10">

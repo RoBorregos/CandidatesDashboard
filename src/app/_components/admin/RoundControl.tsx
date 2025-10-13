@@ -56,10 +56,7 @@ export default function RoundControl({
                     : "border-gray-600 bg-gray-700"
                 }`}
               >
-                <h4 className="mb-2 font-semibold">
-                  {roundNum === 1 ? "🥇" : roundNum === 2 ? "🥈" : "🥉"} Ronda{" "}
-                  {roundNum}
-                </h4>
+                <h4 className="mb-2 font-semibold">Ronda {roundNum}</h4>
                 <p className="mb-3 text-sm">
                   Estado:{" "}
                   {isRevealed
@@ -107,6 +104,7 @@ export default function RoundControl({
             </div>
           </div>
         )}
+        {/* TODO: Make the hide a round button functionals */}
 
         <div className="mt-4 rounded-lg bg-blue-900 p-4">
           <h4 className="mb-2 font-semibold">How it works:</h4>

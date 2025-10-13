@@ -81,11 +81,9 @@ export default function ScheduleControl({
 
   return (
     <div className="space-y-6">
-      {/* Schedule Generation Control */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">Schedule Generation</h3>
 
-        {/* Quick Round Generation */}
         <div className="mb-6">
           <h4 className="mb-3 text-lg font-medium">Quick Generate by Round</h4>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -122,7 +120,6 @@ export default function ScheduleControl({
           </div>
         </div>
 
-        {/* Generate All Rounds */}
         <div className="flex flex-wrap gap-4">
           <button
             onClick={handleRegenerateSchedules}
@@ -226,7 +223,6 @@ export default function ScheduleControl({
         </div>
       </div>
 
-      {/* Schedule Tables Display */}
       {showTables && scheduleTables && scheduleTables.length > 0 && (
         <div className="space-y-6">
           <div className="flex items-center gap-4">

@@ -274,7 +274,6 @@ export const adminRouter = createTRPCRouter({
     });
   }),
 
-  // Toggle team active status
   toggleTeamStatus: adminProcedure
     .input(
       z.object({
@@ -294,11 +293,10 @@ export const adminRouter = createTRPCRouter({
       };
     }),
 
-  // Get current configuration
   getConfig: adminProcedure.query(async ({ ctx }) => {
     try {
       let config = await ctx.db.config.findFirst();
-      
+
       if (!config) {
         config = await ctx.db.config.create({
           data: {
@@ -306,13 +304,12 @@ export const adminRouter = createTRPCRouter({
             competitionStarted: false,
             currentRound: 1,
             roundsRevealed: 0,
-          }
+          },
         });
       }
 
       return config;
     } catch (error) {
-      // If config table doesn't exist, return default config
       console.warn("Config table not found, using default configuration");
       return {
         id: 1,
@@ -322,7 +319,7 @@ export const adminRouter = createTRPCRouter({
         roundsRevealed: 0,
       };
     }
-  }),  // Update configuration with starting times
+  }), // Update configuration with starting times
   updateConfig: adminProcedure
     .input(
       z.object({
@@ -466,17 +463,19 @@ export const adminRouter = createTRPCRouter({
           // Each challenge needs: (teams/3) * 6 minutes + break time
           const timePerChallenge = Math.ceil(activeTeams.length / 3) * 6;
           const breakBetweenChallenges = 1; // 1 minute break between challenges
-          
-          const challengeStartMinutes = challengeIndex === 0 ? 
-            baseStartMinutes : // First challenge starts at base time
-            baseStartMinutes + challengeIndex * (timePerChallenge + breakBetweenChallenges);
+
+          const challengeStartMinutes =
+            challengeIndex === 0
+              ? baseStartMinutes // First challenge starts at base time
+              : baseStartMinutes +
+                challengeIndex * (timePerChallenge + breakBetweenChallenges);
 
           let currentSlotMinutes = challengeStartMinutes;
 
           // Create optimal schedule: 3 teams compete simultaneously (one per pista)
           // Calculate how many time slots we need
           const totalTimeSlots = Math.ceil(activeTeams.length / 3);
-          
+
           for (let slotIndex = 0; slotIndex < totalTimeSlots; slotIndex++) {
             const hour = Math.floor(currentSlotMinutes / 60);
             const minute = currentSlotMinutes % 60;
@@ -494,13 +493,13 @@ export const adminRouter = createTRPCRouter({
               // Round 1: Team starts at pista based on position, then rotates A→B→C
               // Round 2: Team starts at next pista, then rotates B→C→A or C→A→B
               // Round 3: Team starts at next pista, completing the cycle
-              
+
               // Determine the team's base pista assignment (where they start in Round 1)
               const teamBasePista = teamIndex % 3;
-              
+
               // Calculate starting pista for this round (shifts by round number)
               const roundStartPista = (teamBasePista + (round - 1)) % 3;
-              
+
               // Within the round, rotate through challenges
               const finalPistaIndex = (roundStartPista + challengeIndex) % 3;
               const pistaName = pistaNames[finalPistaIndex];
@@ -567,24 +566,34 @@ export const adminRouter = createTRPCRouter({
     for (let round = 1; round <= 3; round++) {
       for (let challengeIndex = 0; challengeIndex < 3; challengeIndex++) {
         const challengeName = challengeNames[challengeIndex];
-        const timeSlots: { time: string; pistaA: string; pistaB: string; pistaC: string }[] = [];
+        const timeSlots: {
+          time: string;
+          pistaA: string;
+          pistaB: string;
+          pistaC: string;
+        }[] = [];
 
         // Group challenges by time for this specific round and challenge
-        const timeMap = new Map<string, { pistaA: string; pistaB: string; pistaC: string }>();
+        const timeMap = new Map<
+          string,
+          { pistaA: string; pistaB: string; pistaC: string }
+        >();
 
         for (const team of activeTeams) {
-          const roundData = team.rounds.find(r => r.number === round);
+          const roundData = team.rounds.find((r) => r.number === round);
           if (!roundData) continue;
 
-          const challenge = roundData.challenges.find(c => 
-            c.name.includes(challengeName ?? "") || c.name.includes(`Challenge ${challengeIndex + 1}`)
+          const challenge = roundData.challenges.find(
+            (c) =>
+              c.name.includes(challengeName ?? "") ||
+              c.name.includes(`Challenge ${challengeIndex + 1}`),
           );
           if (!challenge) continue;
 
           const timeKey = challenge.time.toLocaleTimeString("en-US", {
             hour12: false,
             hour: "2-digit",
-            minute: "2-digit"
+            minute: "2-digit",
           });
 
           if (!timeMap.has(timeKey)) {
@@ -592,7 +601,7 @@ export const adminRouter = createTRPCRouter({
           }
 
           const entry = timeMap.get(timeKey)!;
-          
+
           if (challenge.name.includes("Pista A")) {
             entry.pistaA = team.name;
           } else if (challenge.name.includes("Pista B")) {
@@ -607,7 +616,7 @@ export const adminRouter = createTRPCRouter({
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([time, pistas]) => ({
             time,
-            ...pistas
+            ...pistas,
           }));
 
         tables.push({
@@ -630,21 +639,35 @@ export const adminRouter = createTRPCRouter({
     await ctx.db.team.deleteMany({
       where: {
         name: {
-          in: ["Test Team A", "Test Team B", "Test Team C", "Test Team D", "Test Team E", "Test Team F"]
-        }
-      }
+          in: [
+            "Test Team A",
+            "Test Team B",
+            "Test Team C",
+            "Test Team D",
+            "Test Team E",
+            "Test Team F",
+          ],
+        },
+      },
     });
 
     // Create 6 test teams
     const testTeams = [];
-    const teamNames = ["Test Team A", "Test Team B", "Test Team C", "Test Team D", "Test Team E", "Test Team F"];
-    
+    const teamNames = [
+      "Test Team A",
+      "Test Team B",
+      "Test Team C",
+      "Test Team D",
+      "Test Team E",
+      "Test Team F",
+    ];
+
     for (const name of teamNames) {
       const team = await ctx.db.team.create({
         data: {
           name,
           isActive: true,
-        }
+        },
       });
       testTeams.push(team);
     }
@@ -669,14 +692,16 @@ export const adminRouter = createTRPCRouter({
 
         const timePerChallenge = Math.ceil(testTeams.length / 3) * 6;
         const breakBetweenChallenges = 1;
-        
-        const challengeStartMinutes = challengeIndex === 0 ? 
-          baseStartMinutes :
-          baseStartMinutes + challengeIndex * (timePerChallenge + breakBetweenChallenges);
+
+        const challengeStartMinutes =
+          challengeIndex === 0
+            ? baseStartMinutes
+            : baseStartMinutes +
+              challengeIndex * (timePerChallenge + breakBetweenChallenges);
 
         let currentSlotMinutes = challengeStartMinutes;
         const totalTimeSlots = Math.ceil(testTeams.length / 3);
-        
+
         for (let slotIndex = 0; slotIndex < totalTimeSlots; slotIndex++) {
           const hour = Math.floor(currentSlotMinutes / 60);
           const minute = currentSlotMinutes % 60;
@@ -689,7 +714,6 @@ export const adminRouter = createTRPCRouter({
             const team = testTeams[teamIndex];
             if (!team) continue;
 
-            // Apply systematic pista rotation
             const teamBasePista = teamIndex % 3;
             const roundStartPista = (teamBasePista + (round - 1)) % 3;
             const finalPistaIndex = (roundStartPista + challengeIndex) % 3;
@@ -729,7 +753,8 @@ export const adminRouter = createTRPCRouter({
       message: "Test case executed successfully!",
       teamsCreated: testTeams.length,
       tablesGenerated: 9,
-      rotationPattern: "Each team follows systematic pista rotation across rounds",
+      rotationPattern:
+        "Each team follows systematic pista rotation across rounds",
     };
   }),
 });

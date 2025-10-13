@@ -3,6 +3,7 @@
 import Header from "rbrgs/app/_components/header";
 import { api } from "~/trpc/react";
 
+// make this page public to any user not just contestants.
 export default function SchedulePage() {
   const { data: teams, isLoading } = api.team.getVisibleSchedules.useQuery();
   const { data: config } = api.admin.getConfig.useQuery();
@@ -40,7 +41,6 @@ export default function SchedulePage() {
     );
   }
 
-  // Group teams by round for better display
   const roundData: { [key: number]: any[] } = {};
 
   teams.forEach((team) => {
@@ -76,6 +76,7 @@ export default function SchedulePage() {
                   Ronda {roundNum}
                 </h2>
                 <p className="mt-1 text-center text-blue-100">
+                  {/* delete, users should not see this information*/}
                   {roundData[Number(roundNum)]?.length} equipos programados
                 </p>
               </div>

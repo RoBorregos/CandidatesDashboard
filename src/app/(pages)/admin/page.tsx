@@ -12,13 +12,17 @@ export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<
     "management" | "teams" | "schedule" | "rounds"
   >("management");
-  
-  // Queries
-  const { data: users, refetch: refetchUsers } = api.admin.getAllUsers.useQuery();
-  const { data: teams, refetch: refetchTeams } = api.admin.getAllTeams.useQuery();
-  const { data: pendingRequests, refetch: refetchRequests } = api.admin.getPendingRequests.useQuery();
-  const { data: scheduleTeams, refetch: refetchScheduleTeams } = api.admin.getTeams.useQuery();
-  const { data: config, refetch: refetchConfig } = api.admin.getConfig.useQuery();
+
+  const { data: users, refetch: refetchUsers } =
+    api.admin.getAllUsers.useQuery();
+  const { data: teams, refetch: refetchTeams } =
+    api.admin.getAllTeams.useQuery();
+  const { data: pendingRequests, refetch: refetchRequests } =
+    api.admin.getPendingRequests.useQuery();
+  const { data: scheduleTeams, refetch: refetchScheduleTeams } =
+    api.admin.getTeams.useQuery();
+  const { data: config, refetch: refetchConfig } =
+    api.admin.getConfig.useQuery();
 
   const refetchAll = () => {
     void refetchUsers();
@@ -64,7 +68,6 @@ export default function AdminPage() {
       </div>
 
       <div className="container mx-auto max-w-6xl space-y-6 p-4">
-        {/* Team Management Tab */}
         {selectedTab === "management" && (
           <TeamManagement
             users={users}
@@ -74,7 +77,6 @@ export default function AdminPage() {
           />
         )}
 
-        {/* Teams Status Tab */}
         {selectedTab === "teams" && (
           <TeamStatusManagement
             scheduleTeams={scheduleTeams}
@@ -82,7 +84,6 @@ export default function AdminPage() {
           />
         )}
 
-        {/* Schedule Control Tab */}
         {selectedTab === "schedule" && (
           <ScheduleControl
             activeTeams={activeTeams}
@@ -92,7 +93,6 @@ export default function AdminPage() {
           />
         )}
 
-        {/* Rounds Management Tab */}
         {selectedTab === "rounds" && (
           <RoundControl
             config={config}

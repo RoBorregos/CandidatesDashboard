@@ -37,7 +37,6 @@ export default function TeamManagement({
     Record<string, string>
   >({});
 
-  // Mutations
   const assignUser = api.admin.assignUserToTeam.useMutation({
     onSuccess() {
       toast("User assigned successfully!");
@@ -150,12 +149,9 @@ export default function TeamManagement({
 
   return (
     <>
-      {/* Pending Requests */}
       {pendingRequests && pendingRequests.length > 0 && (
         <div className="rounded-lg bg-yellow-900 p-6">
-          <h3 className="mb-4 text-xl font-semibold">
-            📝 Pending Team Requests
-          </h3>
+          <h3 className="mb-4 text-xl font-semibold">Pending Team Requests</h3>
           <div className="space-y-3">
             {pendingRequests?.map((request) => (
               <div
@@ -187,7 +183,7 @@ export default function TeamManagement({
                     }
                     className="rounded bg-green-600 px-3 py-1 hover:bg-green-700"
                   >
-                    ✅ Approve
+                    Approve
                   </button>
                   <button
                     onClick={() =>
@@ -206,7 +202,7 @@ export default function TeamManagement({
 
       {/* Create Team */}
       <div className="rounded-lg bg-gray-800 p-6">
-        <h3 className="mb-4 text-xl font-semibold">➕ Create New Team</h3>
+        <h3 className="mb-4 text-xl font-semibold">Create New Team</h3>
         <div className="flex gap-4">
           <input
             type="text"
@@ -225,9 +221,8 @@ export default function TeamManagement({
         </div>
       </div>
 
-      {/* Users Without Teams */}
       <div className="rounded-lg bg-gray-800 p-6">
-        <h3 className="mb-4 text-xl font-semibold">👤 Users Without Teams</h3>
+        <h3 className="mb-4 text-xl font-semibold">Users Without Teams</h3>
         <div className="space-y-3">
           {users
             ?.filter((user) => !user.team && user.role !== "ADMIN")
@@ -280,16 +275,15 @@ export default function TeamManagement({
         </div>
       </div>
 
-      {/* Teams Overview */}
       <div className="rounded-lg bg-gray-800 p-6">
-        <h3 className="mb-4 text-xl font-semibold">🏆 Teams Overview</h3>
+        <h3 className="mb-4 text-xl font-semibold">Teams Overview</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {teams?.map((team) => (
             <div key={team.id} className="rounded bg-gray-700 p-4">
               <h4 className="mb-2 font-semibold">{team.name}</h4>
               <p className="mb-2 text-sm text-gray-400">
                 Members: {team._count?.members ?? 0} / 4
-                {team._count?.members >= 4 ? " - Full ✅" : ""}
+                {team._count?.members >= 4 ? " - Full" : ""}
               </p>
               <div className="space-y-2">
                 {team.members?.map((member) => (
@@ -315,7 +309,7 @@ export default function TeamManagement({
                       className="ml-2 rounded bg-red-500 px-2 py-1 text-xs hover:bg-red-600 disabled:opacity-50"
                       title={`Remove ${getDisplayName(member)} from team`}
                     >
-                      {removeUser.isPending ? "..." : "❌"}
+                      {removeUser.isPending ? "..." : "x"}
                     </button>
                   </div>
                 ))}

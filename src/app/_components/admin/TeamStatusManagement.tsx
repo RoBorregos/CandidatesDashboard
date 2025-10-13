@@ -39,7 +39,6 @@ export default function TeamStatusManagement({
 
   return (
     <div className="space-y-6">
-      {/* Active Teams */}
       <div className="rounded-lg bg-gray-900 p-4">
         <h3 className="mb-4 text-lg font-semibold text-green-400">
           Active Teams ({activeTeams.length})
@@ -74,7 +73,6 @@ export default function TeamStatusManagement({
         )}
       </div>
 
-      {/* Inactive Teams */}
       {inactiveTeams.length > 0 && (
         <div className="rounded-lg bg-gray-900 p-4">
           <h3 className="mb-4 text-lg font-semibold text-red-400">
@@ -110,7 +108,7 @@ export default function TeamStatusManagement({
         </div>
       )}
 
-      {/* Actions */}
+      {/* Actions
       <div className="rounded-lg bg-gray-900 p-4">
         <h3 className="mb-4 text-lg font-semibold text-yellow-400">
           Team Actions
@@ -133,7 +131,7 @@ export default function TeamStatusManagement({
         <p className="mt-2 text-sm text-gray-400">
           This will optimize schedules based only on currently active teams
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }

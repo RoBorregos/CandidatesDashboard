@@ -23,17 +23,6 @@ export default function TeamStatusManagement({
     },
   });
 
-  const regenerateSchedules = api.admin.regenerateSchedules.useMutation({
-    onSuccess(data) {
-      toast(`Schedules regenerated for ${data.teamsScheduled} teams!`);
-      refetchScheduleTeams();
-    },
-    onError(error) {
-      toast("Error regenerating schedules");
-      console.error(error);
-    },
-  });
-
   const activeTeams = scheduleTeams?.filter((team) => team.isActive) ?? [];
   const inactiveTeams = scheduleTeams?.filter((team) => !team.isActive) ?? [];
 
@@ -61,11 +50,11 @@ export default function TeamStatusManagement({
                     disabled={toggleTeamStatus.isPending}
                     className="rounded bg-red-600 px-2 py-1 text-xs hover:bg-red-700 disabled:opacity-50"
                   >
-                    🚫 Desactivar
+                    Deactivate
                   </button>
                 </div>
                 <p className="text-sm text-gray-400">
-                  Miembros: {team.members?.length ?? 0}
+                  Members: {team.members?.length ?? 0}
                 </p>
               </div>
             ))}
@@ -96,42 +85,17 @@ export default function TeamStatusManagement({
                     disabled={toggleTeamStatus.isPending}
                     className="rounded bg-green-600 px-2 py-1 text-xs hover:bg-green-700 disabled:opacity-50"
                   >
-                    ✅ Activar
+                    Activate
                   </button>
                 </div>
                 <p className="text-sm text-gray-400">
-                  Miembros: {team.members?.length ?? 0}
+                  Members: {team.members?.length ?? 0}
                 </p>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Actions
-      <div className="rounded-lg bg-gray-900 p-4">
-        <h3 className="mb-4 text-lg font-semibold text-yellow-400">
-          Team Actions
-        </h3>
-        <button
-          onClick={() =>
-            regenerateSchedules.mutate({
-              round1StartTime: "08:30",
-              round2StartTime: "12:30",
-              round3StartTime: "16:30",
-            })
-          }
-          disabled={regenerateSchedules.isPending}
-          className="rounded bg-yellow-600 px-4 py-2 font-medium text-white hover:bg-yellow-700 disabled:opacity-50"
-        >
-          {regenerateSchedules.isPending
-            ? "Regenerating..."
-            : "Regenerate Schedules (Active Only)"}
-        </button>
-        <p className="mt-2 text-sm text-gray-400">
-          This will optimize schedules based only on currently active teams
-        </p>
-      </div> */}
     </div>
   );
 }

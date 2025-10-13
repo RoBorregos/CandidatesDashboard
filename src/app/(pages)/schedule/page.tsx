@@ -3,7 +3,6 @@
 import Header from "rbrgs/app/_components/header";
 import { api } from "~/trpc/react";
 
-// make this page public to any user not just contestants.
 export default function SchedulePage() {
   const { data: teams, isLoading } = api.team.getVisibleSchedules.useQuery();
   const { data: config } = api.admin.getConfig.useQuery();
@@ -12,7 +11,7 @@ export default function SchedulePage() {
     return (
       <main className="mt-[4rem] min-h-screen bg-black text-white">
         <div className="md:pb-10">
-          <Header title="Horarios" subtitle="Cargando horarios..." />
+          <Header title="Schedules" subtitle="Loading schedules..." />
         </div>
         <div className="flex h-64 items-center justify-center">
           <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-roboblue"></div>
@@ -25,15 +24,15 @@ export default function SchedulePage() {
     return (
       <main className="mt-[4rem] min-h-screen bg-black text-white">
         <div className="md:pb-10">
-          <Header title="Horarios" subtitle="No hay horarios disponibles aún" />
+          <Header title="Schedules" subtitle="No schedules available yet" />
         </div>
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <p className="text-xl text-gray-400">
-              Los horarios se revelarán próximamente
+              Schedules will be revealed soon
             </p>
             <p className="mt-2 text-sm text-gray-500">
-              Rondas reveladas: {config?.roundsRevealed ?? 0}/3
+              Rounds revealed: {config?.roundsRevealed ?? 0}/3
             </p>
           </div>
         </div>
@@ -61,8 +60,8 @@ export default function SchedulePage() {
     <main className="mt-[4rem] min-h-screen bg-black text-white">
       <div className="md:pb-10">
         <Header
-          title="Horarios de Competencia"
-          subtitle={`Rondas reveladas: ${config?.roundsRevealed ?? 0}/3`}
+          title="Competition Schedules"
+          subtitle={`Rounds revealed: ${config?.roundsRevealed ?? 0}/3`}
         />
       </div>
 
@@ -73,22 +72,18 @@ export default function SchedulePage() {
             <div key={roundNum} className="mb-12">
               <div className="mb-6 rounded-lg bg-gradient-to-r from-roboblue to-blue-600 p-4">
                 <h2 className="text-center text-2xl font-bold">
-                  Ronda {roundNum}
+                  Round {roundNum}
                 </h2>
-                <p className="mt-1 text-center text-blue-100">
-                  {/* delete, users should not see this information*/}
-                  {roundData[Number(roundNum)]?.length} equipos programados
-                </p>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full overflow-hidden rounded-lg bg-gray-900">
                   <thead>
                     <tr className="bg-gray-800">
-                      <th className="p-4 text-left font-semibold">Equipo</th>
-                      <th className="p-4 text-left font-semibold">Pista A</th>
-                      <th className="p-4 text-left font-semibold">Pista B</th>
-                      <th className="p-4 text-left font-semibold">Pista C</th>
+                      <th className="p-4 text-left font-semibold">Team</th>
+                      <th className="p-4 text-left font-semibold">Track A</th>
+                      <th className="p-4 text-left font-semibold">Track B</th>
+                      <th className="p-4 text-left font-semibold">Track C</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -129,40 +124,34 @@ export default function SchedulePage() {
 
         {Object.keys(roundData).length === 0 && (
           <div className="py-12 text-center">
-            <div className="mb-4 text-6xl">📅</div>
-            <h3 className="mb-2 text-xl font-semibold">
-              No hay rondas disponibles
-            </h3>
+            <h3 className="mb-2 text-xl font-semibold">No rounds available</h3>
             <p className="text-gray-400">
-              Los horarios se publicarán conforme avance la competencia
+              Schedules will be published as the competition progresses
             </p>
           </div>
         )}
 
-        {/* Legend */}
         <div className="mt-8 rounded-lg bg-gray-900 p-6">
           <h3 className="mb-4 text-lg font-semibold text-roboblue">
-            Información Importante
+            Important Information
           </h3>
           <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <div>
-              <h4 className="mb-2 font-semibold text-white">
-                Formato del Evento:
-              </h4>
+              <h4 className="mb-2 font-semibold text-white">Event Format:</h4>
               <ul className="space-y-1 text-gray-300">
-                <li>• 3 rondas de competencia</li>
-                <li>• 3 pistas por ronda (A, B, C)</li>
-                <li>• Cada equipo pasa por las 3 pistas</li>
-                <li>• 5 minutos por pista</li>
+                <li>3 competition rounds</li>
+                <li>3 tracks per round (A, B, C)</li>
+                <li>Each team goes through all 3 tracks</li>
+                <li>5 minutes per track</li>
               </ul>
             </div>
             <div>
-              <h4 className="mb-2 font-semibold text-white">Instrucciones:</h4>
+              <h4 className="mb-2 font-semibold text-white">Instructions:</h4>
               <ul className="space-y-1 text-gray-300">
-                <li>• Lleguen 5 minutos antes de su horario</li>
-                <li>• Los horarios pueden ajustarse según disponibilidad</li>
-                <li>• Solo se muestran las rondas actualmente disponibles</li>
-                <li>• Revisen regularmente para actualizaciones</li>
+                <li>Arrive 5 minutes before your scheduled time</li>
+                <li>Schedules may be adjusted based on availability</li>
+                <li>Only currently available rounds are shown</li>
+                <li>Check regularly for updates</li>
               </ul>
             </div>
           </div>

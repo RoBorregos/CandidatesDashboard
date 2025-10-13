@@ -93,7 +93,6 @@ export default function TeamManagement({
     },
   });
 
-  // Helper functions
   const getDisplayName = (user: UserDisplay) => user.name ?? user.email;
 
   const isTeamFull = (teamName: string) => {

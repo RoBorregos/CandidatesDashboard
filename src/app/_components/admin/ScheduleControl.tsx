@@ -15,7 +15,6 @@ export default function ScheduleControl({
   activeTeams,
   config,
   refetchScheduleTeams,
-  refetchConfig,
 }: ScheduleControlProps) {
   const [round1StartTime, setRound1StartTime] = useState("08:30");
   const [round2StartTime, setRound2StartTime] = useState("12:30");
@@ -55,6 +54,21 @@ export default function ScheduleControl({
     },
   });
 
+  const generateSingleRound = api.admin.generateSingleRound.useMutation({
+    onSuccess(data) {
+      toast(
+        `Round ${data.roundNumber} generated! ${data.teamsScheduled} teams scheduled, ${data.tablesGenerated} tables created`,
+      );
+      refetchScheduleTeams();
+      setShowTables(true);
+      refetchTables();
+    },
+    onError(error) {
+      toast("Error generating single round");
+      console.error(error);
+    },
+  });
+
   const handleRegenerateSchedules = () => {
     regenerateSchedules.mutate({
       round1StartTime,
@@ -70,13 +84,11 @@ export default function ScheduleControl({
         : round === 2
           ? round2StartTime
           : round3StartTime;
-    const roundTimes = {
-      round1StartTime: round === 1 ? startTime : "08:30",
-      round2StartTime: round === 2 ? startTime : "12:30",
-      round3StartTime: round === 3 ? startTime : "16:30",
-    };
 
-    regenerateSchedules.mutate(roundTimes);
+    generateSingleRound.mutate({
+      roundNumber: round,
+      startTime: startTime,
+    });
   };
 
   return (
@@ -94,25 +106,37 @@ export default function ScheduleControl({
                   : round === 2
                     ? round2StartTime
                     : round3StartTime;
+
               return (
                 <div key={round} className="rounded-lg bg-gray-700 p-4">
                   <h5 className="mb-2 font-medium">Round {round}</h5>
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => {
-                      if (round === 1) setRound1StartTime(e.target.value);
-                      else if (round === 2) setRound2StartTime(e.target.value);
-                      else setRound3StartTime(e.target.value);
-                    }}
-                    className="mb-3 w-full rounded border border-gray-600 bg-gray-600 p-2"
-                  />
+                  <div className="mb-2">
+                    <label className="text-xs text-gray-400">
+                      Start Time (24h format)
+                    </label>
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        if (round === 1) setRound1StartTime(e.target.value);
+                        else if (round === 2)
+                          setRound2StartTime(e.target.value);
+                        else setRound3StartTime(e.target.value);
+                      }}
+                      className="mb-1 w-full rounded border border-gray-600 bg-gray-600 p-2"
+                    />
+                  </div>
                   <button
                     onClick={() => handleGenerateForRound(round)}
-                    disabled={regenerateSchedules.isPending}
+                    disabled={
+                      generateSingleRound.isPending || activeTeams.length === 0
+                    }
                     className="w-full rounded bg-blue-600 px-3 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Generate Round {round}
+                    {generateSingleRound.isPending &&
+                    generateSingleRound.variables?.roundNumber === round
+                      ? "Generating..."
+                      : `Generate Round ${round}`}
                   </button>
                 </div>
               );
@@ -158,12 +182,12 @@ export default function ScheduleControl({
           </h4>
           <ul className="space-y-1 text-sm text-gray-300">
             <li>
-              • <strong>9 Tables Total:</strong> 3 challenges per round × 3
+              • <strong>9 Tables Total:</strong> 3 challenges per round x 3
               rounds = 9 schedule tables
             </li>
             <li>
               • <strong>Simultaneous Competition:</strong> 3 teams compete at
-              the same time (one per pista)
+              the same time
             </li>
             <li>
               • <strong>Systematic Rotation:</strong> Each team follows a

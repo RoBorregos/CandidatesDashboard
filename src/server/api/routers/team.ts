@@ -2,7 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@prisma/client";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 
 export const teamRouter = createTRPCRouter({
   getTeam: protectedProcedure.query(async ({ ctx }) => {
@@ -23,9 +27,16 @@ export const teamRouter = createTRPCRouter({
       include: {
         members: true,
         rounds: {
+          where: {
+            isVisible: true, // Only include visible rounds
+          },
           select: {
             number: true,
             challenges: true,
+            isVisible: true,
+          },
+          orderBy: {
+            number: "asc",
           },
         },
         challengeA: true,
@@ -183,8 +194,42 @@ export const teamRouter = createTRPCRouter({
 
     return { success: true };
   }),
+
+  // Get visible schedules for all active teams (public access)
+  getVisibleSchedules: publicProcedure.query(async ({ ctx }) => {
+    const teams = await ctx.db.team.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        rounds: {
+          where: {
+            isVisible: true,
+          },
+          include: {
+            challenges: true,
+          },
+          orderBy: {
+            number: "asc",
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return teams;
+  }),
 });
 
+// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
+
+// // export result type o fpromisse
+// export typeof { TeamType };
+// export
 export type TeamType =
   ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
     ? T

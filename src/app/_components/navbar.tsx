@@ -28,8 +28,10 @@ export default async function Navbar() {
         {canJudge && <Link href="judge">Judge</Link>}
         {session?.user.role === Role.ADMIN && <Link href="admin">Admin</Link>}
         <Link href="https://www.roborregos.com">About us</Link>
+        
       </div>
       <div className="hidden lg:block">
+
         <SignInButton session={session} />
       </div>
       <NavDropdown session={session} />

@@ -79,7 +79,7 @@ export default async function Home() {
             <p className="m-[1rem] text-justify font-archivo text-white">
               The classic line follower returns with a twist. Teams pick their
               difficulty by choosing track modules and taking the riskier path
-              to the end if they're looking to win!
+              to the end if they&apos; re looking to win!
             </p>
           </div>
           <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">

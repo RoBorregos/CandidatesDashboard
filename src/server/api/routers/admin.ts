@@ -194,60 +194,60 @@ export const adminRouter = createTRPCRouter({
     parser.on("end", function () {
       void (async () => {
         for (const row of records) {
-        // Create 3 rounds
+          // Create 3 rounds
 
-        const teamObject = await ctx.db.team.findFirst({
-          where: {
-            name: row[0]?.trim() ?? "",
-          },
-        });
-
-        await ctx.db.round.deleteMany({
-          where: {
-            teamId: teamObject?.id,
-          },
-        });
-
-        await ctx.db.round.create({
-          data: {
-            teamId: teamObject?.id,
-            number: 1,
-            challenges: {
-              create: [
-                { name: "Pista A", time: ComputeDate({ date: row[1] }) },
-                { name: "Pista B", time: ComputeDate({ date: row[2] }) },
-                { name: "Pista C", time: ComputeDate({ date: row[3] }) },
-              ],
+          const teamObject = await ctx.db.team.findFirst({
+            where: {
+              name: row[0]?.trim() ?? "",
             },
-          },
-        });
+          });
 
-        await ctx.db.round.create({
-          data: {
-            teamId: teamObject?.id,
-            number: 2,
-            challenges: {
-              create: [
-                { name: "Pista A", time: ComputeDate({ date: row[4] }) },
-                { name: "Pista B", time: ComputeDate({ date: row[5] }) },
-                { name: "Pista C", time: ComputeDate({ date: row[6] }) },
-              ],
+          await ctx.db.round.deleteMany({
+            where: {
+              teamId: teamObject?.id,
             },
-          },
-        });
-        await ctx.db.round.create({
-          data: {
-            teamId: teamObject?.id,
-            number: 3,
-            challenges: {
-              create: [
-                { name: "Pista A", time: ComputeDate({ date: row[7] }) },
-                { name: "Pista B", time: ComputeDate({ date: row[8] }) },
-                { name: "Pista C", time: ComputeDate({ date: row[9] }) },
-              ],
+          });
+
+          await ctx.db.round.create({
+            data: {
+              teamId: teamObject?.id,
+              number: 1,
+              challenges: {
+                create: [
+                  { name: "Pista A", time: ComputeDate({ date: row[1] }) },
+                  { name: "Pista B", time: ComputeDate({ date: row[2] }) },
+                  { name: "Pista C", time: ComputeDate({ date: row[3] }) },
+                ],
+              },
             },
-          },
-        });
+          });
+
+          await ctx.db.round.create({
+            data: {
+              teamId: teamObject?.id,
+              number: 2,
+              challenges: {
+                create: [
+                  { name: "Pista A", time: ComputeDate({ date: row[4] }) },
+                  { name: "Pista B", time: ComputeDate({ date: row[5] }) },
+                  { name: "Pista C", time: ComputeDate({ date: row[6] }) },
+                ],
+              },
+            },
+          });
+          await ctx.db.round.create({
+            data: {
+              teamId: teamObject?.id,
+              number: 3,
+              challenges: {
+                create: [
+                  { name: "Pista A", time: ComputeDate({ date: row[7] }) },
+                  { name: "Pista B", time: ComputeDate({ date: row[8] }) },
+                  { name: "Pista C", time: ComputeDate({ date: row[9] }) },
+                ],
+              },
+            },
+          });
         }
       })();
     });
@@ -329,7 +329,7 @@ export const adminRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      // review mutation
+      // TODO: review mutation
       return { success: true, config: input };
     }),
 
@@ -371,9 +371,9 @@ export const adminRouter = createTRPCRouter({
             .findMany({
               where: { isVisible: true },
               select: { number: true },
-              distinct: ['number'],
+              distinct: ["number"],
             })
-            .then(rounds => rounds.length);
+            .then((rounds) => rounds.length);
 
           const hasAnyVisible = visibleRoundsCount > 0;
 
@@ -973,10 +973,6 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
   const timeParts = date.split(":");
   const hour = parseInt(timeParts[0] ?? "0");
   const minute = timeParts[1];
-
-  // if (hour < 8) {
-  //   hour += 12;
-  // }
 
   const d = new Date();
   d.setHours(hour);

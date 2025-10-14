@@ -1,6 +1,6 @@
 "use client";
 
-import Header from "rbrgs/app/_components/header";
+import Header from "~/app/_components/header";
 import { api } from "~/trpc/react";
 
 export default function SchedulePage() {

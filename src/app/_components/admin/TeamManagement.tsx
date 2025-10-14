@@ -197,7 +197,7 @@ export default function TeamManagement({
                     }
                     className="rounded bg-red-600 px-3 py-1 hover:bg-red-700"
                   >
-                    ❌ Reject
+                    Reject
                   </button>
                 </div>
               </div>
@@ -206,7 +206,6 @@ export default function TeamManagement({
         </div>
       )}
 
-      {/* Create Team */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">Create New Team</h3>
         <div className="flex gap-4">

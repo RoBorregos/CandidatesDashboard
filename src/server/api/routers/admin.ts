@@ -309,7 +309,7 @@ export const adminRouter = createTRPCRouter({
       }
 
       return config;
-    } catch (error) {
+    } catch {
       console.warn("Config table not found, using default configuration");
       return {
         id: 1,
@@ -967,7 +967,7 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
   }
 
   const timeParts = date.split(":");
-  let hour = parseInt(timeParts[0] ?? "0");
+  const hour = parseInt(timeParts[0] ?? "0");
   const minute = timeParts[1];
 
   // if (hour < 8) {

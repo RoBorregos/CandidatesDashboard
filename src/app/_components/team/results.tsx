@@ -93,7 +93,6 @@ const RoundResults = ({
                 Track Points: {challenge.trackPoints}
                 <br />
                 Patterns Passed:
-                {" " + challenge.patternsPassed.join(", ") || "None"}
                 <br />
                 {challenge.patternsPassed.length === 0 && (
                   <span>No patterns were crossed</span>

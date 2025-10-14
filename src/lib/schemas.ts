@@ -41,7 +41,7 @@ export const challengeBSchema = z.object({
   //   .min(0, { message: "Los puntos tienen que ser mayor o igual a 0" })
   //   .max(170, { message: "Los puntos tienen que ser menor o igual a 170" }),
 
-  trackPoints: z.object({
+  trackData: z.object({
     trackPoints: z.coerce
       .number()
       .int()

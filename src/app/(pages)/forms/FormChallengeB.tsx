@@ -23,20 +23,16 @@ import { Input } from "rbrgs/app/_components/shadcn/ui/input";
 import Select from "react-select";
 import { api } from "~/trpc/react";
 import { PatternGrid } from "rbrgs/app/_components/pattern";
-import { useState } from "react";
-import { Pattern } from "@prisma/client";
 
 type FormData = z.infer<typeof challengeBSchema>;
 export type FormControlA = Control<FormData>;
 
 export const FormChallengeB = () => {
-  const [trackPoints, setTrackPoints] = useState(0);
-  const [patterns, setPatterns] = useState<Pattern[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(challengeBSchema),
     defaultValues: {
-      trackPoints: {
+      trackData: {
         trackPoints: 0,
         patternsPassed: [],
       },
@@ -99,7 +95,7 @@ export const FormChallengeB = () => {
       >
         <FormField
           control={form.control}
-          name="trackPoints"
+          name="trackData"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Track Points</FormLabel>

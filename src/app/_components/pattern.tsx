@@ -29,7 +29,7 @@ export const patternData: Array<{
     { id: Pattern.BONUS, src: "/images/challengeB/Bonus.png", alt: "Pattern Bonus", points: 50 },
 ];
 
-type TrackPointsField = {
+type TrackDataField = {
   trackPoints: number;
   patternsPassed: Pattern[];
 };
@@ -45,7 +45,7 @@ export default function PatternB({
   id: Pattern;
   patterns: Pattern[];
   trackPoints: number;
-  onChange: (field: TrackPointsField) => void;
+  onChange: (field: TrackDataField) => void;
   increment: number;
   src: string;
 }) {
@@ -131,7 +131,7 @@ export function PatternGrid({
 }: {
   patterns: Array<Pattern>;
   trackPoints: number;
-  onChange: (field: TrackPointsField) => void;
+  onChange: (field: TrackDataField) => void;
 }) {
   return (
     <div>

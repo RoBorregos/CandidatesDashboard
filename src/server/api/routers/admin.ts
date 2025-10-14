@@ -367,9 +367,13 @@ export const adminRouter = createTRPCRouter({
             });
           }
 
-          const visibleRoundsCount = await ctx.db.round.count({
-            where: { isVisible: true },
-          });
+          const visibleRoundsCount = await ctx.db.round
+            .findMany({
+              where: { isVisible: true },
+              select: { number: true },
+              distinct: ['number'],
+            })
+            .then(rounds => rounds.length);
 
           const hasAnyVisible = visibleRoundsCount > 0;
 

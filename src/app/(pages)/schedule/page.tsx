@@ -5,7 +5,12 @@ import { api } from "~/trpc/react";
 
 export default function SchedulePage() {
   const { data: teams, isLoading } = api.team.getVisibleSchedules.useQuery();
-  const { data: config } = api.admin.getConfig.useQuery();
+
+  // gets the count of unique round numbers across all teams
+  const roundsRevealed = teams
+    ? new Set(teams.flatMap((team) => team.rounds.map((round) => round.number)))
+        .size
+    : 0;
 
   if (isLoading) {
     return (
@@ -32,7 +37,7 @@ export default function SchedulePage() {
               Schedules will be revealed soon
             </p>
             <p className="mt-2 text-sm text-gray-500">
-              Rounds revealed: {config?.roundsRevealed ?? 0}/3
+              Rounds revealed: {roundsRevealed}/3
             </p>
           </div>
         </div>
@@ -69,7 +74,7 @@ export default function SchedulePage() {
       <div className="md:pb-10">
         <Header
           title="Competition Schedules"
-          subtitle={`Rounds revealed: ${config?.roundsRevealed ?? 0}/3`}
+          subtitle={`Rounds revealed: ${roundsRevealed}/3`}
         />
       </div>
 

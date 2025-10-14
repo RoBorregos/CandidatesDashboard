@@ -112,21 +112,96 @@ export default function SchedulePage() {
                           <td className="p-4 font-medium text-roboblue">
                             {teamData.teamName}
                           </td>
-                          {teamData.challenges.map((challenge) => (
-                            <td key={challenge.name} className="p-4">
-                              <div className="flex flex-col">
-                                <span className="font-semibold">
-                                  {challenge.time.toLocaleTimeString("es-ES", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {challenge.name}
-                                </span>
-                              </div>
-                            </td>
-                          ))}
+                          <td className="p-4">
+                            {(() => {
+                              const trackAChallenge = teamData.challenges.find(
+                                (c) =>
+                                  c.name.includes("Track A") ||
+                                  c.name.includes("Pista A"),
+                              );
+                              return trackAChallenge ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold">
+                                    {trackAChallenge.time.toLocaleTimeString(
+                                      "es-ES",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {trackAChallenge.name.replace(
+                                      "Pista",
+                                      "Track",
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              );
+                            })()}
+                          </td>
+                          <td className="p-4">
+                            {(() => {
+                              const trackBChallenge = teamData.challenges.find(
+                                (c) =>
+                                  c.name.includes("Track B") ||
+                                  c.name.includes("Pista B"),
+                              );
+                              return trackBChallenge ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold">
+                                    {trackBChallenge.time.toLocaleTimeString(
+                                      "es-ES",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {trackBChallenge.name.replace(
+                                      "Pista",
+                                      "Track",
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              );
+                            })()}
+                          </td>
+                          <td className="p-4">
+                            {(() => {
+                              const trackCChallenge = teamData.challenges.find(
+                                (c) =>
+                                  c.name.includes("Track C") ||
+                                  c.name.includes("Pista C"),
+                              );
+                              return trackCChallenge ? (
+                                <div className="flex flex-col">
+                                  <span className="font-semibold">
+                                    {trackCChallenge.time.toLocaleTimeString(
+                                      "es-ES",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {trackCChallenge.name.replace(
+                                      "Pista",
+                                      "Track",
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              );
+                            })()}
+                          </td>
                         </tr>
                       ))}
                   </tbody>

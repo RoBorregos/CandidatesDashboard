@@ -28,7 +28,7 @@ export const teamRouter = createTRPCRouter({
         members: true,
         rounds: {
           where: {
-            isVisible: true, // Only include visible rounds
+            isVisible: true,
           },
           select: {
             number: true,
@@ -225,11 +225,6 @@ export const teamRouter = createTRPCRouter({
   }),
 });
 
-// type TeamType = ReturnType<typeof teamRouter._def.procedures.getTeam>;
-
-// // export result type o fpromisse
-// export typeof { TeamType };
-// export
 export type TeamType =
   ReturnType<typeof teamRouter._def.procedures.getTeam> extends Promise<infer T>
     ? T

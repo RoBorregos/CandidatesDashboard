@@ -40,7 +40,15 @@ export default function SchedulePage() {
     );
   }
 
-  const roundData: { [key: number]: any[] } = {};
+  interface TeamRoundData {
+    teamName: string;
+    challenges: Array<{
+      name: string;
+      time: Date;
+    }>;
+  }
+
+  const roundData: Record<number, TeamRoundData[]> = {};
 
   teams.forEach((team) => {
     team.rounds.forEach((round) => {
@@ -99,7 +107,7 @@ export default function SchedulePage() {
                           <td className="p-4 font-medium text-roboblue">
                             {teamData.teamName}
                           </td>
-                          {teamData.challenges.map((challenge: any) => (
+                          {teamData.challenges.map((challenge) => (
                             <td key={challenge.name} className="p-4">
                               <div className="flex flex-col">
                                 <span className="font-semibold">

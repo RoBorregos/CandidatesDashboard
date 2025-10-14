@@ -3,9 +3,20 @@
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 
+interface Config {
+  roundsRevealed?: number;
+  competitionStarted?: boolean;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  isActive?: boolean;
+}
+
 interface RoundControlProps {
-  config?: any;
-  teams?: any[];
+  config?: Config;
+  teams?: Team[];
   refetchConfig: () => void;
 }
 
@@ -29,8 +40,8 @@ export default function RoundControl({
       );
 
       setTimeout(() => {
-        refetchConfig();
-        refetchRoundVisibility();
+        void refetchConfig();
+        void refetchRoundVisibility();
       }, 100);
     },
     onError(error) {
@@ -39,7 +50,7 @@ export default function RoundControl({
       console.error("Toggle error:", error);
 
       setTimeout(() => {
-        refetchRoundVisibility();
+        void refetchRoundVisibility();
       }, 500);
     },
   });
@@ -49,8 +60,8 @@ export default function RoundControl({
       toast.success(`Round ${data.roundNumber} revealed!`);
 
       setTimeout(() => {
-        refetchConfig();
-        refetchRoundVisibility();
+        void refetchConfig();
+        void refetchRoundVisibility();
       }, 100);
     },
     onError(error) {
@@ -59,7 +70,7 @@ export default function RoundControl({
       console.error("Reveal error:", error);
 
       setTimeout(() => {
-        refetchRoundVisibility();
+        void refetchRoundVisibility();
       }, 500);
     },
   });

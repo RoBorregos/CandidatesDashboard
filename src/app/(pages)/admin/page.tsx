@@ -54,7 +54,11 @@ export default function AdminPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSelectedTab(tab.id as any)}
+              onClick={() =>
+                setSelectedTab(
+                  tab.id as "management" | "teams" | "schedule" | "rounds",
+                )
+              }
               className={`border-b-2 px-1 py-2 text-sm font-medium ${
                 selectedTab === tab.id
                   ? "border-roboblue text-roboblue"

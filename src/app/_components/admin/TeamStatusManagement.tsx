@@ -3,8 +3,15 @@
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 
+interface ScheduleTeam {
+  id: string;
+  name: string;
+  isActive: boolean;
+  members?: Array<{ id: string; name: string | null; email: string | null }>;
+}
+
 interface TeamStatusManagementProps {
-  scheduleTeams?: any[];
+  scheduleTeams?: ScheduleTeam[];
   refetchScheduleTeams: () => void;
 }
 

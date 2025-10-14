@@ -19,10 +19,17 @@ type TeamDisplay = {
   members: UserDisplay[];
 };
 
+interface PendingRequest {
+  id: string;
+  user: UserDisplay;
+  requestedTeam: string;
+  message?: string | null;
+}
+
 interface TeamManagementProps {
   users?: UserDisplay[];
   teams?: TeamDisplay[];
-  pendingRequests?: any[];
+  pendingRequests?: PendingRequest[];
   refetchAll: () => void;
 }
 

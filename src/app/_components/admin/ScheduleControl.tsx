@@ -4,9 +4,21 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
 
+interface Team {
+  id: string;
+  name: string;
+  isActive: boolean;
+  members?: Array<{ id: string; name: string | null; email: string | null }>;
+}
+
+interface Config {
+  roundsRevealed?: number;
+  competitionStarted?: boolean;
+}
+
 interface ScheduleControlProps {
-  activeTeams: any[];
-  config?: any;
+  activeTeams: Team[];
+  config?: Config;
   refetchScheduleTeams: () => void;
   refetchConfig: () => void;
 }
@@ -27,7 +39,7 @@ export default function ScheduleControl({
       toast(
         `Generated ${data.tablesGenerated} schedule tables for ${data.teamsScheduled} teams!`,
       );
-      refetchScheduleTeams();
+      void refetchScheduleTeams();
       setShowTables(true);
     },
     onError(error) {
@@ -44,9 +56,9 @@ export default function ScheduleControl({
       toast(
         `${data.message} - ${data.teamsCreated} teams, ${data.tablesGenerated} tables generated`,
       );
-      refetchScheduleTeams();
+      void refetchScheduleTeams();
       setShowTables(true);
-      refetchTables();
+      void refetchTables();
     },
     onError(error) {
       toast("Error running test case");
@@ -59,9 +71,9 @@ export default function ScheduleControl({
       toast(
         `Round ${data.roundNumber} generated! ${data.teamsScheduled} teams scheduled, ${data.tablesGenerated} tables created`,
       );
-      refetchScheduleTeams();
+      void refetchScheduleTeams();
       setShowTables(true);
-      refetchTables();
+      void refetchTables();
     },
     onError(error) {
       toast("Error generating single round");
@@ -167,7 +179,7 @@ export default function ScheduleControl({
             <button
               onClick={() => {
                 setShowTables(!showTables);
-                if (!showTables) refetchTables();
+                if (!showTables) void refetchTables();
               }}
               className="rounded bg-blue-600 px-6 py-2 hover:bg-blue-700"
             >
@@ -211,13 +223,13 @@ export default function ScheduleControl({
         <div className="mt-4 rounded-lg bg-blue-900 p-4">
           <h4 className="mb-2 font-semibold">Test Case Instructions:</h4>
           <ol className="space-y-1 text-sm text-blue-200">
-            <li>1. Click "Run Test Case (6 Teams)" to create 6 sample teams</li>
+            <li>1. Click &quot;Run Test Case (6 Teams)&quot; to create 6 sample teams</li>
             <li>
               2. The system will automatically generate all 9 tables with
               systematic rotation
             </li>
             <li>
-              3. Click "Show Schedule Tables" to view the generated schedules
+              3. Click &quot;Show Schedule Tables&quot; to view the generated schedules
             </li>
             <li>
               4. Verify that teams follow the rotation pattern across rounds

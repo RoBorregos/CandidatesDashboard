@@ -9,7 +9,7 @@ export default function Header({
   subtitle?: string;
 }) {
   return (
-    <div className="relative flex h-full flex-col items-center justify-center overflow-hidden p-10 lg:py-20">
+    <div className="relative isolate flex h-80 w-full flex-col items-center justify-center overflow-hidden lg:my-20">
       <div className="z-10 text-center">
         <h1 className="pb-4 font-jersey_25 text-6xl leading-none text-roboblue lg:text-[7vw]">
           {title}
@@ -18,13 +18,14 @@ export default function Header({
           {subtitle}
         </p>
       </div>
-      <div className="-z-11 absolute left-1/2 top-1/2 h-full max-h-full -translate-x-1/2 -translate-y-1/2 transform pt-[3rem]">
-        <Image
-          src={robologo}
-          alt=""
-          className="h-auto max-h-full w-[40vw] max-w-[20rem] object-contain opacity-20"
-        />
-      </div>
+      <Image
+        src={robologo}
+        alt="RoBorregos logo"
+        fill
+        sizes="100vw"
+        className="pointer-events-none z-0 select-none object-contain object-center px-10 opacity-20"
+        priority
+      />
     </div>
   );
 }

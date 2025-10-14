@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { parse } from "csv-parse";
 import fs from "fs";
@@ -254,7 +252,6 @@ export const adminRouter = createTRPCRouter({
     return "Finished";
   }),
 
-  // Get all teams with their status
   getTeams: adminProcedure.query(async ({ ctx }) => {
     return await ctx.db.team.findMany({
       include: {
@@ -319,7 +316,7 @@ export const adminRouter = createTRPCRouter({
         roundsRevealed: 0,
       };
     }
-  }), // Update configuration with starting times
+  }),
   updateConfig: adminProcedure
     .input(
       z.object({
@@ -329,89 +326,177 @@ export const adminRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // For now, just return success - will work after migration
+      // review mutation
       return { success: true, config: input };
     }),
 
-  // Reveal next round
-  revealNextRound: adminProcedure.mutation(async ({ ctx }) => {
-    // Get current configuration or create default
-    let config = await ctx.db.config.findFirst();
+  toggleRoundVisibility: adminProcedure
+    .input(
+      z.object({
+        roundNumber: z.number().min(1).max(3),
+        isVisible: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      console.log(
+        `Toggling round ${input.roundNumber} to ${input.isVisible ? "visible" : "hidden"}`,
+      );
 
-    if (!config) {
-      config = await ctx.db.config.create({
-        data: {
-          id: 1,
-          freeze: true,
-          competitionStarted: false,
-          currentRound: 1,
-          roundsRevealed: 0,
+      try {
+        const updateResult = await ctx.db.round.updateMany({
+          where: { number: input.roundNumber },
+          data: { isVisible: input.isVisible },
+        });
+
+        console.log(`Updated ${updateResult.count} rounds`);
+
+        let config;
+        try {
+          config = await ctx.db.config.findFirst();
+          if (!config) {
+            config = await ctx.db.config.create({
+              data: {
+                freeze: true,
+                competitionStarted: false,
+                currentRound: 1,
+                roundsRevealed: 0,
+              },
+            });
+          }
+
+          const visibleRoundsCount = await ctx.db.round.count({
+            where: { isVisible: true },
+          });
+
+          const hasAnyVisible = visibleRoundsCount > 0;
+
+          await ctx.db.config.update({
+            where: { id: config.id },
+            data: {
+              roundsRevealed: visibleRoundsCount,
+              competitionStarted: hasAnyVisible,
+            },
+          });
+
+          console.log(`Config updated: ${visibleRoundsCount} rounds revealed`);
+        } catch (configError) {
+          console.warn("Config table error (ignoring):", configError);
+        }
+
+        return {
+          success: true,
+          roundNumber: input.roundNumber,
+          isVisible: input.isVisible,
+          totalRevealed: config
+            ? await ctx.db.round.count({ where: { isVisible: true } })
+            : 0,
+        };
+      } catch (error) {
+        console.error("Error toggling round visibility:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to ${input.isVisible ? "reveal" : "hide"} round ${input.roundNumber}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    }),
+
+  getRoundVisibilityStatus: adminProcedure.query(async ({ ctx }) => {
+    try {
+      const rounds = await ctx.db.round.findMany({
+        select: {
+          number: true,
+          isVisible: true,
         },
+        distinct: ["number"],
       });
-    }
 
-    const nextRound = (config.roundsRevealed ?? 0) + 1;
+      const roundStatus: Record<number, boolean> = {
+        1: false,
+        2: false,
+        3: false,
+      };
 
-    if (nextRound > 3) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "All rounds are already revealed",
+      rounds.forEach((round) => {
+        if (round.isVisible) {
+          roundStatus[round.number] = true;
+        }
       });
+
+      console.log("Round visibility status:", roundStatus);
+      return roundStatus;
+    } catch (error) {
+      console.error("Error getting round visibility:", error);
+      return { 1: false, 2: false, 3: false };
     }
-
-    // Update rounds to be visible and update config
-    await ctx.db.round.updateMany({
-      where: { number: nextRound },
-      data: { isVisible: true },
-    });
-
-    const updatedConfig = await ctx.db.config.update({
-      where: { id: config.id },
-      data: {
-        roundsRevealed: nextRound,
-        currentRound: nextRound,
-        competitionStarted: true,
-      },
-    });
-
-    return {
-      success: true,
-      roundRevealed: nextRound,
-      config: updatedConfig,
-    };
   }),
 
-  // Hide a specific round
-  hideRound: adminProcedure
-    .input(z.object({ roundNumber: z.number().min(1).max(3) }))
-    .mutation(async ({ ctx, input }) => {
-      // Hide the specified round
-      await ctx.db.round.updateMany({
-        where: { number: input.roundNumber },
-        data: { isVisible: false },
+  revealNextRound: adminProcedure.mutation(async ({ ctx }) => {
+    try {
+      const visibleRounds = await ctx.db.round.groupBy({
+        by: ["number"],
+        where: { isVisible: true },
+        _count: { number: true },
       });
 
-      // Update config to reflect the change
-      let config = await ctx.db.config.findFirst();
+      const revealedNumbers = visibleRounds.map((r) => r.number).sort();
+      let nextRound = 1;
 
-      if (config) {
-        const newRoundsRevealed = Math.max(0, input.roundNumber - 1);
-        await ctx.db.config.update({
-          where: { id: config.id },
+      for (let i = 1; i <= 3; i++) {
+        if (!revealedNumbers.includes(i)) {
+          nextRound = i;
+          break;
+        }
+      }
+
+      if (revealedNumbers.length >= 3) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "All rounds are already revealed",
+        });
+      }
+
+      await ctx.db.round.updateMany({
+        where: { number: nextRound },
+        data: { isVisible: true },
+      });
+
+      // Update config
+      let config = await ctx.db.config.findFirst();
+      if (!config) {
+        config = await ctx.db.config.create({
           data: {
-            roundsRevealed: newRoundsRevealed,
-            currentRound: Math.max(1, newRoundsRevealed),
+            freeze: true,
+            competitionStarted: false,
+            currentRound: 1,
+            roundsRevealed: 0,
           },
         });
       }
 
+      const totalVisible = revealedNumbers.length + 1;
+      await ctx.db.config.update({
+        where: { id: config.id },
+        data: {
+          roundsRevealed: totalVisible,
+          competitionStarted: true,
+        },
+      });
+
       return {
         success: true,
-        roundHidden: input.roundNumber,
+        roundNumber: nextRound,
+        isVisible: true,
+        totalRevealed: totalVisible,
       };
-    }),
+    } catch (error) {
+      console.error("Error revealing next round:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to reveal next round",
+      });
+    }
+  }),
 
-  // Regenerate schedules with correct algorithm: 9 tables total (3 challenges × 3 rounds)
   regenerateSchedules: adminProcedure
     .input(
       z.object({
@@ -439,14 +524,12 @@ export const adminRouter = createTRPCRouter({
       const pistaNames = ["Pista A", "Pista B", "Pista C"];
       const challengeNames = ["Challenge 1", "Challenge 2", "Challenge 3"];
 
-      // Delete existing rounds and challenges
       for (const team of activeTeams) {
         await ctx.db.round.deleteMany({
           where: { teamId: team.id },
         });
       }
 
-      // Generate 9 tables: 3 rounds × 3 challenges per round
       for (let round = 1; round <= 3; round++) {
         const startTime = startTimes[round - 1];
         if (!startTime) continue;
@@ -454,13 +537,11 @@ export const adminRouter = createTRPCRouter({
         const [startHour, startMinute] = startTime.split(":").map(Number);
         const baseStartMinutes = (startHour ?? 8) * 60 + (startMinute ?? 30);
 
-        // Create 3 challenges for this round
         for (let challengeIndex = 0; challengeIndex < 3; challengeIndex++) {
           const challengeName = challengeNames[challengeIndex];
           if (!challengeName) continue;
 
-          // Calculate challenge start time based on team count and realistic breaks
-          // Each challenge needs: (teams/3) * 6 minutes + break time
+          // Calculate challenge start time based on team count and breaks
           const timePerChallenge = Math.ceil(activeTeams.length / 3) * 6;
           const breakBetweenChallenges = 1; // 1 minute break between challenges
 
@@ -543,7 +624,130 @@ export const adminRouter = createTRPCRouter({
       };
     }),
 
-  // Get schedule tables for display (9 tables: 3 rounds × 3 challenges)
+  // Generate schedules for a single specific round only
+  generateSingleRound: adminProcedure
+    .input(
+      z.object({
+        roundNumber: z.number().min(1).max(3),
+        startTime: z.string().default("08:30"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const activeTeams = await ctx.db.team.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+      });
+
+      if (activeTeams.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active teams found",
+        });
+      }
+
+      const { roundNumber, startTime } = input;
+      const pistaNames = ["Pista A", "Pista B", "Pista C"];
+      const challengeNames = ["Challenge 1", "Challenge 2", "Challenge 3"];
+
+      console.log(
+        `Generating single round ${roundNumber} starting at ${startTime}`,
+      );
+
+      // Delete existing data for this specific round only
+      for (const team of activeTeams) {
+        await ctx.db.round.deleteMany({
+          where: { teamId: team.id, number: roundNumber },
+        });
+      }
+
+      const [startHour, startMinute] = startTime.split(":").map(Number);
+      const baseStartMinutes = (startHour ?? 8) * 60 + (startMinute ?? 30);
+
+      console.log(
+        `Round ${roundNumber}: startTime=${startTime}, parsed=${startHour}:${startMinute}, baseStartMinutes=${baseStartMinutes}`,
+      );
+
+      // Create 3 challenges for this specific round
+      for (let challengeIndex = 0; challengeIndex < 3; challengeIndex++) {
+        const challengeName = challengeNames[challengeIndex];
+        if (!challengeName) continue;
+
+        // Calculate challenge start time
+        const timePerChallenge = Math.ceil(activeTeams.length / 3) * 6;
+        const breakBetweenChallenges = 1;
+
+        const challengeStartMinutes =
+          challengeIndex === 0
+            ? baseStartMinutes
+            : baseStartMinutes +
+              challengeIndex * (timePerChallenge + breakBetweenChallenges);
+
+        console.log(
+          `Challenge ${challengeIndex + 1}: timePerChallenge=${timePerChallenge}, challengeStartMinutes=${challengeStartMinutes}`,
+        );
+
+        let currentSlotMinutes = challengeStartMinutes;
+        const totalTimeSlots = Math.ceil(activeTeams.length / 3);
+
+        for (let slotIndex = 0; slotIndex < totalTimeSlots; slotIndex++) {
+          const hour = Math.floor(currentSlotMinutes / 60);
+          const minute = currentSlotMinutes % 60;
+          const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+
+          console.log(
+            `Challenge ${challengeIndex + 1}, Slot ${slotIndex}: currentSlotMinutes=${currentSlotMinutes}, time=${timeString}`,
+          );
+
+          for (let pistaIndex = 0; pistaIndex < 3; pistaIndex++) {
+            const teamIndex = slotIndex * 3 + pistaIndex;
+            if (teamIndex >= activeTeams.length) break;
+
+            const team = activeTeams[teamIndex];
+            if (!team) continue;
+
+            // Apply systematic pista rotation
+            const teamBasePista = teamIndex % 3;
+            const roundStartPista = (teamBasePista + (roundNumber - 1)) % 3;
+            const finalPistaIndex = (roundStartPista + challengeIndex) % 3;
+            const pistaName = pistaNames[finalPistaIndex];
+            if (!pistaName) continue;
+
+            let roundRecord = await ctx.db.round.findFirst({
+              where: { teamId: team.id, number: roundNumber },
+            });
+
+            if (!roundRecord) {
+              roundRecord = await ctx.db.round.create({
+                data: {
+                  teamId: team.id,
+                  number: roundNumber,
+                  isVisible: false,
+                },
+              });
+            }
+
+            await ctx.db.challenge.create({
+              data: {
+                roundId: roundRecord.id,
+                name: `${challengeName} - ${pistaName}`,
+                time: ComputeDate({ date: timeString }),
+              },
+            });
+          }
+
+          currentSlotMinutes += 6;
+        }
+      }
+
+      return {
+        success: true,
+        roundNumber,
+        teamsScheduled: activeTeams.length,
+        tablesGenerated: 3, // 3 tables for this round
+        startTime,
+      };
+    }),
+
   getScheduleTables: adminProcedure.query(async ({ ctx }) => {
     const activeTeams = await ctx.db.team.findMany({
       where: { isActive: true },
@@ -560,20 +764,12 @@ export const adminRouter = createTRPCRouter({
 
     const tables = [];
     const challengeNames = ["Challenge 1", "Challenge 2", "Challenge 3"];
-    const pistaNames = ["Pista A", "Pista B", "Pista C"];
 
     // Generate 9 table structures
     for (let round = 1; round <= 3; round++) {
       for (let challengeIndex = 0; challengeIndex < 3; challengeIndex++) {
         const challengeName = challengeNames[challengeIndex];
-        const timeSlots: {
-          time: string;
-          pistaA: string;
-          pistaB: string;
-          pistaC: string;
-        }[] = [];
 
-        // Group challenges by time for this specific round and challenge
         const timeMap = new Map<
           string,
           { pistaA: string; pistaB: string; pistaC: string }
@@ -771,9 +967,9 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
   var hour = parseInt(timeParts[0] ?? "0");
   const minute = timeParts[1];
 
-  if (hour < 8) {
-    hour += 12;
-  }
+  // if (hour < 8) {
+  //   hour += 12;
+  // }
 
   var d = new Date();
   d.setHours(hour);

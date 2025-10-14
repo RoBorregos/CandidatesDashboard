@@ -176,13 +176,14 @@ export const adminRouter = createTRPCRouter({
       delimiter: ",",
     });
     parser.on("readable", function () {
-      let record;
-      while ((record = parser.read())) {
-        console.log(record);
-        if (record[0] === "Nombre") {
+      let record: unknown;
+      while ((record = parser.read() as unknown)) {
+        const typedRecord = record as string[];
+        console.log(typedRecord);
+        if (typedRecord[0] === "Nombre") {
           continue;
         }
-        records.push(record);
+        records.push(typedRecord);
       }
     });
     // R1_PistaA,R1_PistaB,R1_PistaC,R2_PistaA,R2_PistaB,R2_PistaC,R3_PistaA,R3_PistaB,R3_PistaC
@@ -190,8 +191,9 @@ export const adminRouter = createTRPCRouter({
 
     fs.createReadStream(filePath).pipe(parser);
 
-    parser.on("end", async function () {
-      for await (const row of records) {
+    parser.on("end", function () {
+      void (async () => {
+        for (const row of records) {
         // Create 3 rounds
 
         const teamObject = await ctx.db.team.findFirst({
@@ -246,7 +248,8 @@ export const adminRouter = createTRPCRouter({
             },
           },
         });
-      }
+        }
+      })();
     });
 
     return "Finished";
@@ -325,7 +328,7 @@ export const adminRouter = createTRPCRouter({
         round3StartTime: z.string().optional(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       // review mutation
       return { success: true, config: input };
     }),
@@ -488,8 +491,8 @@ export const adminRouter = createTRPCRouter({
         isVisible: true,
         totalRevealed: totalVisible,
       };
-    } catch (error) {
-      console.error("Error revealing next round:", error);
+    } catch (err) {
+      console.error("Error revealing next round:", err);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to reveal next round",
@@ -964,14 +967,14 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
   }
 
   const timeParts = date.split(":");
-  var hour = parseInt(timeParts[0] ?? "0");
+  let hour = parseInt(timeParts[0] ?? "0");
   const minute = timeParts[1];
 
   // if (hour < 8) {
   //   hour += 12;
   // }
 
-  var d = new Date();
+  const d = new Date();
   d.setHours(hour);
   d.setMinutes(parseInt(minute ?? "0"));
   return d;

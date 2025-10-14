@@ -175,7 +175,7 @@ export const FormChallengeA = () => {
             <FormItem>
               <FormLabel>Lack of Progress</FormLabel>
               <FormDescription>
-                Input -1 if the team didn't attempt the round.
+                Input -1 if the team didn&apos;t attempt the round.
               </FormDescription>
               <FormControl>
                 <Input type="number" {...field} />

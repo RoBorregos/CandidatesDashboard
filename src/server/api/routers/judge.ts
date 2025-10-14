@@ -8,14 +8,16 @@ import {
 } from "rbrgs/lib/schemas";
 
 const computePointsLOP = (lackOfProgress: number) => {
-  if (lackOfProgress == 0) {
-    return 20;
-  } else if (lackOfProgress == 1) {
-    return 10;
-  } else if (lackOfProgress == 2) {
-    return 5;
+  switch (lackOfProgress) {
+    case 0:
+      return 20;
+    case 1:
+      return 10;
+    case 2:
+      return 5;
+    default:
+      return 0;
   }
-  return 0;
 };
 
 export const judgeRouter = createTRPCRouter({

@@ -1,24 +1,16 @@
-import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "r/components/ui/dropdown";
 import menu from "rbrgs/../public/images/menu.svg";
 import SignInButton from "./SignInButton";
 import { Session } from "next-auth";
-import { StaticImport } from "next/dist/shared/lib/get-img-props";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "r/components/ui/sheet";
 import { Role } from "@prisma/client";
+import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 export default function NavDropdown({ session }: { session: Session | null }) {
   return (
@@ -28,52 +20,50 @@ export default function NavDropdown({ session }: { session: Session | null }) {
           <Image src={menu as StaticImport} alt="" className="flex h-5 w-5" />
         </SheetTrigger>
         <SheetContent
-          className="flex w-screen flex-col items-center justify-center bg-black text-white"
-          side={"top"}
+          className="flex w-screen flex-col justify-center bg-black text-white"
+          side="top"
         >
-          <div>
-            <Link href="/" className="w-full text-center text-lg">
+          <SheetClose asChild>
+            <Link href="/" className="w-full text-lg">
               Home
             </Link>
-          </div>
-          <div>
-            <Link href="/scoreboard" className="w-full text-center text-lg">
+          </SheetClose>
+          <SheetClose asChild>
+            <Link href="/scoreboard" className="w-full text-lg">
               Scoreboard
             </Link>
-          </div>
-          <div>
-            <Link href="/team" className="w-full text-center text-lg">
+          </SheetClose>
+          <SheetClose asChild>
+            <Link href="/team" className="w-full text-lg">
               Team
             </Link>
-          </div>
+          </SheetClose>
           {(session?.user.role === Role.ADMIN ||
             session?.user.role === Role.JUDGE) && (
-            <div>
-              <Link href="/judge" className="w-full text-center text-lg">
+            <SheetClose asChild>
+              <Link href="/judge" className="w-full text-lg">
                 Judge
               </Link>
-            </div>
+            </SheetClose>
           )}
           {session?.user.role === Role.ADMIN && (
-            <div>
-              <Link href="/admin" className="w-full text-center text-lg">
+            <SheetClose asChild>
+              <Link href="/admin" className="w-full text-lg">
                 Admin
               </Link>
-            </div>
+            </SheetClose>
           )}
-          <div>
-            <Link
-              href="https://www.roborregos.com"
-              className="w-full text-center text-lg"
-            >
+          <SheetClose asChild>
+            <Link href="/editions" className="w-full text-lg">
+              Past Editions
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link href="https://www.roborregos.com" className="w-full text-lg">
               About Us
             </Link>
-          </div>
-          <div>
-            <div className="w-fit">
-              <SignInButton session={session} />
-            </div>
-          </div>
+          </SheetClose>
+          <SignInButton session={session} />
         </SheetContent>
       </Sheet>
     </div>

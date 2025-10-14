@@ -13,7 +13,7 @@ export default async function Navbar() {
     session?.user.role === Role.JUDGE || session?.user.role === Role.ADMIN;
 
   return (
-    <nav className="fixed top-0 z-50 grid h-[4rem] w-screen grid-cols-2 items-center bg-black px-[3rem] font-archivo lg:grid-cols-3">
+    <nav className="fixed top-0 z-50 grid h-[4rem] w-screen grid-cols-2 items-center bg-black px-[3rem] font-archivo lg:grid-cols-[auto_1fr_auto]">
       <Link href="/">
         <Image
           src={robologo}
@@ -21,7 +21,7 @@ export default async function Navbar() {
           className="h-[2rem] w-fit cursor-pointer object-contain"
         />
       </Link>
-      <div className="hidden w-full items-center justify-evenly text-xl text-white lg:flex">
+      <div className="ml-10 hidden w-full items-center justify-start gap-x-10 text-xl text-white lg:flex">
         <Link href="/">Home</Link>
         <Link href="scoreboard">Scoreboard</Link>
         <Link href="team">Team</Link>
@@ -29,10 +29,8 @@ export default async function Navbar() {
         {session?.user.role === Role.ADMIN && <Link href="admin">Admin</Link>}
         <Link href="editions">Past Editions</Link>
         <Link href="https://www.roborregos.com">About us</Link>
-        
       </div>
       <div className="hidden lg:block">
-
         <SignInButton session={session} />
       </div>
       <NavDropdown session={session} />

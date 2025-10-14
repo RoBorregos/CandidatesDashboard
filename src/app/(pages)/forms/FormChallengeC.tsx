@@ -9,6 +9,7 @@ import { Button } from "~/app/_components/shadcn/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -230,7 +231,10 @@ export const FormChallengeC = () => {
           name="genericFormSchema.roundTimeSeconds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Round Time (Seconds)</FormLabel>
+              <FormLabel>Round Time</FormLabel>
+              <FormDescription>
+                In seconds and without counting calibration time.
+              </FormDescription>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>
@@ -244,6 +248,9 @@ export const FormChallengeC = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Lack of Progress</FormLabel>
+              <FormDescription>
+                Input -1 if the team didn't attempt the round.
+              </FormDescription>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>

@@ -11,8 +11,8 @@ export const genericDataSchema = z.object({
     .max(600, {
       message: "roundTimeSeconds must be less than or equal to 600",
     }),
-  lackOfProgress: z.coerce.number().int().min(0, {
-    message: "lackOfProgress must be greater than or equal to 0",
+  lackOfProgress: z.coerce.number().int().min(-1, {
+    message: "lackOfProgress must be greater than or equal to -1",
   }),
   roundId: z.enum(["1", "2", "3"]),
   teamId: z.string().min(1),

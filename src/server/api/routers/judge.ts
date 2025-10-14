@@ -60,12 +60,13 @@ export const judgeRouter = createTRPCRouter({
     .input(challengeBSchema)
     .mutation(async ({ ctx, input }) => {
       let points = 0;
-      points += input.trackPoints;
+      points += input.trackPoints.trackPoints;
       points += computePointsLOP(input.genericFormSchema.lackOfProgress);
 
       return await ctx.db.challengeB.create({
         data: {
-          trackPoints: input.trackPoints,
+          trackPoints: input.trackPoints.trackPoints,
+          patternsPassed: input.trackPoints.patternsPassed,
           lackOfProgress: input.genericFormSchema.lackOfProgress,
           points: points,
           roundTimeSeconds: input.genericFormSchema.roundTimeSeconds,

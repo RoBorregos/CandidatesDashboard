@@ -120,6 +120,7 @@ model ChallengeA {
 model ChallengeB {
   id               String   @id @default(cuid())
   trackPoints      Int
+  patternsPassed   Pattern[]
   judgeID          String
   lackOfProgress   Int
   points           Int
@@ -162,4 +163,25 @@ enum Role {
   JUDGE
   ADMIN
   UNASSIGNED
+}
+
+enum Pattern {
+  A3
+  A4
+  B1
+  B2
+  B3
+  C1
+  C2
+  C3
+  D1
+  D2
+  D3
+  D4
+  E1
+  E2
+  E3
+  E4
+  FINISH
+  BONUS
 }

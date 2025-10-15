@@ -134,6 +134,12 @@ const RoundResults = ({
             <div key={key} className="px-5">
               Number of detected colors: {challenge.detectedColors}
               <br />
+              Passed obstacles: {challenge.passedObstacles}
+              <br />
+              Finished track: {challenge.finishedTrack ? "Yes" : "No"}
+              <br />
+              Bonus: {challenge.obtainedBonus ? "Yes" : "No"}
+              <br />
               Passed ramp: {challenge.passedRamp ? "Yes" : "No"}
               <br />
               Passed ramp (No lack of progress):{" "}
@@ -142,13 +148,11 @@ const RoundResults = ({
               Passed ramp (No touching walls):{" "}
               {challenge.crossedRampWithoutTouching ? "Yes" : "No"}
               <br />
-              Balanced in ramp: {challenge.balancedRamp ? "Yes" : "No"}
-              <br />
-              Bonus: {challenge.obtainedBonus ? "Yes" : "No"}
+              Passed ramp (Reversed): {challenge.reverseRamp ? "Yes" : "No"}
               <br />
               Time: {challenge.roundTimeSeconds} seconds
               <br />
-              Lack of progress: {challenge.lackOfProgress ? "Yes" : "No"}
+              Lack of progress: {challenge.lackOfProgress}
               <hr className="py-1" />
               Points: {challenge.points}
             </div>

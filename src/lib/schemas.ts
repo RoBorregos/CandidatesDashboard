@@ -12,8 +12,8 @@ export const genericDataSchema = z.object({
     .max(600, {
       message: "roundTimeSeconds must be less than or equal to 600",
     }),
-  lackOfProgress: z.coerce.number().int().min(0, {
-    message: "lackOfProgress must be greater than or equal to 0",
+  lackOfProgress: z.coerce.number().int().min(-1, {
+    message: "lackOfProgress must be greater than or equal to -1",
   }),
   roundId: z.enum(["1", "2", "3"]),
   teamId: z.string().min(1),
@@ -61,23 +61,32 @@ export const challengeCSchema = z.object({
     .number()
     .int()
     .min(0, {
-      message: "Los colores detectados tienen que ser mayor o igual a 0",
+      message: "Detected colors must be greater than or equal to 0",
     })
-    .max(13, {
-      message: "Los colores detectados tienen que ser menor o igual a 13",
+    .max(14, {
+      message: "Detected colors must be less than or equal to 14",
+    }),
+  passedObstacles: z.coerce
+    .number()
+    .int()
+    .min(0, {
+      message: "Passed obstacles must be greater than or equal to 0",
+    })
+    .max(4, {
+      message: "Passed obstacles must be less than or equal to 4",
     }),
   finishedTrack: z.boolean({
-    message: "finishedTrack tiene que ser un booleano",
+    message: "finishedTrack must be a boolean",
   }),
-  passedRamp: z.boolean({ message: "passedRamp tiene que ser un booleano" }),
+  passedRamp: z.boolean({ message: "passedRamp must be a boolean" }),
   crossedRampWithoutLOP: z.boolean({
-    message: "crossedRampWithoutLOP tiene que ser un booleano",
-  }),
-  balancedRamp: z.boolean({
-    message: "balancedRamp tiene que ser un booleano",
+    message: "crossedRampWithoutLOP must be a boolean",
   }),
   crossedRampWithoutTouching: z.boolean({
-    message: "crossedRampWithoutTouching tiene que ser un booleano",
+    message: "crossedRampWithoutTouching must be a boolean",
+  }),
+  reverseRamp: z.boolean({
+    message: "reverseRamp must be a boolean",
   }),
   // points: z.coerce
   //   .number()

@@ -260,7 +260,6 @@ export default function InterviewManagement({
         </div>
       </div>
 
-      {/* Interviewers List */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">
           Interviewers ({interviewers?.length ?? 0})
@@ -290,7 +289,6 @@ export default function InterviewManagement({
         </div>
       </div>
 
-      {/* Auto Schedule */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">Auto Schedule Interviews</h3>
         <div className="flex flex-wrap gap-4">
@@ -349,7 +347,6 @@ export default function InterviewManagement({
         </p>
       </div>
 
-      {/* Interview Schedule */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">
           Interview Schedule (
@@ -478,7 +475,6 @@ export default function InterviewManagement({
         </div>
       </div>
 
-      {/* Statistics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         <div className="rounded-lg bg-gray-800 p-4">
           <h4 className="font-semibold">Total Students</h4>
@@ -514,7 +510,6 @@ export default function InterviewManagement({
         </div>
       </div>
 
-      {/* Conflict Detection Dashboard */}
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-semibold">Schedule Conflict Detection</h3>
@@ -635,7 +630,6 @@ export default function InterviewManagement({
                           }}
                           title={`Challenge: ${conflict.challenge.start.toLocaleTimeString()} - ${conflict.challenge.end.toLocaleTimeString()}`}
                         ></div>
-                        {/* Overlap indicator */}
                         <div
                           className="absolute h-full animate-pulse rounded bg-red-600"
                           style={{
@@ -684,7 +678,6 @@ export default function InterviewManagement({
           )}
       </div>
 
-      {/* Debug Team Schedules */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">
           Debug: Team Schedule Data

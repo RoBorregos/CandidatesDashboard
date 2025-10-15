@@ -23,6 +23,7 @@ export default function InterviewManagement({
     api.admin.getInterviewers.useQuery();
   const { data: interviewSchedule, refetch: refetchSchedule } =
     api.admin.getInterviewSchedule.useQuery();
+  const { data: teamDebugData } = api.admin.debugTeamSchedules.useQuery();
 
   const createInterviewer = api.admin.createInterviewer.useMutation({
     onSuccess() {
@@ -119,6 +120,14 @@ export default function InterviewManagement({
     const [endHour, endMinute] = autoScheduleEnd.split(":").map(Number);
     endTime.setHours(endHour ?? 17, endMinute ?? 0, 0, 0);
 
+    console.log("🚀 Starting auto-schedule with:");
+    console.log(
+      `  Start time: ${startTime.toLocaleString()} (${startTime.toISOString()})`,
+    );
+    console.log(
+      `  End time: ${endTime.toLocaleString()} (${endTime.toISOString()})`,
+    );
+
     autoScheduleInterviews.mutate({
       startTime,
       endTime,
@@ -147,6 +156,68 @@ export default function InterviewManagement({
       minute: "2-digit",
     });
   };
+
+  // Helper function to check for conflicts
+  const checkConflicts = () => {
+    if (!interviewSchedule) return [];
+
+    const conflicts = [];
+
+    for (const user of interviewSchedule) {
+      if (!user.interviewTime || !user.team) continue;
+
+      const interviewStart = new Date(user.interviewTime);
+      const interviewEnd = new Date(interviewStart.getTime() + 15 * 60 * 1000);
+
+      for (const round of user.team.rounds) {
+        for (const challenge of round.challenges) {
+          const challengeStart = new Date(challenge.time);
+          const challengeEnd = new Date(
+            challengeStart.getTime() + 5 * 60 * 1000,
+          );
+
+          // Check for overlap
+          const hasOverlap = !(
+            interviewEnd <= challengeStart || interviewStart >= challengeEnd
+          );
+
+          if (hasOverlap) {
+            conflicts.push({
+              user: {
+                id: user.id,
+                name: user.name || user.email,
+                team: user.team.name,
+                area: user.interviewArea,
+                interviewer: user.interviewer?.name,
+              },
+              interview: {
+                start: interviewStart,
+                end: interviewEnd,
+              },
+              challenge: {
+                name: challenge.name,
+                round: round.number,
+                start: challengeStart,
+                end: challengeEnd,
+              },
+              overlap: {
+                start: new Date(
+                  Math.max(interviewStart.getTime(), challengeStart.getTime()),
+                ),
+                end: new Date(
+                  Math.min(interviewEnd.getTime(), challengeEnd.getTime()),
+                ),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return conflicts;
+  };
+
+  const conflicts = checkConflicts();
 
   return (
     <div className="space-y-6">
@@ -440,6 +511,208 @@ export default function InterviewManagement({
             ) * 3}
             /slot
           </p>
+        </div>
+      </div>
+
+      {/* Conflict Detection Dashboard */}
+      <div className="rounded-lg bg-gray-800 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-semibold">
+            🔍 Schedule Conflict Detection
+          </h3>
+          <div className="flex items-center gap-4">
+            <span
+              className={`rounded px-3 py-1 text-sm font-medium ${
+                conflicts.length === 0
+                  ? "bg-green-900 text-green-200"
+                  : "bg-red-900 text-red-200"
+              }`}
+            >
+              {conflicts.length === 0
+                ? "✅ No Conflicts"
+                : `⚠️ ${conflicts.length} Conflicts`}
+            </span>
+          </div>
+        </div>
+
+        {conflicts.length > 0 && (
+          <div className="space-y-4">
+            <div className="rounded border border-red-500/30 bg-red-900/20 p-4">
+              <h4 className="mb-3 font-semibold text-red-400">
+                ❌ Detected Conflicts:
+              </h4>
+              <div className="space-y-3">
+                {conflicts.map((conflict, index) => (
+                  <div key={index} className="rounded bg-gray-700 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">
+                          {conflict.user.name}
+                        </span>
+                        <span className="text-sm text-gray-400">
+                          Team {conflict.user.team}
+                        </span>
+                        <span
+                          className={`rounded px-2 py-1 text-xs ${getAreaColor(conflict.user.area || "")}`}
+                        >
+                          {conflict.user.area}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        Interviewer: {conflict.user.interviewer || "None"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      {/* Interview Timeline */}
+                      <div className="rounded bg-blue-900/30 p-3">
+                        <h5 className="mb-1 text-sm font-medium text-blue-400">
+                          📅 Interview
+                        </h5>
+                        <p className="text-xs text-gray-300">
+                          {conflict.interview.start.toLocaleTimeString()} -{" "}
+                          {conflict.interview.end.toLocaleTimeString()}
+                        </p>
+                        <div className="mt-2 h-2 rounded bg-blue-600"></div>
+                      </div>
+
+                      {/* Challenge Timeline */}
+                      <div className="rounded bg-orange-900/30 p-3">
+                        <h5 className="mb-1 text-sm font-medium text-orange-400">
+                          🏃 Challenge
+                        </h5>
+                        <p className="text-xs text-gray-300">
+                          Round {conflict.challenge.round}:{" "}
+                          {conflict.challenge.name}
+                        </p>
+                        <p className="text-xs text-gray-300">
+                          {conflict.challenge.start.toLocaleTimeString()} -{" "}
+                          {conflict.challenge.end.toLocaleTimeString()}
+                        </p>
+                        <div className="mt-2 h-2 rounded bg-orange-600"></div>
+                      </div>
+
+                      {/* Overlap */}
+                      <div className="rounded bg-red-900/30 p-3">
+                        <h5 className="mb-1 text-sm font-medium text-red-400">
+                          💥 Overlap
+                        </h5>
+                        <p className="text-xs text-gray-300">
+                          {conflict.overlap.start.toLocaleTimeString()} -{" "}
+                          {conflict.overlap.end.toLocaleTimeString()}
+                        </p>
+                        <p className="text-xs text-red-300">
+                          Duration:{" "}
+                          {Math.round(
+                            (conflict.overlap.end.getTime() -
+                              conflict.overlap.start.getTime()) /
+                              60000,
+                          )}{" "}
+                          min
+                        </p>
+                        <div className="mt-2 h-2 animate-pulse rounded bg-red-600"></div>
+                      </div>
+                    </div>
+
+                    {/* Visual Timeline */}
+                    <div className="mt-3">
+                      <h6 className="mb-2 text-xs font-medium text-gray-400">
+                        Timeline Visualization:
+                      </h6>
+                      <div className="relative h-8 rounded bg-gray-600">
+                        {/* Calculate positions (simplified for demo) */}
+                        <div
+                          className="absolute h-full rounded bg-blue-500/70"
+                          style={{
+                            left: "20%",
+                            width: "30%",
+                          }}
+                          title={`Interview: ${conflict.interview.start.toLocaleTimeString()} - ${conflict.interview.end.toLocaleTimeString()}`}
+                        ></div>
+                        <div
+                          className="absolute h-full rounded bg-orange-500/70"
+                          style={{
+                            left: "35%",
+                            width: "20%",
+                          }}
+                          title={`Challenge: ${conflict.challenge.start.toLocaleTimeString()} - ${conflict.challenge.end.toLocaleTimeString()}`}
+                        ></div>
+                        {/* Overlap indicator */}
+                        <div
+                          className="absolute h-full animate-pulse rounded bg-red-600"
+                          style={{
+                            left: "35%",
+                            width: "15%",
+                          }}
+                          title="Conflict zone"
+                        ></div>
+                      </div>
+                      <div className="mt-1 flex justify-between text-xs text-gray-400">
+                        <span>12:00</span>
+                        <span>12:30</span>
+                        <span>13:00</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {conflicts.length === 0 &&
+          interviewSchedule &&
+          interviewSchedule.filter((u) => u.interviewTime).length > 0 && (
+            <div className="rounded border border-green-500/30 bg-green-900/20 p-4 text-center">
+              <div className="text-green-400">
+                <span className="text-2xl">🎉</span>
+                <h4 className="mt-2 font-semibold">
+                  All Interviews Scheduled Successfully!
+                </h4>
+                <p className="mt-1 text-sm text-green-300">
+                  No conflicts detected between interviews and team schedules.
+                </p>
+              </div>
+            </div>
+          )}
+
+        {interviewSchedule &&
+          interviewSchedule.filter((u) => u.interviewTime).length === 0 && (
+            <div className="rounded bg-gray-700 p-4 text-center">
+              <span className="text-gray-400">
+                No interviews scheduled yet. Use "Auto Schedule All" to begin.
+              </span>
+            </div>
+          )}
+      </div>
+
+      {/* Debug Team Schedules */}
+      <div className="rounded-lg bg-gray-800 p-6">
+        <h3 className="mb-4 text-xl font-semibold">
+          🔧 Debug: Team Schedule Data
+        </h3>
+        <div className="max-h-96 overflow-y-auto">
+          {teamDebugData?.map((team) => (
+            <div key={team.name} className="mb-4 rounded bg-gray-700 p-3">
+              <h4 className="font-semibold text-blue-400">Team {team.name}</h4>
+              <p className="text-sm text-gray-300">
+                Members: {team.members.length}
+              </p>
+              {team.rounds.map((round) => (
+                <div key={round.number} className="mt-2">
+                  <p className="text-sm font-medium text-yellow-400">
+                    Round {round.number}:
+                  </p>
+                  {round.challenges.map((challenge, idx) => (
+                    <p key={idx} className="ml-4 text-xs text-gray-300">
+                      {challenge.name}:{" "}
+                      {new Date(challenge.timeString).toLocaleTimeString()}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </div>

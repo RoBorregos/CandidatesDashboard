@@ -992,7 +992,6 @@ export const adminRouter = createTRPCRouter({
         team: {
           include: {
             rounds: {
-              where: { isVisible: true },
               include: { challenges: true },
             },
           },
@@ -1021,7 +1020,7 @@ export const adminRouter = createTRPCRouter({
           team: {
             include: {
               rounds: {
-                where: { isVisible: true },
+                // Remove isVisible filter - check ALL rounds for conflicts
                 include: { challenges: true },
               },
             },
@@ -1115,6 +1114,41 @@ export const adminRouter = createTRPCRouter({
     return { success: true, message: "All interviews cleared" };
   }),
 
+  debugTeamSchedules: adminProcedure.query(async ({ ctx }) => {
+    const teams = await ctx.db.team.findMany({
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            interviewTime: true,
+            interviewArea: true,
+          },
+        },
+        rounds: {
+          where: { isVisible: true },
+          include: { challenges: true },
+          orderBy: { number: "asc" },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return teams.map((team) => ({
+      name: team.name,
+      members: team.members,
+      rounds: team.rounds.map((round) => ({
+        number: round.number,
+        challenges: round.challenges.map((challenge) => ({
+          name: challenge.name,
+          time: challenge.time,
+          timeString: challenge.time.toISOString(),
+        })),
+      })),
+    }));
+  }),
+
   autoScheduleInterviews: adminProcedure
     .input(
       z.object({
@@ -1133,7 +1167,7 @@ export const adminRouter = createTRPCRouter({
           team: {
             include: {
               rounds: {
-                where: { isVisible: true },
+                // Remove isVisible filter - check ALL rounds for conflicts
                 include: { challenges: true },
               },
             },
@@ -1165,30 +1199,62 @@ export const adminRouter = createTRPCRouter({
 
         const interviewEnd = new Date(interviewTime.getTime() + 15 * 60 * 1000);
 
+        console.log(
+          `\n🔍 Checking conflicts for user ${user.name || user.email} (Team ${user.team.name}):`,
+        );
+        console.log(
+          `  📅 Proposed interview: ${interviewTime.toLocaleString()} - ${interviewEnd.toLocaleString()}`,
+        );
+        console.log(
+          `  📅 Interview UTC: ${interviewTime.toISOString()} - ${interviewEnd.toISOString()}`,
+        );
+        console.log(`  🏁 Team has ${user.team.rounds.length} visible rounds`);
+
         for (const round of user.team.rounds) {
+          console.log(
+            `  🎯 Checking Round ${round.number} (${round.challenges.length} challenges):`,
+          );
           for (const challenge of round.challenges) {
             const challengeStart = challenge.time;
             const challengeEnd = new Date(
               challengeStart.getTime() + 5 * 60 * 1000,
             );
 
-            // More explicit overlap detection: any overlap between [interviewTime, interviewEnd) and [challengeStart, challengeEnd)
+            console.log(`    ⚡ Challenge ${challenge.name}:`);
+            console.log(
+              `       Local: ${challengeStart.toLocaleString()} - ${challengeEnd.toLocaleString()}`,
+            );
+            console.log(
+              `       UTC: ${challengeStart.toISOString()} - ${challengeEnd.toISOString()}`,
+            );
+
+            // More explicit overlap detection
             const hasOverlap = !(
               interviewEnd <= challengeStart || interviewTime >= challengeEnd
             );
 
+            console.log(
+              `       Overlap check: !(${interviewEnd.toISOString()} <= ${challengeStart.toISOString()} || ${interviewTime.toISOString()} >= ${challengeEnd.toISOString()})`,
+            );
+            console.log(`       Has overlap: ${hasOverlap}`);
+
             if (hasOverlap) {
-              console.log(`Conflict detected for user ${user.id}:`);
               console.log(
-                `  Interview: ${interviewTime.toISOString()} - ${interviewEnd.toISOString()}`,
+                `❌ CONFLICT DETECTED for user ${user.id} (${user.name || user.email}):`,
               );
               console.log(
-                `  Challenge: ${challengeStart.toISOString()} - ${challengeEnd.toISOString()}`,
+                `  Interview: ${interviewTime.toLocaleString()} - ${interviewEnd.toLocaleString()}`,
+              );
+              console.log(
+                `  Challenge: ${challengeStart.toLocaleString()} - ${challengeEnd.toLocaleString()}`,
               );
               return true;
             }
           }
         }
+        console.log(
+          `✅ No conflicts found for user ${user.name || user.email}`,
+        );
         return false;
       };
 

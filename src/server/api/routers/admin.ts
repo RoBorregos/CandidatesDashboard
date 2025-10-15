@@ -1200,19 +1200,19 @@ export const adminRouter = createTRPCRouter({
         const interviewEnd = new Date(interviewTime.getTime() + 15 * 60 * 1000);
 
         console.log(
-          `\n🔍 Checking conflicts for user ${user.name || user.email} (Team ${user.team.name}):`,
+          `\nChecking conflicts for user ${user.name ?? user.email} (Team ${user.team.name}):`,
         );
         console.log(
-          `  📅 Proposed interview: ${interviewTime.toLocaleString()} - ${interviewEnd.toLocaleString()}`,
+          `  Proposed interview: ${interviewTime.toLocaleString()} - ${interviewEnd.toLocaleString()}`,
         );
         console.log(
-          `  📅 Interview UTC: ${interviewTime.toISOString()} - ${interviewEnd.toISOString()}`,
+          `  Interview UTC: ${interviewTime.toISOString()} - ${interviewEnd.toISOString()}`,
         );
-        console.log(`  🏁 Team has ${user.team.rounds.length} visible rounds`);
+        console.log(`  Team has ${user.team.rounds.length} visible rounds`);
 
         for (const round of user.team.rounds) {
           console.log(
-            `  🎯 Checking Round ${round.number} (${round.challenges.length} challenges):`,
+            `  Checking Round ${round.number} (${round.challenges.length} challenges):`,
           );
           for (const challenge of round.challenges) {
             const challengeStart = challenge.time;
@@ -1220,7 +1220,7 @@ export const adminRouter = createTRPCRouter({
               challengeStart.getTime() + 5 * 60 * 1000,
             );
 
-            console.log(`    ⚡ Challenge ${challenge.name}:`);
+            console.log(`    Challenge ${challenge.name}:`);
             console.log(
               `       Local: ${challengeStart.toLocaleString()} - ${challengeEnd.toLocaleString()}`,
             );
@@ -1240,7 +1240,7 @@ export const adminRouter = createTRPCRouter({
 
             if (hasOverlap) {
               console.log(
-                `❌ CONFLICT DETECTED for user ${user.id} (${user.name || user.email}):`,
+                ` CONFLICT DETECTED for user ${user.id} (${user.name ?? user.email}):`,
               );
               console.log(
                 `  Interview: ${interviewTime.toLocaleString()} - ${interviewEnd.toLocaleString()}`,
@@ -1252,9 +1252,7 @@ export const adminRouter = createTRPCRouter({
             }
           }
         }
-        console.log(
-          `✅ No conflicts found for user ${user.name || user.email}`,
-        );
+        console.log(`No conflicts found for user ${user.name ?? user.email}`);
         return false;
       };
 

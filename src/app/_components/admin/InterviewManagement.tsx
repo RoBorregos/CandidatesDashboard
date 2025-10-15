@@ -120,7 +120,7 @@ export default function InterviewManagement({
     const [endHour, endMinute] = autoScheduleEnd.split(":").map(Number);
     endTime.setHours(endHour ?? 17, endMinute ?? 0, 0, 0);
 
-    console.log("🚀 Starting auto-schedule with:");
+    console.log("Starting auto-schedule with:");
     console.log(
       `  Start time: ${startTime.toLocaleString()} (${startTime.toISOString()})`,
     );
@@ -185,7 +185,7 @@ export default function InterviewManagement({
             conflicts.push({
               user: {
                 id: user.id,
-                name: user.name || user.email,
+                name: user.name ?? user.email,
                 team: user.team.name,
                 area: user.interviewArea,
                 interviewer: user.interviewer?.name,
@@ -382,7 +382,7 @@ export default function InterviewManagement({
                 <tr key={user.id} className="hover:bg-gray-700">
                   <td className="border border-gray-600 p-3">
                     <div>
-                      <p className="font-medium">{user.name || user.email}</p>
+                      <p className="font-medium">{user.name ?? user.email}</p>
                       {user.name && (
                         <p className="text-xs text-gray-400">{user.email}</p>
                       )}
@@ -517,9 +517,7 @@ export default function InterviewManagement({
       {/* Conflict Detection Dashboard */}
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-xl font-semibold">
-            🔍 Schedule Conflict Detection
-          </h3>
+          <h3 className="text-xl font-semibold">Schedule Conflict Detection</h3>
           <div className="flex items-center gap-4">
             <span
               className={`rounded px-3 py-1 text-sm font-medium ${
@@ -553,13 +551,13 @@ export default function InterviewManagement({
                           Team {conflict.user.team}
                         </span>
                         <span
-                          className={`rounded px-2 py-1 text-xs ${getAreaColor(conflict.user.area || "")}`}
+                          className={`rounded px-2 py-1 text-xs ${getAreaColor(conflict.user.area ?? "")}`}
                         >
                           {conflict.user.area}
                         </span>
                       </div>
                       <span className="text-xs text-gray-400">
-                        Interviewer: {conflict.user.interviewer || "None"}
+                        Interviewer: {conflict.user.interviewer ?? "None"}
                       </span>
                     </div>
 
@@ -567,7 +565,7 @@ export default function InterviewManagement({
                       {/* Interview Timeline */}
                       <div className="rounded bg-blue-900/30 p-3">
                         <h5 className="mb-1 text-sm font-medium text-blue-400">
-                          📅 Interview
+                          Interview
                         </h5>
                         <p className="text-xs text-gray-300">
                           {conflict.interview.start.toLocaleTimeString()} -{" "}
@@ -579,7 +577,7 @@ export default function InterviewManagement({
                       {/* Challenge Timeline */}
                       <div className="rounded bg-orange-900/30 p-3">
                         <h5 className="mb-1 text-sm font-medium text-orange-400">
-                          🏃 Challenge
+                          Challenge
                         </h5>
                         <p className="text-xs text-gray-300">
                           Round {conflict.challenge.round}:{" "}
@@ -595,7 +593,7 @@ export default function InterviewManagement({
                       {/* Overlap */}
                       <div className="rounded bg-red-900/30 p-3">
                         <h5 className="mb-1 text-sm font-medium text-red-400">
-                          💥 Overlap
+                          Overlap
                         </h5>
                         <p className="text-xs text-gray-300">
                           {conflict.overlap.start.toLocaleTimeString()} -{" "}
@@ -665,7 +663,6 @@ export default function InterviewManagement({
           interviewSchedule.filter((u) => u.interviewTime).length > 0 && (
             <div className="rounded border border-green-500/30 bg-green-900/20 p-4 text-center">
               <div className="text-green-400">
-                <span className="text-2xl">🎉</span>
                 <h4 className="mt-2 font-semibold">
                   All Interviews Scheduled Successfully!
                 </h4>
@@ -680,7 +677,8 @@ export default function InterviewManagement({
           interviewSchedule.filter((u) => u.interviewTime).length === 0 && (
             <div className="rounded bg-gray-700 p-4 text-center">
               <span className="text-gray-400">
-                No interviews scheduled yet. Use "Auto Schedule All" to begin.
+                No interviews scheduled yet. Use &quot;Auto Schedule All&quot;
+                to begin.
               </span>
             </div>
           )}
@@ -689,7 +687,7 @@ export default function InterviewManagement({
       {/* Debug Team Schedules */}
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">
-          🔧 Debug: Team Schedule Data
+          Debug: Team Schedule Data
         </h3>
         <div className="max-h-96 overflow-y-auto">
           {teamDebugData?.map((team) => (

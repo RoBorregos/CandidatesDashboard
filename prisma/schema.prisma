@@ -52,22 +52,39 @@ enum RequestStatus {
   REJECTED
 }
 
+enum InterviewArea {
+  MECHANICS
+  ELECTRONICS
+  PROGRAMMING
+}
+
+model Interviewer {
+  id    String        @id @default(cuid())
+  name  String
+  email String        @unique
+  area  InterviewArea
+  users User[]
+}
+
 model User {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   name             String?
-  email            String?      @unique
+  email            String?        @unique
   emailVerified    DateTime?
   image            String?
   interviewTime    DateTime?
-  role             Role         @default(UNASSIGNED)
+  interviewArea    InterviewArea?
+  interviewerId    String?
+  role             Role           @default(UNASSIGNED)
   teamId           String?
   accounts         Account[]
   judgedChallengeA ChallengeA[]
   judgedChallengeB ChallengeB[]
   judgedChallengeC ChallengeC[]
   sessions         Session[]
-  team             Team?        @relation(fields: [teamId], references: [id])
+  team             Team?          @relation(fields: [teamId], references: [id])
   teamRequests     TeamRequest?
+  interviewer      Interviewer?   @relation(fields: [interviewerId], references: [id])
 }
 
 model VerificationToken {

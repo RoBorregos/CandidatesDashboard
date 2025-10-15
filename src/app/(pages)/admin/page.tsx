@@ -7,10 +7,11 @@ import TeamManagement from "~/app/_components/admin/TeamManagement";
 import TeamStatusManagement from "~/app/_components/admin/TeamStatusManagement";
 import ScheduleControl from "~/app/_components/admin/ScheduleControl";
 import RoundControl from "~/app/_components/admin/RoundControl";
+import InterviewManagement from "~/app/_components/admin/InterviewManagement";
 
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<
-    "management" | "teams" | "schedule" | "rounds"
+    "management" | "teams" | "schedule" | "rounds" | "interviews"
   >("management");
 
   const { data: users, refetch: refetchUsers } =
@@ -51,12 +52,18 @@ export default function AdminPage() {
             { id: "teams", label: "Active Teams" },
             { id: "schedule", label: "Schedule Control" },
             { id: "rounds", label: "Round Control" },
+            { id: "interviews", label: "Interview Management" },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() =>
                 setSelectedTab(
-                  tab.id as "management" | "teams" | "schedule" | "rounds",
+                  tab.id as
+                    | "management"
+                    | "teams"
+                    | "schedule"
+                    | "rounds"
+                    | "interviews",
                 )
               }
               className={`border-b-2 px-1 py-2 text-sm font-medium ${
@@ -103,6 +110,10 @@ export default function AdminPage() {
             teams={teams}
             refetchConfig={refetchConfig}
           />
+        )}
+
+        {selectedTab === "interviews" && (
+          <InterviewManagement refetchAll={refetchAll} />
         )}
       </div>
     </main>

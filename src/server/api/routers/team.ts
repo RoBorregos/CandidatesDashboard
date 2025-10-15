@@ -106,6 +106,7 @@ export const teamRouter = createTRPCRouter({
       z.object({
         requestedTeam: z.string(),
         message: z.string().optional(),
+        userArea: z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -135,6 +136,12 @@ export const teamRouter = createTRPCRouter({
       });
 
       if (existingRequest) {
+        // Update both the team request and the user's area
+        await ctx.db.user.update({
+          where: { id: ctx.session.user.id },
+          data: { interviewArea: input.userArea },
+        });
+
         return ctx.db.teamRequest.update({
           where: { id: existingRequest.id },
           data: {
@@ -144,6 +151,12 @@ export const teamRouter = createTRPCRouter({
           },
         });
       } else {
+        // Update the user's area and create the request
+        await ctx.db.user.update({
+          where: { id: ctx.session.user.id },
+          data: { interviewArea: input.userArea },
+        });
+
         return ctx.db.teamRequest.create({
           data: {
             userId: ctx.session.user.id,

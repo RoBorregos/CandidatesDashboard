@@ -5,7 +5,6 @@ import Image from "next/image";
 import ScoreboardTable from "../../_components/ScoreboardTable";
 import PastEditionsWinners from "../../_components/PastEditionWinners";
 
-
 type Edition = {
   year: number;
   winner: string;
@@ -25,7 +24,7 @@ export default function HistoryPage() {
     <main className="bg-black text-white">
       {/* HERO SECTION */}
       <section className="relative flex min-h-[60vh] flex-col items-center justify-center overflow-hidden">
-        <Header title="PAST EDITIONS" />
+        <Header title="Past Editions" />
         <p className="mt-[-2vw] font-anton text-[6vw] text-white lg:text-[3vw]">
           A Legacy of Innovation
         </p>
@@ -46,8 +45,7 @@ export default function HistoryPage() {
         </div>
 
         <div className="mt-12 text-center">
-         <ScoreboardTable year={2024} />
-         
+          <ScoreboardTable year={2024} />
         </div>
       </section>
 

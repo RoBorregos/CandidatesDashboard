@@ -44,7 +44,7 @@ export default async function RequestPage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="pt-16">
+      <div className="pt-16 lg:pt-0">
         <Header title="Team Request" subtitle="Request Team Assignment" />
       </div>
       <div className="container mx-auto max-w-2xl space-y-6 p-4">

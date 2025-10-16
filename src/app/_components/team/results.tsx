@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../shadcn/ui/select";
+import { patternData } from "../pattern";
+import Image from "next/image";
 
 const Results = ({ team }: { team: TeamType }) => {
   const challengeA = team?.challengeA;
@@ -90,9 +92,35 @@ const RoundResults = ({
               <div key={key} className="px-5">
                 Track Points: {challenge.trackPoints}
                 <br />
+                Patterns Passed:
+                <br />
+                {challenge.patternsPassed.length === 0 && (
+                  <span>No patterns were crossed</span>
+                )}
+                {challenge.patternsPassed.map((p) => {
+                  const pattern = patternData.find(
+                    (pattern) => pattern.id === p,
+                  );
+                  if (!pattern) return null;
+                  return (
+                    <div
+                      key={p}
+                      className="relative mx-1 inline-block h-16 w-16"
+                    >
+                      <Image
+                        key={p}
+                        src={pattern.src}
+                        alt={pattern.alt}
+                        fill
+                        className="rounded-lg object-contain"
+                      />
+                    </div>
+                  );
+                })}
+                <br />
                 Time: {challenge.roundTimeSeconds} seconds
                 <br />
-                Lack of progress: {challenge.lackOfProgress ? "Yes" : "No"}
+                Lack of progress: {challenge.lackOfProgress}
                 <hr className="py-1" />
                 Points: {challenge.points}
               </div>

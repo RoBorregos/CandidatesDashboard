@@ -2,7 +2,12 @@ import Image from "next/image";
 import { HydrateClient } from "rbrgs/trpc/server";
 import capitalOne from "../../public/images/sponsors/CapitalOne.png";
 import stanser from "../../public/images/sponsors/Stanser.png";
+import github from "../../public/images/sponsors/github.png";
 import robologo from "../../public/images/white-logo.png";
+import coffeeCart from "../../public/images/sponsors/coffeeCart.png";
+import peckers from "../../public/images/sponsors/peckers.png";
+import tapiocaHouse from "../../public/images/sponsors/tapiocaHouse.jpg";
+import kube from "../../public/images/sponsors/kube.jpg";
 import ball from "../../public/images/ball.jpg";
 import maze from "../../public/images/maze.jpg";
 import line from "../../public/images/line.jpeg";
@@ -11,6 +16,16 @@ import EventTimeline from "./_components/timeline";
 import ImageFade from "./_components/imageFade";
 
 export default async function Home() {
+  const sponsors = [
+    capitalOne,
+    stanser,
+    github,
+    tapiocaHouse,
+    coffeeCart,
+    peckers,
+    kube,
+  ];
+
   return (
     <HydrateClient>
       <main>
@@ -110,23 +125,16 @@ export default async function Home() {
           </span>
         </div>
 
-        <section className="mt-[3rem] bg-white">
-          <div className="mx-[5vw] grid grid-cols-1 gap-5 py-10 lg:mx-[5rem] lg:grid-cols-2">
-            <div className="flex items-center justify-center">
+        <section className="mt-[3rem] grid w-full grid-cols-2 gap-5 bg-white px-[5vw] py-5 lg:grid-cols-4 lg:px-[5rem]">
+          {sponsors.map((sponsor, index) => (
+            <div key={index} className="flex items-center justify-center">
               <Image
-                src={capitalOne}
-                alt="Capital One"
-                className="h-auto w-full max-w-[400px] object-contain"
+                src={sponsor}
+                alt={sponsor.src}
+                className="h-[5rem] w-full max-w-[200px] object-contain"
               />
             </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src={stanser}
-                alt="Stanser"
-                className="h-auto w-full max-w-[400px] object-contain"
-              />
-            </div>
-          </div>
+          ))}
         </section>
 
         <Footer />

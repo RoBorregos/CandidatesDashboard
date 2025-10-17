@@ -102,12 +102,13 @@ export const interviewManagementRouter = createTRPCRouter({
       }
 
       // Check if interviewer is available at this time
+      // Check if interviewer is available at this time
       const conflictingInterview = await ctx.db.user.findFirst({
         where: {
           interviewerId: input.interviewerId,
           interviewTime: {
-            gte: new Date(interviewStart.getTime() - 15 * 60 * 1000),
-            lte: new Date(interviewStart.getTime() + 15 * 60 * 1000),
+            gt: new Date(interviewStart.getTime() - 15 * 60 * 1000),
+            lt: new Date(interviewStart.getTime() + 15 * 60 * 1000),
           },
         },
       });
@@ -276,8 +277,8 @@ export const interviewManagementRouter = createTRPCRouter({
             where: {
               interviewerId: interviewer.id,
               interviewTime: {
-                gte: new Date(interviewTime.getTime() - 15 * 60 * 1000),
-                lte: new Date(interviewTime.getTime() + 15 * 60 * 1000),
+                gt: new Date(interviewTime.getTime() - 15 * 60 * 1000),
+                lt: new Date(interviewTime.getTime() + 15 * 60 * 1000),
               },
             },
           });

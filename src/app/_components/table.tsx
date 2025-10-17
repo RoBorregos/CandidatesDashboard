@@ -8,7 +8,7 @@ interface TableProps {
 export default function Table({ title, data }: TableProps) {
   return (
     <div className="px-10 md:px-20">
-      <div className="mb-[2rem]">
+      <div className="my-[2rem]">
         <Subtitle subtitle={title} />
       </div>
 

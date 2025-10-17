@@ -94,8 +94,9 @@ model Admin {
 model Team {
   id           String       @id @default(cuid())
   name         String       @unique
-  link         String?
+  driveLink    String?
   binnacleLink String?
+  githubLink   String?
   challengeA   ChallengeA[]
   challengeB   ChallengeB[]
   challengeC   ChallengeC[]

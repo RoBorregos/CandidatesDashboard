@@ -37,7 +37,7 @@ export const teamRouter = createTRPCRouter({
     return team;
   }),
 
-  saveLink: protectedProcedure
+  saveDriveLink: protectedProcedure
     .input(z.object({ teamId: z.string(), link: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const team = await ctx.db.team.update({
@@ -46,7 +46,22 @@ export const teamRouter = createTRPCRouter({
         },
         data: {
           id: input.teamId,
-          link: input.link,
+          driveLink: input.link,
+        },
+      });
+      return team;
+    }),
+
+  saveGithubLink: protectedProcedure
+    .input(z.object({ teamId: z.string(), link: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const team = await ctx.db.team.update({
+        where: {
+          id: input.teamId,
+        },
+        data: {
+          id: input.teamId,
+          githubLink: input.link,
         },
       });
       return team;

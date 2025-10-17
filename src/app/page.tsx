@@ -8,6 +8,7 @@ import coffeeCart from "../../public/images/sponsors/coffeeCart.png";
 import peckers from "../../public/images/sponsors/peckers.png";
 import tapiocaHouse from "../../public/images/sponsors/tapiocaHouse.jpg";
 import kube from "../../public/images/sponsors/kube.jpg";
+import digikey from "../../public/images/sponsors/DigiKey.png";
 import ball from "../../public/images/ball.jpg";
 import maze from "../../public/images/maze.jpg";
 import line from "../../public/images/line.jpg";
@@ -24,6 +25,7 @@ export default async function Home() {
     coffeeCart,
     peckers,
     kube,
+    digikey,
   ];
 
   return (

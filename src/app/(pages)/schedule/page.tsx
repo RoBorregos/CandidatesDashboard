@@ -3,14 +3,37 @@
 import Header from "~/app/_components/header";
 import { api } from "~/trpc/react";
 
-export default function SchedulePage() {
-  const { data: teams, isLoading } = api.team.getVisibleSchedules.useQuery();
+type ScheduleChallenge = {
+  name: string;
+  time: string | Date;
+};
 
-  // gets the count of unique round numbers across all teams
-  const roundsRevealed = teams
-    ? new Set(teams.flatMap((team) => team.rounds.map((round) => round.number)))
-        .size
-    : 0;
+type ScheduleRound = {
+  number: number;
+  challenges: ScheduleChallenge[];
+};
+
+type ScheduleTeam = {
+  id?: string;
+  name: string;
+  rounds: ScheduleRound[];
+};
+
+type Cell = { A?: string; B?: string; C?: string };
+type RoundBucket = { times: Set<string>; rows: Record<string, Cell> };
+
+export default function SchedulePage() {
+  const query = api.team.getVisibleSchedules.useQuery();
+  const isArray = Array.isArray(query.data);
+  const teams: ScheduleTeam[] = isArray ? (query.data as ScheduleTeam[]) : [];
+  const { isLoading } = query;
+
+  /** Rondas reveladas = cantidad de números de ronda únicos presentes */
+  const roundsRevealed =
+    teams.length > 0
+      ? new Set(teams.flatMap((t) => (t.rounds ?? []).map((r) => r.number)))
+          .size
+      : 0;
 
   if (isLoading) {
     return (
@@ -19,13 +42,13 @@ export default function SchedulePage() {
           <Header title="Schedules" subtitle="Loading schedules..." />
         </div>
         <div className="flex h-64 items-center justify-center">
-          <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-roboblue"></div>
+          <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-roboblue" />
         </div>
       </main>
     );
   }
 
-  if (!teams || teams.length === 0) {
+  if (teams.length === 0) {
     return (
       <main className="mt-[4rem] min-h-screen bg-black text-white">
         <div className="md:pb-10">
@@ -45,29 +68,51 @@ export default function SchedulePage() {
     );
   }
 
-  interface TeamRoundData {
-    teamName: string;
-    challenges: Array<{
-      name: string;
-      time: Date;
-    }>;
+  const toDate = (d: Date | string): Date =>
+    d instanceof Date ? d : new Date(d);
+  const toTimeKey = (d: Date): string => {
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+  const getTrackFromName = (name: string): "A" | "B" | "C" | null => {
+    const n = name.toLowerCase();
+    if (n.includes("pista a") || n.includes("track a")) return "A";
+    if (n.includes("pista b") || n.includes("track b")) return "B";
+    if (n.includes("pista c") || n.includes("track c")) return "C";
+    return null;
+  };
+
+  const roundBuckets: Record<number, RoundBucket> = {};
+
+  for (const team of teams) {
+    for (const round of team.rounds ?? []) {
+      if (round.number > roundsRevealed) continue;
+
+      const rn = Number(round.number);
+      const bucket = (roundBuckets[rn] ??= {
+        times: new Set<string>(),
+        rows: {},
+      });
+
+      for (const ch of round.challenges ?? []) {
+        const track = getTrackFromName(ch.name);
+        if (!track) continue;
+
+        const tKey = toTimeKey(toDate(ch.time));
+        bucket.times.add(tKey);
+
+        const row = (bucket.rows[tKey] ??= {});
+        if (track === "A") row.A = team.name ?? "";
+        else if (track === "B") row.B = team.name ?? "";
+        else row.C = team.name ?? "";
+      }
+    }
   }
 
-  const roundData: Record<number, TeamRoundData[]> = {};
-
-  teams.forEach((team) => {
-    team.rounds.forEach((round) => {
-      if (!roundData[round.number]) {
-        roundData[round.number] = [];
-      }
-      roundData[round.number]!.push({
-        teamName: team.name,
-        challenges: round.challenges.sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
-      });
-    });
-  });
+  const rounds = Object.keys(roundBuckets)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b);
 
   return (
     <main className="mt-[4rem] min-h-screen bg-black text-white">
@@ -79,138 +124,69 @@ export default function SchedulePage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {Object.keys(roundData)
-          .sort((a, b) => Number(a) - Number(b))
-          .map((roundNum) => (
-            <div key={roundNum} className="mb-12">
-              <div className="mb-6 rounded-lg bg-gradient-to-r from-roboblue to-blue-600 p-4">
-                <h2 className="text-center text-2xl font-bold">
-                  Round {roundNum}
-                </h2>
-              </div>
+        {rounds.length > 0 ? (
+          rounds.map((round) => {
+            const bucket = roundBuckets[round];
+            if (!bucket) return null;
 
-              <div className="overflow-x-auto">
-                <table className="w-full overflow-hidden rounded-lg bg-gray-900">
-                  <thead>
-                    <tr className="bg-gray-800">
-                      <th className="p-4 text-left font-semibold">Team</th>
-                      <th className="p-4 text-left font-semibold">Track A</th>
-                      <th className="p-4 text-left font-semibold">Track B</th>
-                      <th className="p-4 text-left font-semibold">Track C</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roundData[Number(roundNum)]
-                      ?.sort((a, b) => a.teamName.localeCompare(b.teamName))
-                      .map((teamData, index) => (
-                        <tr
-                          key={teamData.teamName}
-                          className={`border-b border-gray-700 ${
-                            index % 2 === 0 ? "bg-gray-800" : "bg-gray-900"
-                          } transition-colors hover:bg-gray-700`}
-                        >
-                          <td className="p-4 font-medium text-roboblue">
-                            {teamData.teamName}
-                          </td>
-                          <td className="p-4">
-                            {(() => {
-                              const trackAChallenge = teamData.challenges.find(
-                                (c) =>
-                                  c.name.includes("Track A") ||
-                                  c.name.includes("Pista A"),
-                              );
-                              return trackAChallenge ? (
-                                <div className="flex flex-col">
-                                  <span className="font-semibold">
-                                    {trackAChallenge.time.toLocaleTimeString(
-                                      "es-ES",
-                                      {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      },
-                                    )}
-                                  </span>
-                                  <span className="text-xs text-gray-400">
-                                    {trackAChallenge.name.replace(
-                                      "Pista",
-                                      "Track",
-                                    )}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              );
-                            })()}
-                          </td>
-                          <td className="p-4">
-                            {(() => {
-                              const trackBChallenge = teamData.challenges.find(
-                                (c) =>
-                                  c.name.includes("Track B") ||
-                                  c.name.includes("Pista B"),
-                              );
-                              return trackBChallenge ? (
-                                <div className="flex flex-col">
-                                  <span className="font-semibold">
-                                    {trackBChallenge.time.toLocaleTimeString(
-                                      "es-ES",
-                                      {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      },
-                                    )}
-                                  </span>
-                                  <span className="text-xs text-gray-400">
-                                    {trackBChallenge.name.replace(
-                                      "Pista",
-                                      "Track",
-                                    )}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              );
-                            })()}
-                          </td>
-                          <td className="p-4">
-                            {(() => {
-                              const trackCChallenge = teamData.challenges.find(
-                                (c) =>
-                                  c.name.includes("Track C") ||
-                                  c.name.includes("Pista C"),
-                              );
-                              return trackCChallenge ? (
-                                <div className="flex flex-col">
-                                  <span className="font-semibold">
-                                    {trackCChallenge.time.toLocaleTimeString(
-                                      "es-ES",
-                                      {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      },
-                                    )}
-                                  </span>
-                                  <span className="text-xs text-gray-400">
-                                    {trackCChallenge.name.replace(
-                                      "Pista",
-                                      "Track",
-                                    )}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
+            const times = Array.from(bucket.times).sort((a, b) =>
+              a.localeCompare(b),
+            );
 
-        {Object.keys(roundData).length === 0 && (
+            return (
+              <div key={round} className="mb-12">
+                <div className="mb-3 rounded-lg bg-gradient-to-r from-roboblue to-blue-600 p-4">
+                  <h2 className="text-center text-2xl font-bold">
+                    Round {round}
+                  </h2>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full overflow-hidden rounded-lg bg-gray-900">
+                    <thead>
+                      <tr className="bg-gray-800">
+                        <th className="p-4 text-left font-semibold">Time</th>
+                        <th className="p-4 text-left font-semibold">Track A</th>
+                        <th className="p-4 text-left font-semibold">Track B</th>
+                        <th className="p-4 text-left font-semibold">Track C</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {times.map((t, idx) => {
+                        const cell = bucket.rows[t] ?? {};
+                        return (
+                          <tr
+                            key={`${round}-${t}`}
+                            className={`border-b border-gray-700 ${
+                              idx % 2 === 0 ? "bg-gray-800" : "bg-gray-900"
+                            } transition-colors hover:bg-gray-700`}
+                          >
+                            <td className="p-4 font-mono font-medium">{t}</td>
+                            <td className="p-4">
+                              {cell.A ?? (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              {cell.B ?? (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              {cell.C ?? (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })
+        ) : (
           <div className="py-12 text-center">
             <h3 className="mb-2 text-xl font-semibold">No rounds available</h3>
             <p className="text-gray-400">

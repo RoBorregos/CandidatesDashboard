@@ -120,6 +120,29 @@ export default function RequestForm({ teams, userRequest }: RequestFormProps) {
 
             <div>
               <label className="mb-2 block text-sm font-medium">
+                Your Area of Expertise
+              </label>
+              <select
+                value={userArea}
+                onChange={(e) =>
+                  setUserArea(
+                    e.target.value as
+                      | "MECHANICS"
+                      | "ELECTRONICS"
+                      | "PROGRAMMING",
+                  )
+                }
+                className="w-full rounded border border-gray-600 bg-gray-700 p-3"
+              >
+                <option value="">Choose your area...</option>
+                <option value="MECHANICS">Mechanics</option>
+                <option value="ELECTRONICS">Electronics</option>
+                <option value="PROGRAMMING">Programming</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
                 Message (Optional)
               </label>
               <textarea

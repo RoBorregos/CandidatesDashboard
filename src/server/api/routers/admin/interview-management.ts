@@ -155,7 +155,11 @@ export const interviewManagementRouter = createTRPCRouter({
       const SLOT_MS = 15 * 60 * 1000;
       const CHALLENGE_MS = 6 * 60 * 1000;
 
-      const toQuarterCeil = (d: Date) => {
+      const AREAS = ["MECHANICS", "ELECTRONICS", "PROGRAMMING"] as const;
+      type Area = (typeof AREAS)[number];
+      type QueueKey = Area | "UNASSIGNED";
+
+      const toQuarterCeil = (d: Date): Date => {
         const t = new Date(d);
         const m = t.getMinutes();
         const ceil = Math.ceil(m / 15) * 15;
@@ -163,24 +167,24 @@ export const interviewManagementRouter = createTRPCRouter({
         if (ceil === 60) t.setHours(t.getHours() + 1);
         return t;
       };
-      const toQuarterFloor = (d: Date) => {
+      const toQuarterFloor = (d: Date): Date => {
         const t = new Date(d);
         const m = t.getMinutes();
         const floor = Math.floor(m / 15) * 15;
         t.setMinutes(floor, 0, 0);
         return t;
       };
-      const buildSlots = (start: Date, end: Date) => {
-        const slots: Date[] = [];
+      const buildSlots = (start: Date, end: Date): Date[] => {
+        const out: Date[] = [];
         let cur = toQuarterCeil(start);
         const lastStart = new Date(toQuarterFloor(end).getTime() - SLOT_MS);
         while (cur <= lastStart) {
-          slots.push(new Date(cur));
+          out.push(new Date(cur));
           cur = new Date(cur.getTime() + SLOT_MS);
         }
-        return slots;
+        return out;
       };
-      const overlaps = (a1: Date, a2: Date, b1: Date, b2: Date) =>
+      const overlaps = (a1: Date, a2: Date, b1: Date, b2: Date): boolean =>
         !(a2 <= b1 || a1 >= b2);
 
       const users = await ctx.db.user.findMany({
@@ -194,14 +198,10 @@ export const interviewManagementRouter = createTRPCRouter({
         },
         orderBy: [{ team: { name: "asc" } }, { name: "asc" }],
       });
+      type User = (typeof users)[number];
 
       const interviewers = await ctx.db.interviewer.findMany();
-      const AREAS = ["MECHANICS", "ELECTRONICS", "PROGRAMMING"] as const;
-
-      const interviewersByArea: Record<
-        (typeof AREAS)[number],
-        { id: string }[]
-      > = {
+      const interviewersByArea: Record<Area, { id: string }[]> = {
         MECHANICS: interviewers
           .filter((i) => i.area === "MECHANICS")
           .map((i) => ({ id: i.id })),
@@ -214,23 +214,27 @@ export const interviewManagementRouter = createTRPCRouter({
       };
 
       const bookedByInterviewer = new Map<string, Set<number>>();
-
       const existing = await ctx.db.user.findMany({
         where: { interviewerId: { not: null }, interviewTime: { not: null } },
         select: { interviewerId: true, interviewTime: true },
       });
       for (const row of existing) {
-        if (!row.interviewerId || !row.interviewTime) continue;
-        const slot = toQuarterFloor(new Date(row.interviewTime)).getTime();
-        if (!bookedByInterviewer.has(row.interviewerId)) {
-          bookedByInterviewer.set(row.interviewerId, new Set());
+        const interviewerId = row.interviewerId;
+        const time = row.interviewTime;
+        if (!interviewerId || !time) continue;
+        const slotStartTs = toQuarterFloor(new Date(time)).getTime();
+        let set = bookedByInterviewer.get(interviewerId);
+        if (!set) {
+          set = new Set<number>();
+          bookedByInterviewer.set(interviewerId, set);
         }
-        bookedByInterviewer.get(row.interviewerId)!.add(slot);
+        set.add(slotStartTs);
       }
 
-      const userBusy: Record<string, Array<{ s: Date; e: Date }>> = {};
+      type Interval = { s: Date; e: Date };
+      const userBusy: Record<string, Interval[]> = {};
       for (const u of users) {
-        const arr: Array<{ s: Date; e: Date }> = [];
+        const arr: Interval[] = [];
         for (const r of u.team?.rounds ?? []) {
           for (const ch of r.challenges) {
             const s = new Date(ch.time);
@@ -238,7 +242,7 @@ export const interviewManagementRouter = createTRPCRouter({
             arr.push({ s, e });
           }
         }
-        arr.sort((x, y) => x.s.getTime() - y.s.getTime());
+        arr.sort((a, b) => a.s.getTime() - b.s.getTime());
         userBusy[u.id] = arr;
       }
 
@@ -251,17 +255,17 @@ export const interviewManagementRouter = createTRPCRouter({
         };
       }
 
-      const queueByArea: Record<string, typeof users> = {
+      const queueByArea = {
         MECHANICS: users.filter((u) => u.interviewArea === "MECHANICS"),
         ELECTRONICS: users.filter((u) => u.interviewArea === "ELECTRONICS"),
         PROGRAMMING: users.filter((u) => u.interviewArea === "PROGRAMMING"),
         UNASSIGNED: users.filter((u) => !u.interviewArea),
-      };
+      } satisfies Record<QueueKey, User[]>;
 
-      const popNextFreeUser = (arr: typeof users, slotStart: Date) => {
+      const popNextFreeUser = (arr: User[], slotStart: Date): User | null => {
         const slotEnd = new Date(slotStart.getTime() + SLOT_MS);
         for (let i = 0; i < arr.length; i++) {
-          const u = arr[i];
+          const u = arr[i]!;
           const busy = userBusy[u.id] ?? [];
           const hasConflict = busy.some(({ s, e }) =>
             overlaps(slotStart, slotEnd, s, e),
@@ -291,29 +295,28 @@ export const interviewManagementRouter = createTRPCRouter({
           if (freeInterviewers.length === 0) continue;
 
           while (freeInterviewers.length > 0) {
-            const user =
+            const chosenUser =
               popNextFreeUser(queueByArea[area], slotStart) ??
               popNextFreeUser(queueByArea.UNASSIGNED, slotStart);
-            if (!user) break;
+            if (!chosenUser) break;
 
             const interviewerId = freeInterviewers.shift()!;
+
             await ctx.db.user.update({
-              where: { id: user.id },
+              where: { id: chosenUser.id },
               data: {
                 interviewTime: slotStart,
                 interviewerId,
-                interviewArea: (user.interviewArea ?? area) as
-                  | "MECHANICS"
-                  | "ELECTRONICS"
-                  | "PROGRAMMING",
+                interviewArea: (chosenUser.interviewArea ?? area) as Area,
               },
             });
 
-            // Mark interviewer as booked for this slot
-            if (!bookedByInterviewer.has(interviewerId)) {
-              bookedByInterviewer.set(interviewerId, new Set<number>());
+            let set = bookedByInterviewer.get(interviewerId);
+            if (!set) {
+              set = new Set<number>();
+              bookedByInterviewer.set(interviewerId, set);
             }
-            bookedByInterviewer.get(interviewerId)!.add(slotTs);
+            set.add(slotTs);
 
             scheduledCount++;
           }

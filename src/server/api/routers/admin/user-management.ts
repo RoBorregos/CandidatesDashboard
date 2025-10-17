@@ -1,6 +1,7 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { z } from "zod";
 import { Role } from "@prisma/client";
+import { db } from "rbrgs/server/db";
 
 export const userManagementRouter = createTRPCRouter({
   getAllUsers: adminProcedure.query(async ({ ctx }) => {
@@ -21,8 +22,8 @@ export const userManagementRouter = createTRPCRouter({
         teamName: z.string(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const team = await ctx.db.team.findUnique({
+    .mutation(async ({ input }) => {
+      const team = await db.team.findUnique({
         where: { name: input.teamName },
         include: { _count: { select: { members: true } } },
       });
@@ -35,11 +36,22 @@ export const userManagementRouter = createTRPCRouter({
         throw new Error("Team is full. Maximum 4 members allowed.");
       }
 
-      await ctx.db.user.update({
+      const userRole = await db.user
+        .findUnique({
+          where: { id: input.userId },
+        })
+        .then((user) => user?.role);
+
+      console.log("Assigning user with role:", userRole);
+
+      await db.user.update({
         where: { id: input.userId },
         data: {
           teamId: team.id,
-          role: Role.CONTESTANT,
+          role:
+            userRole === Role.ADMIN || userRole === Role.JUDGE
+              ? userRole
+              : Role.CONTESTANT,
         },
       });
 
@@ -52,12 +64,21 @@ export const userManagementRouter = createTRPCRouter({
         userId: z.string(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db.user.update({
+    .mutation(async ({ input }) => {
+      const userRole = await db.user
+        .findUnique({
+          where: { id: input.userId },
+        })
+        .then((user) => user?.role);
+
+      await db.user.update({
         where: { id: input.userId },
         data: {
           teamId: null,
-          role: Role.UNASSIGNED,
+          role:
+            userRole === Role.ADMIN || userRole === Role.JUDGE
+              ? userRole
+              : Role.UNASSIGNED,
         },
       });
 

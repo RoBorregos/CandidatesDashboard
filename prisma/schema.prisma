@@ -67,24 +67,26 @@ model Interviewer {
 }
 
 model User {
-  id               String         @id @default(cuid())
+  id               String           @id @default(cuid())
   name             String?
-  email            String?        @unique
+  email            String?          @unique
   emailVerified    DateTime?
   image            String?
   interviewTime    DateTime?
   interviewArea    InterviewArea?
   interviewerId    String?
-  role             Role           @default(UNASSIGNED)
+  role             Role             @default(UNASSIGNED)
   teamId           String?
+  isStaff          Boolean          @default(false)
   accounts         Account[]
   judgedChallengeA ChallengeA[]
   judgedChallengeB ChallengeB[]
   judgedChallengeC ChallengeC[]
   sessions         Session[]
-  team             Team?          @relation(fields: [teamId], references: [id])
+  team             Team?            @relation(fields: [teamId], references: [id])
   teamRequests     TeamRequest?
-  interviewer      Interviewer?   @relation(fields: [interviewerId], references: [id])
+  interviewer      Interviewer?     @relation(fields: [interviewerId], references: [id])
+  unavailabilities Unavailability[]
 }
 
 model VerificationToken {
@@ -199,6 +201,17 @@ model Config {
   roundsRevealed     Int     @default(0)
 
   @@map("config")
+}
+
+model Unavailability {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startMin  Int
+  endMin    Int
+  createdAt DateTime @default(now())
+
+  @@index([userId, startMin])
 }
 
 enum Role {

@@ -8,10 +8,11 @@ import TeamStatusManagement from "~/app/_components/admin/TeamStatusManagement";
 import ScheduleControl from "~/app/_components/admin/ScheduleControl";
 import RoundControl from "~/app/_components/admin/RoundControl";
 import InterviewManagement from "~/app/_components/admin/InterviewManagement";
+import StaffManagement from "~/app/_components/admin/StaffManagement";
 
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<
-    "management" | "teams" | "schedule" | "rounds" | "interviews"
+    "management" | "teams" | "schedule" | "rounds" | "interviews" | "staff"
   >("management");
 
   const { data: users, refetch: refetchUsers } =
@@ -53,6 +54,7 @@ export default function AdminPage() {
             { id: "schedule", label: "Schedule Control" },
             { id: "rounds", label: "Round Control" },
             { id: "interviews", label: "Interview Management" },
+            { id: "staff", label: "Staff" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -63,7 +65,8 @@ export default function AdminPage() {
                     | "teams"
                     | "schedule"
                     | "rounds"
-                    | "interviews",
+                    | "interviews"
+                    | "staff",
                 )
               }
               className={`border-b-2 px-1 py-2 text-sm font-medium ${
@@ -115,6 +118,8 @@ export default function AdminPage() {
         {selectedTab === "interviews" && (
           <InterviewManagement refetchAll={refetchAll} />
         )}
+
+        {selectedTab === "staff" && <StaffManagement />}
       </div>
     </main>
   );

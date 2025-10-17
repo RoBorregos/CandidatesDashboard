@@ -7,6 +7,7 @@ import { scheduleManagementRouter } from "./admin/schedule-management";
 import { roundControlRouter } from "./admin/round-control";
 import { interviewManagementRouter } from "./admin/interview-management";
 import { testingUtilitiesRouter } from "./admin/testing-utilities";
+import { staffManagementRouter } from "./admin/staff-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -46,6 +47,13 @@ export const adminRouter = createTRPCRouter({
   clearInterview: interviewManagementRouter.clearInterview,
   clearAllInterviews: interviewManagementRouter.clearAllInterviews,
   autoScheduleInterviews: interviewManagementRouter.autoScheduleInterviews,
+
+  // Staff Management
+  setUserStaff: staffManagementRouter.setUserStaff,
+  getStaffUsers: staffManagementRouter.getStaffUsers,
+  listUnavailability: staffManagementRouter.listUnavailability,
+  addUnavailability: staffManagementRouter.addUnavailability,
+  deleteUnavailability: staffManagementRouter.deleteUnavailability,
 
   // Testing Utilities
   runTestCase: testingUtilitiesRouter.runTestCase,

@@ -2,15 +2,30 @@ import Image from "next/image";
 import { HydrateClient } from "rbrgs/trpc/server";
 import capitalOne from "../../public/images/sponsors/CapitalOne.png";
 import stanser from "../../public/images/sponsors/Stanser.png";
+import github from "../../public/images/sponsors/github.png";
 import robologo from "../../public/images/white-logo.png";
-import ball from "../../public/images/ball.jpeg";
-import maze from "../../public/images/maze.jpeg";
-import line from "../../public/images/line.jpeg";
+import coffeeCart from "../../public/images/sponsors/coffeeCart.png";
+import peckers from "../../public/images/sponsors/peckers.png";
+import tapiocaHouse from "../../public/images/sponsors/tapiocaHouse.jpg";
+import kube from "../../public/images/sponsors/kube.jpg";
+import ball from "../../public/images/ball.jpg";
+import maze from "../../public/images/maze.jpg";
+import line from "../../public/images/line.jpg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
 import ImageFade from "./_components/imageFade";
 
 export default async function Home() {
+  const sponsors = [
+    capitalOne,
+    stanser,
+    github,
+    tapiocaHouse,
+    coffeeCart,
+    peckers,
+    kube,
+  ];
+
   return (
     <HydrateClient>
       <main>
@@ -35,14 +50,14 @@ export default async function Home() {
         </section>
 
         <div className="mx-[10vw] text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:text-[1.5rem]">
-          This year, the rounds are divided into 3 different{" "}
+          <span className="text-[2rem] font-bold">Meet the </span>
           <span className="font-jersey_25 text-[4rem] text-roboblue">
-            challenges.
+            challenges
           </span>
-          <div className="mt-[10vw] lg:mx-[10vw] lg:mt-[1vw]">
-            Contrary to other years where these were all connected in a single
-            game field, teams will only have one opportunity to demonstrate
-            their work in each of them.
+          <div className="mt-[10vw] lg:mx-[8vw] lg:mt-[1vw]">
+            Distributed in three different arenas, teams will have three
+            opportunities to demonstrate their skills and creativity in each one
+            of them by scoring points in the unique tests.
           </div>
         </div>
 
@@ -54,16 +69,14 @@ export default async function Home() {
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
+              <div className="absolute top-0 h-[15rem] w-full content-center bg-gradient-to-t from-black to-roboblue bg-clip-text text-center font-anton text-[5rem] text-transparent transition duration-300 group-hover:opacity-0 lg:left-5">
                 MAZE
               </div>
             </div>
             <p className="m-[1rem] text-justify font-archivo text-white">
-              We have the traditional Maze section where robots visit all tiles
-              in a maze while detecting the colors on the ground to make points.
-              The next step is finding the exit. Finally, if the team wishes to
-              go for the bonus points, the robot must go back to a tile with the
-              color that repeats exactly 5 times in the maze.
+              Navigate a grid of tiles, detect ground colors, and score as you
+              explore the maze. Find the exit to complete the route and win
+              bonus points you must return from where you came from.
             </p>
           </div>
 
@@ -74,15 +87,14 @@ export default async function Home() {
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
+              <div className="absolute top-0 h-[15rem] w-full content-center bg-gradient-to-t from-black to-roboblue bg-clip-text text-center font-anton text-[5rem] text-transparent transition duration-300 group-hover:opacity-0 lg:left-5">
                 LINE
               </div>
             </div>
             <p className="m-[1rem] text-justify font-archivo text-white">
-              The classical line follower is back with a twist! Candidates can
-              choose their own difficulty by selecting the modules with the
-              lines they’ll have to follow. Then, RoBorregos staff will place
-              them on the field randomly right before the round begins.
+              The classic line follower returns with a twist. Teams pick their
+              difficulty by choosing track modules and taking the riskier path
+              to the end if they&apos; re looking to win!
             </p>
           </div>
           <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800">
@@ -92,41 +104,37 @@ export default async function Home() {
                 alt=""
                 className={`h-[15rem] w-full rounded-xl object-cover blur-[0.1rem] transition duration-300 ease-in-out group-hover:blur-none lg:ml-5 lg:mt-5`}
               />
-              <div className="absolute top-0 h-[15rem] w-full content-center text-center font-anton text-[5rem] text-white transition duration-300 group-hover:opacity-0 lg:left-5">
+              <div className="absolute top-0 h-[15rem] w-full content-center bg-gradient-to-t from-black to-roboblue bg-clip-text text-center font-anton text-[5rem] text-transparent transition duration-300 group-hover:opacity-0 lg:left-5">
                 BALL
               </div>
             </div>
             <p className="m-[1rem] text-justify font-archivo text-white">
-              Can you find the ball? In this challenge, robots will have to find
-              access to the ball located in the center and retrieve it to the
-              end in a controlled manner, but be careful! There are black lines
-              on the ground which your robot must not cross.
+              Detect flags on the field and follow their instructions to locate
+              and interact with the ball. Precision, timing, and control are key
+              to maximize your score.
             </p>
           </div>
         </section>
 
         <EventTimeline />
 
-        <h2 className="mt-[5rem] text-center font-jersey_25 text-[4rem] text-roboblue lg:mt-[10rem]">
-          Sponsors
-        </h2>
-        <section className="mt-[3rem] bg-white">
-          <div className="mx-[5vw] grid grid-cols-1 gap-5 py-10 lg:mx-[5rem] lg:grid-cols-2">
-            <div className="flex items-center justify-center">
+        <div className="mx-[10vw] mt-10 text-center font-archivo text-[1rem] text-white lg:mx-[10rem] lg:text-[1.5rem]">
+          <span className="text-[2rem] font-bold">Thanks to our </span>
+          <span className="font-jersey_25 text-[4rem] text-roboblue">
+            sponsors
+          </span>
+        </div>
+
+        <section className="mt-[3rem] grid w-full grid-cols-2 gap-5 bg-white px-[5vw] py-5 lg:grid-cols-4 lg:px-[5rem]">
+          {sponsors.map((sponsor, index) => (
+            <div key={index} className="flex items-center justify-center">
               <Image
-                src={capitalOne}
-                alt="Capital One"
-                className="h-auto w-full max-w-[400px] object-contain"
+                src={sponsor}
+                alt={sponsor.src}
+                className="h-[5rem] w-full max-w-[200px] object-contain"
               />
             </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src={stanser}
-                alt="Stanser"
-                className="h-auto w-full max-w-[400px] object-contain"
-              />
-            </div>
-          </div>
+          ))}
         </section>
 
         <Footer />

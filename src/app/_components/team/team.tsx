@@ -48,7 +48,11 @@ const TeamInfo = ({ team }: { team: TeamType }) => {
             Documents
           </h1>
           <Upload binnacleLink={team.binnacleLink} />
-          <Input teamId={team.id} prevLink={team.link ?? ""} />
+          <Input
+            teamId={team.id}
+            prevLink={team.driveLink ?? ""}
+            prevGithub={team.githubLink ?? ""}
+          />
         </div>
       ) : !team ? (
         <div>
@@ -70,7 +74,7 @@ const Schedules = ({ team }: { team: TeamType }) => {
   const interviewsTimes = interviewData.times;
   return (
     <div>
-      <h1 className="mb-5 text-center font-archivo text-4xl">Rounds</h1>
+      <h1 className="m-5 text-center font-archivo text-4xl">Rounds</h1>
       {rounds?.map((round, key) => (
         <Table
           key={key}

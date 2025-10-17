@@ -13,8 +13,8 @@ export default function Footer() {
           More about RoBorregos
         </p>
         <div className="mt-[1rem] flex w-full flex-col flex-wrap gap-2">
-          <a href="mailto:info@roborregos.com">
-            <p className="hover:underline">info@roborregos.com</p>
+          <a href="mailto:roborregosteam@gmail.com">
+            <p className="hover:underline">roborregosteam@gmail.com</p>
           </a>
           <Link href="https://www.roborregos.com/">
             <p className="cursor-pointer hover:underline">www.roborregos.com</p>

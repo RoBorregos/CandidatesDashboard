@@ -111,8 +111,9 @@ model Admin {
 model Team {
   id           String       @id @default(cuid())
   name         String       @unique
-  link         String?
+  driveLink    String?
   binnacleLink String?
+  githubLink   String?
   isActive     Boolean      @default(true)
   challengeA   ChallengeA[]
   challengeB   ChallengeB[]
@@ -155,7 +156,7 @@ model ChallengeA {
 }
 
 model ChallengeB {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   trackPoints      Int
   patternsPassed   Pattern[]
   judgeID          String
@@ -164,9 +165,9 @@ model ChallengeB {
   roundId          String
   roundTimeSeconds Int
   teamId           String
-  createdAt        DateTime @default(now())
-  user             User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
-  team             Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [judgeID], references: [id], onDelete: Cascade)
+  team             Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 model ChallengeC {

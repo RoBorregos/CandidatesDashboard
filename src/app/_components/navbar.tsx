@@ -21,8 +21,7 @@ export default async function Navbar() {
           className="h-[2rem] w-fit cursor-pointer object-contain"
         />
       </Link>
-      <div className="ml-10 hidden w-full items-center justify-start gap-x-10 text-xl text-white lg:flex">
-        <Link href="/">Home</Link>
+      <div className="ml-10 hidden w-full items-center justify-start gap-x-10 text-white lg:flex xl:text-xl">
         <Link href="scoreboard">Scoreboard</Link>
         <Link href="schedule">Schedule</Link>
         <Link href="team">Team</Link>

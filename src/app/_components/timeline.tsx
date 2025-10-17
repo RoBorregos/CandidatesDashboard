@@ -1,10 +1,4 @@
-// components/Timeline.tsx
 import React from "react";
-import Image from "next/image";
-import tm1 from "public/images/tm1.jpg";
-import tm2 from "public/images/tm2.jpg";
-import tm3 from "public/images/tm3.jpg";
-import tm4 from "public/images/tm4.jpg";
 import eventsData from "./events.json";
 import TimelineImg from "./timelineImg";
 
@@ -13,7 +7,6 @@ const Timeline: React.FC = () => {
 
   return (
     <div className="relative mt-[10rem] flex w-full justify-center">
-      {/* Background images arranged in a grid layout */}
       <div className="absolute inset-0 grid grid-cols-2 gap-8 px-10 opacity-15">
         <TimelineImg numberImage={1} col={1} row={1} />
         <TimelineImg numberImage={2} col={2} row={1} />
@@ -21,11 +14,11 @@ const Timeline: React.FC = () => {
         <TimelineImg numberImage={4} col={2} row={2} />
       </div>
 
-      {/* Main content */}
       <div className="relative max-w-[40rem] p-4 text-white">
-        <h2 className="mb-[1rem] mt-[5rem] text-center text-[4rem] font-bold text-roboblue">
+        <h2 className="mt-[5rem] text-center text-[4rem] font-bold text-roboblue">
           Event Schedule
         </h2>
+        <h3 className="text-center text-lg">Times are subject to changes*</h3>
         <div className="relative mt-[3rem] border-l border-gray-200">
           {eventSections.map((event, index) => (
             <div

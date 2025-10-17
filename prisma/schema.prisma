@@ -52,22 +52,39 @@ enum RequestStatus {
   REJECTED
 }
 
+enum InterviewArea {
+  MECHANICS
+  ELECTRONICS
+  PROGRAMMING
+}
+
+model Interviewer {
+  id    String        @id @default(cuid())
+  name  String
+  email String        @unique
+  area  InterviewArea
+  users User[]
+}
+
 model User {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   name             String?
-  email            String?      @unique
+  email            String?        @unique
   emailVerified    DateTime?
   image            String?
   interviewTime    DateTime?
-  role             Role         @default(UNASSIGNED)
+  interviewArea    InterviewArea?
+  interviewerId    String?
+  role             Role           @default(UNASSIGNED)
   teamId           String?
   accounts         Account[]
   judgedChallengeA ChallengeA[]
   judgedChallengeB ChallengeB[]
   judgedChallengeC ChallengeC[]
   sessions         Session[]
-  team             Team?        @relation(fields: [teamId], references: [id])
+  team             Team?          @relation(fields: [teamId], references: [id])
   teamRequests     TeamRequest?
+  interviewer      Interviewer?   @relation(fields: [interviewerId], references: [id])
 }
 
 model VerificationToken {
@@ -96,6 +113,7 @@ model Team {
   name         String       @unique
   link         String?
   binnacleLink String?
+  isActive     Boolean      @default(true)
   challengeA   ChallengeA[]
   challengeB   ChallengeB[]
   challengeC   ChallengeC[]
@@ -106,6 +124,7 @@ model Team {
 model Round {
   id         String      @id @default(cuid())
   number     Int
+  isVisible  Boolean     @default(false)
   teamId     String?
   challenges Challenge[]
   team       Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -171,10 +190,14 @@ model ChallengeC {
   team                       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
-model config {
+model Config {
   id                 Int     @id @default(autoincrement())
   freeze             Boolean @default(true)
   competitionStarted Boolean @default(false)
+  currentRound       Int     @default(1)
+  roundsRevealed     Int     @default(0)
+
+  @@map("config")
 }
 
 enum Role {

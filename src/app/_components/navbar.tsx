@@ -24,6 +24,7 @@ export default async function Navbar() {
       <div className="ml-10 hidden w-full items-center justify-start gap-x-10 text-xl text-white lg:flex">
         <Link href="/">Home</Link>
         <Link href="scoreboard">Scoreboard</Link>
+        <Link href="schedule">Schedule</Link>
         <Link href="team">Team</Link>
         {canJudge && <Link href="judge">Judge</Link>}
         {session?.user.role === Role.ADMIN && <Link href="admin">Admin</Link>}

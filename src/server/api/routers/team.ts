@@ -2,7 +2,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Role } from "@prisma/client";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 
 export const teamRouter = createTRPCRouter({
   getTeam: protectedProcedure.query(async ({ ctx }) => {
@@ -23,9 +27,16 @@ export const teamRouter = createTRPCRouter({
       include: {
         members: true,
         rounds: {
+          where: {
+            isVisible: true,
+          },
           select: {
             number: true,
             challenges: true,
+            isVisible: true,
+          },
+          orderBy: {
+            number: "asc",
           },
         },
         challengeA: true,
@@ -95,6 +106,7 @@ export const teamRouter = createTRPCRouter({
       z.object({
         requestedTeam: z.string(),
         message: z.string().optional(),
+        userArea: z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -124,6 +136,12 @@ export const teamRouter = createTRPCRouter({
       });
 
       if (existingRequest) {
+        // Update both the team request and the user's area
+        await ctx.db.user.update({
+          where: { id: ctx.session.user.id },
+          data: { interviewArea: input.userArea },
+        });
+
         return ctx.db.teamRequest.update({
           where: { id: existingRequest.id },
           data: {
@@ -133,6 +151,12 @@ export const teamRouter = createTRPCRouter({
           },
         });
       } else {
+        // Update the user's area and create the request
+        await ctx.db.user.update({
+          where: { id: ctx.session.user.id },
+          data: { interviewArea: input.userArea },
+        });
+
         return ctx.db.teamRequest.create({
           data: {
             userId: ctx.session.user.id,
@@ -182,6 +206,35 @@ export const teamRouter = createTRPCRouter({
     });
 
     return { success: true };
+  }),
+
+  // Get visible schedules for all active teams (public access)
+  getVisibleSchedules: publicProcedure.query(async ({ ctx }) => {
+    const teams = await ctx.db.team.findMany({
+      where: {
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        rounds: {
+          where: {
+            isVisible: true,
+          },
+          include: {
+            challenges: true,
+          },
+          orderBy: {
+            number: "asc",
+          },
+        },
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return teams;
   }),
 });
 

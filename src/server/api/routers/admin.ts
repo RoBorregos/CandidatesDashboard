@@ -1,168 +1,53 @@
-/* eslint-disable */
-
-import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { z } from "zod";
-import { Role } from "@prisma/client";
+// Main admin router that combines all modular routers
+import { createTRPCRouter } from "../trpc";
+import { userManagementRouter } from "./admin/user-management";
+import { teamManagementRouter } from "./admin/team-management";
+import { requestManagementRouter } from "./admin/request-management";
+import { scheduleManagementRouter } from "./admin/schedule-management";
+import { roundControlRouter } from "./admin/round-control";
+import { interviewManagementRouter } from "./admin/interview-management";
+import { testingUtilitiesRouter } from "./admin/testing-utilities";
 
 export const adminRouter = createTRPCRouter({
-  getAllUsers: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findMany({
-      include: {
-        team: true,
-      },
-      orderBy: {
-        email: "asc",
-      },
-    });
-  }),
+  // User Management
+  getAllUsers: userManagementRouter.getAllUsers,
+  assignUserToTeam: userManagementRouter.assignUserToTeam,
+  removeUserFromTeam: userManagementRouter.removeUserFromTeam,
 
-  getAllTeams: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.team.findMany({
-      include: {
-        members: true,
-        _count: {
-          select: { members: true },
-        },
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-  }),
+  // Team Management
+  getAllTeams: teamManagementRouter.getAllTeams,
+  createTeam: teamManagementRouter.createTeam,
+  getTeams: teamManagementRouter.getTeams,
+  toggleTeamStatus: teamManagementRouter.toggleTeamStatus,
 
-  getPendingRequests: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.teamRequest.findMany({
-      where: {
-        status: "PENDING",
-      },
-      include: {
-        user: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  }),
+  // Request Management
+  getPendingRequests: requestManagementRouter.getPendingRequests,
+  approveTeamRequest: requestManagementRouter.approveTeamRequest,
+  rejectTeamRequest: requestManagementRouter.rejectTeamRequest,
 
-  assignUserToTeam: adminProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        teamName: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const team = await ctx.db.team.findUnique({
-        where: { name: input.teamName },
-        include: { _count: { select: { members: true } } },
-      });
+  // Schedule Management
+  uploadTeamData: scheduleManagementRouter.uploadTeamData,
+  regenerateSchedules: scheduleManagementRouter.regenerateSchedules,
+  generateSingleRound: scheduleManagementRouter.generateSingleRound,
+  getScheduleTables: scheduleManagementRouter.getScheduleTables,
 
-      if (!team) {
-        throw new Error("Team not found");
-      }
+  // Round Control
+  getConfig: roundControlRouter.getConfig,
+  updateConfig: roundControlRouter.updateConfig,
+  toggleRoundVisibility: roundControlRouter.toggleRoundVisibility,
+  getRoundVisibilityStatus: roundControlRouter.getRoundVisibilityStatus,
+  revealNextRound: roundControlRouter.revealNextRound,
 
-      if (team._count.members >= 4) {
-        throw new Error("Team is full. Maximum 4 members allowed.");
-      }
+  // Interview Management
+  getInterviewers: interviewManagementRouter.getInterviewers,
+  createInterviewer: interviewManagementRouter.createInterviewer,
+  getInterviewSchedule: interviewManagementRouter.getInterviewSchedule,
+  scheduleInterview: interviewManagementRouter.scheduleInterview,
+  clearInterview: interviewManagementRouter.clearInterview,
+  clearAllInterviews: interviewManagementRouter.clearAllInterviews,
+  autoScheduleInterviews: interviewManagementRouter.autoScheduleInterviews,
 
-      await ctx.db.user.update({
-        where: { id: input.userId },
-        data: {
-          teamId: team.id,
-          role: Role.CONTESTANT,
-        },
-      });
-
-      await ctx.db.teamRequest.deleteMany({
-        where: { userId: input.userId },
-      });
-
-      return { success: true };
-    }),
-
-  createTeam: adminProcedure
-    .input(
-      z.object({
-        name: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      return ctx.db.team.create({
-        data: {
-          name: input.name,
-        },
-      });
-    }),
-
-  approveTeamRequest: adminProcedure
-    .input(
-      z.object({
-        requestId: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const request = await ctx.db.teamRequest.findUnique({
-        where: { id: input.requestId },
-        include: { user: true },
-      });
-
-      if (!request) {
-        throw new Error("Request not found");
-      }
-
-      const team = await ctx.db.team.findUnique({
-        where: { name: request.requestedTeam },
-      });
-
-      if (!team) {
-        throw new Error("Team not found");
-      }
-
-      await ctx.db.user.update({
-        where: { id: request.userId },
-        data: {
-          teamId: team.id,
-          role: Role.CONTESTANT,
-        },
-      });
-
-      await ctx.db.teamRequest.update({
-        where: { id: input.requestId },
-        data: { status: "APPROVED" },
-      });
-
-      return { success: true };
-    }),
-
-  rejectTeamRequest: adminProcedure
-    .input(
-      z.object({
-        requestId: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db.teamRequest.delete({
-        where: { id: input.requestId },
-      });
-
-      return { success: true };
-    }),
-
-  removeUserFromTeam: adminProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db.user.update({
-        where: { id: input.userId },
-        data: {
-          teamId: null,
-          role: Role.UNASSIGNED,
-        },
-      });
-
-      return { success: true };
-    }),
+  // Testing Utilities
+  runTestCase: testingUtilitiesRouter.runTestCase,
+  debugTeamSchedules: testingUtilitiesRouter.debugTeamSchedules,
 });

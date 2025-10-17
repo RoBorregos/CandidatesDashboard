@@ -3,14 +3,37 @@
 import Header from "~/app/_components/header";
 import { api } from "~/trpc/react";
 
-export default function SchedulePage() {
-  const { data: teams, isLoading } = api.team.getVisibleSchedules.useQuery();
+type ScheduleChallenge = {
+  name: string;
+  time: string | Date;
+};
 
-  const roundsRevealed = teams?.length
-    ? new Set(
-        teams.flatMap((t: any) => (t.rounds ?? []).map((r: any) => r.number)),
-      ).size
-    : 0;
+type ScheduleRound = {
+  number: number;
+  challenges: ScheduleChallenge[];
+};
+
+type ScheduleTeam = {
+  id?: string;
+  name: string;
+  rounds: ScheduleRound[];
+};
+
+type Cell = { A?: string; B?: string; C?: string };
+type RoundBucket = { times: Set<string>; rows: Record<string, Cell> };
+
+export default function SchedulePage() {
+  const query = api.team.getVisibleSchedules.useQuery();
+  const isArray = Array.isArray(query.data);
+  const teams: ScheduleTeam[] = isArray ? (query.data as ScheduleTeam[]) : [];
+  const { isLoading } = query;
+
+  /** Rondas reveladas = cantidad de números de ronda únicos presentes */
+  const roundsRevealed =
+    teams.length > 0
+      ? new Set(teams.flatMap((t) => (t.rounds ?? []).map((r) => r.number)))
+          .size
+      : 0;
 
   if (isLoading) {
     return (
@@ -25,7 +48,7 @@ export default function SchedulePage() {
     );
   }
 
-  if (!teams || teams.length === 0) {
+  if (teams.length === 0) {
     return (
       <main className="mt-[4rem] min-h-screen bg-black text-white">
         <div className="md:pb-10">
@@ -45,8 +68,9 @@ export default function SchedulePage() {
     );
   }
 
-  const toDate = (d: Date | string) => (d instanceof Date ? d : new Date(d));
-  const toTimeKey = (d: Date) => {
+  const toDate = (d: Date | string): Date =>
+    d instanceof Date ? d : new Date(d);
+  const toTimeKey = (d: Date): string => {
     const hh = String(d.getHours()).padStart(2, "0");
     const mm = String(d.getMinutes()).padStart(2, "0");
     return `${hh}:${mm}`;
@@ -59,9 +83,6 @@ export default function SchedulePage() {
     return null;
   };
 
-  type Cell = { A?: string; B?: string; C?: string };
-  type RoundBucket = { times: Set<string>; rows: Record<string, Cell> };
-
   const roundBuckets: Record<number, RoundBucket> = {};
 
   for (const team of teams) {
@@ -69,8 +90,6 @@ export default function SchedulePage() {
       if (round.number > roundsRevealed) continue;
 
       const rn = Number(round.number);
-
-      // Inicializa y toma la referencia segura
       const bucket = (roundBuckets[rn] ??= {
         times: new Set<string>(),
         rows: {},
@@ -83,10 +102,7 @@ export default function SchedulePage() {
         const tKey = toTimeKey(toDate(ch.time));
         bucket.times.add(tKey);
 
-        // Asegura fila
         const row = (bucket.rows[tKey] ??= {});
-
-        // Escribe en la pista correspondiente
         if (track === "A") row.A = team.name ?? "";
         else if (track === "B") row.B = team.name ?? "";
         else row.C = team.name ?? "";
@@ -95,7 +111,7 @@ export default function SchedulePage() {
   }
 
   const rounds = Object.keys(roundBuckets)
-    .map(Number)
+    .map((k) => Number(k))
     .sort((a, b) => a - b);
 
   return (
@@ -112,9 +128,11 @@ export default function SchedulePage() {
           rounds.map((round) => {
             const bucket = roundBuckets[round];
             if (!bucket) return null;
+
             const times = Array.from(bucket.times).sort((a, b) =>
               a.localeCompare(b),
             );
+
             return (
               <div key={round} className="mb-12">
                 <div className="mb-3 rounded-lg bg-gradient-to-r from-roboblue to-blue-600 p-4">

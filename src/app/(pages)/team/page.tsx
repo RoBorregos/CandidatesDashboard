@@ -23,6 +23,10 @@ export default async function TeamPage({
       </div>
     );
   }
+  const isInterviewer = await api.interviewer.isInterviewer();
+  if (isInterviewer) {
+    redirect("/interviewer");
+  }
 
   const team = await api.team.getTeam();
   if (!team) {

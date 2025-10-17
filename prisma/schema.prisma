@@ -67,26 +67,27 @@ model Interviewer {
 }
 
 model User {
-  id               String           @id @default(cuid())
+  id               String            @id @default(cuid())
   name             String?
-  email            String?          @unique
+  email            String?           @unique
   emailVerified    DateTime?
   image            String?
   interviewTime    DateTime?
   interviewArea    InterviewArea?
   interviewerId    String?
-  role             Role             @default(UNASSIGNED)
+  role             Role              @default(UNASSIGNED)
   teamId           String?
-  isStaff          Boolean          @default(false)
+  isStaff          Boolean           @default(false)
   accounts         Account[]
   judgedChallengeA ChallengeA[]
   judgedChallengeB ChallengeB[]
   judgedChallengeC ChallengeC[]
   sessions         Session[]
-  team             Team?            @relation(fields: [teamId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id])
   teamRequests     TeamRequest?
-  interviewer      Interviewer?     @relation(fields: [interviewerId], references: [id])
+  interviewer      Interviewer?      @relation(fields: [interviewerId], references: [id])
   unavailabilities Unavailability[]
+  staffAssignments StaffAssignment[]
 }
 
 model VerificationToken {
@@ -214,6 +215,18 @@ model Unavailability {
   @@index([userId, startMin])
 }
 
+model StaffAssignment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  job         job
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, roundNumber])
+  @@index([roundNumber])
+}
+
 enum Role {
   CONTESTANT
   JUDGE
@@ -240,4 +253,18 @@ enum Pattern {
   E4
   FINISH
   BONUS
+}
+
+enum job {
+  JUDGE_A
+  JUDGE_B
+  JUDGE_C
+  SUBJUDGE_A
+  SUBJUDGE_B
+  SUBJUDGE_C
+  INTERVIEWER_PROGRAMMING
+  INTERVIEWER_MECHANICS
+  INTERVIEWER_ELECTRONICS
+  STREAMING
+  MISC
 }

@@ -62,6 +62,23 @@ export default function StaffManagement() {
     },
   });
 
+  // Staff schedule hooks
+  const {
+    data: schedule,
+    refetch: refetchSchedule,
+    isLoading: scheduleLoading,
+  } = api.admin.getStaffSchedule.useQuery();
+  const generateSchedule = api.admin.generateStaffSchedule.useMutation({
+    onSuccess: async () => {
+      await refetchSchedule();
+    },
+  });
+  const clearSchedule = api.admin.clearStaffSchedule.useMutation({
+    onSuccess: async () => {
+      await refetchSchedule();
+    },
+  });
+
   const [start, setStart] = useState(""); // time string: HH:MM
   const [end, setEnd] = useState("");
 
@@ -294,6 +311,84 @@ export default function StaffManagement() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Staff schedule */}
+      <div className="rounded-lg border border-gray-800 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">Staff Schedule</h3>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-md bg-roboblue px-3 py-2 text-sm font-medium text-black disabled:opacity-50"
+              disabled={generateSchedule.isPending}
+              onClick={() => generateSchedule.mutate({ overwrite: true })}
+            >
+              {generateSchedule.isPending ? "Generating…" : "Generate schedule"}
+            </button>
+            <button
+              className="rounded-md bg-gray-800 px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 disabled:opacity-50"
+              disabled={clearSchedule.isPending}
+              onClick={() => clearSchedule.mutate({})}
+            >
+              {clearSchedule.isPending ? "Clearing…" : "Clear"}
+            </button>
+          </div>
+        </div>
+
+        {scheduleLoading ? (
+          <div className="text-sm text-gray-400">Loading schedule…</div>
+        ) : (schedule ?? []).length === 0 ? (
+          <div className="text-sm text-gray-400">No assignments yet.</div>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-gray-800">
+            {Object.entries(
+              (schedule ?? []).reduce<Record<number, typeof schedule>>(
+                (acc, a) => {
+                  const key = a.roundNumber as number;
+                  (acc[key] ||= [] as any).push(a);
+                  return acc;
+                },
+                {},
+              ),
+            ).map(([round, items]) => (
+              <div key={round} className="border-b border-gray-800">
+                <div className="bg-gray-900/50 px-4 py-2 text-sm font-medium uppercase tracking-wider text-gray-400">
+                  Round {round}
+                </div>
+                <table className="min-w-full divide-y divide-gray-800">
+                  <thead className="bg-black/40">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        Job
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        User
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        Area
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800 bg-black/40">
+                    {items!.map((a) => (
+                      <tr key={a.id} className="hover:bg-gray-900/30">
+                        <td className="px-4 py-2 text-sm text-white">
+                          {String(a.job)}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-300">
+                          {a.user?.name ?? a.user?.email ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-300">
+                          {a.user?.interviewArea ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Unavailability editor */}

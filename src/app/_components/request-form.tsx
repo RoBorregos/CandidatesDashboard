@@ -25,6 +25,9 @@ type RequestFormProps = {
 export default function RequestForm({ teams, userRequest }: RequestFormProps) {
   const [requestedTeam, setRequestedTeam] = useState("");
   const [message, setMessage] = useState("");
+  const [userArea, setUserArea] = useState<
+    "MECHANICS" | "ELECTRONICS" | "PROGRAMMING" | ""
+  >("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const utils = api.useUtils();
@@ -54,9 +57,15 @@ export default function RequestForm({ teams, userRequest }: RequestFormProps) {
       return;
     }
 
+    if (!userArea) {
+      toast("Please select your area of expertise");
+      return;
+    }
+
     requestTeam.mutate({
       requestedTeam,
       message: message.trim() || undefined,
+      userArea,
     });
   };
 
@@ -169,6 +178,26 @@ export default function RequestForm({ teams, userRequest }: RequestFormProps) {
 
         <div>
           <label className="mb-2 block text-sm font-medium">
+            Your Area of Expertise
+          </label>
+          <select
+            value={userArea}
+            onChange={(e) =>
+              setUserArea(
+                e.target.value as "MECHANICS" | "ELECTRONICS" | "PROGRAMMING",
+              )
+            }
+            className="w-full rounded border border-gray-600 bg-gray-700 p-3"
+          >
+            <option value="">Choose your area...</option>
+            <option value="MECHANICS">Mechanics</option>
+            <option value="ELECTRONICS">Electronics</option>
+            <option value="PROGRAMMING">Programming</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium">
             Message (Optional)
           </label>
           <textarea
@@ -181,7 +210,7 @@ export default function RequestForm({ teams, userRequest }: RequestFormProps) {
 
         <button
           onClick={handleSubmitRequest}
-          disabled={!requestedTeam || isSubmitting}
+          disabled={!requestedTeam || !userArea || isSubmitting}
           className="w-full rounded bg-blue-600 py-3 font-semibold transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? (

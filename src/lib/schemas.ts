@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Pattern } from "@prisma/client";
 
 export const genericDataSchema = z.object({
   obtainedBonus: z.boolean({
@@ -40,15 +41,18 @@ export const challengeBSchema = z.object({
   //   .min(0, { message: "Los puntos tienen que ser mayor o igual a 0" })
   //   .max(170, { message: "Los puntos tienen que ser menor o igual a 170" }),
 
-  trackPoints: z.coerce
-    .number()
-    .int()
-    .min(0, {
-      message: "Track points must be greater than or equal to 0",
-    })
-    .max(150, {
-      message: "Track points must be less than or equal to 150",
-    }),
+  trackData: z.object({
+    trackPoints: z.coerce
+      .number()
+      .int()
+      .min(0, {
+        message: "Trackpoints must be greater than or equal to 0",
+      })
+      .max(150, {
+        message: "Trackpoints must be less than or equal to 150",
+      }),
+    patternsPassed: z.array(z.nativeEnum(Pattern)),
+  }),
 });
 
 export const challengeCSchema = z.object({

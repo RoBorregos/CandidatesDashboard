@@ -4,6 +4,7 @@ import Footer from "../../_components/footer";
 import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import TeamInfo from "../../_components/team/team";
+import TeamRequestsPanel from "../../_components/team/requests";
 import { redirect } from "next/navigation";
 
 export default async function TeamPage({
@@ -60,6 +61,9 @@ export default async function TeamPage({
         </div>
       </div>
       <TeamInfo team={team} />
+      <div className="px-20 pb-20">
+        <TeamRequestsPanel />
+      </div>
       <Footer />
     </div>
   );

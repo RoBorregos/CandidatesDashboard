@@ -9,6 +9,54 @@ import {
 } from "~/server/api/trpc";
 
 export const teamRouter = createTRPCRouter({
+  createTeam: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(50),
+        userArea: z
+          .enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"])
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Prevent duplicate names
+      const existingTeam = await ctx.db.team.findUnique({
+        where: { name: input.name },
+      });
+      if (existingTeam) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Team with this name already exists",
+        });
+      }
+
+      // Create the new team
+      const team = await ctx.db.team.create({
+        data: { name: input.name },
+      });
+
+      // Clear any pending team request from this user
+      await ctx.db.teamRequest.deleteMany({
+        where: { userId: ctx.session.user.id },
+      });
+
+      // Assign user to the team and set role/interview area
+
+      await ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: {
+          teamId: team.id,
+          role:
+            ctx.session.user.role === Role.ADMIN ||
+            ctx.session.user.role === Role.JUDGE
+              ? ctx.session.user.role
+              : Role.CONTESTANT,
+          ...(input.userArea ? { interviewArea: input.userArea } : {}),
+        },
+      });
+
+      return team;
+    }),
   getTeam: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findFirst({
       where: {
@@ -216,7 +264,10 @@ export const teamRouter = createTRPCRouter({
       where: { id: ctx.session.user.id },
       data: {
         teamId: null,
-        role: Role.UNASSIGNED,
+        role:
+          ctx.session.user.role === Role.CONTESTANT
+            ? Role.UNASSIGNED
+            : ctx.session.user.role,
       },
     });
 
@@ -251,6 +302,135 @@ export const teamRouter = createTRPCRouter({
 
     return teams;
   }),
+
+  // Requests moderation by team members
+  getPendingRequestsForMyTeam: protectedProcedure.query(async ({ ctx }) => {
+    const me = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      include: { team: true },
+    });
+
+    if (!me?.team) {
+      return [];
+    }
+
+    return ctx.db.teamRequest.findMany({
+      where: {
+        status: "PENDING",
+        requestedTeam: me.team.name,
+      },
+      include: {
+        user: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }),
+
+  approveTeamRequestByMember: protectedProcedure
+    .input(z.object({ requestId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        include: { team: true },
+      });
+
+      if (!me?.team) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not in a team",
+        });
+      }
+
+      const request = await ctx.db.teamRequest.findUnique({
+        where: { id: input.requestId },
+      });
+      if (!request) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Request not found",
+        });
+      }
+      if (request.requestedTeam !== me.team.name) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This request is not for your team",
+        });
+      }
+
+      // Ensure team exists and has capacity
+      const team = await ctx.db.team.findUnique({
+        where: { id: me.team.id },
+        include: { _count: { select: { members: true } } },
+      });
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+      }
+      if (team._count.members >= 4) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Team is full" });
+      }
+
+      // Determine target user's role; keep ADMIN/JUDGE, else set as CONTESTANT
+      const targetUser = await ctx.db.user.findUnique({
+        where: { id: request.userId },
+        select: { role: true },
+      });
+
+      await ctx.db.user.update({
+        where: { id: request.userId },
+        data: {
+          teamId: team.id,
+          role:
+            targetUser?.role === Role.UNASSIGNED
+              ? Role.CONTESTANT
+              : (targetUser?.role as Role),
+        },
+      });
+
+      await ctx.db.teamRequest.update({
+        where: { id: input.requestId },
+        data: { status: "APPROVED" },
+      });
+
+      return { success: true };
+    }),
+
+  rejectTeamRequestByMember: protectedProcedure
+    .input(z.object({ requestId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        include: { team: true },
+      });
+      if (!me?.team) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not in a team",
+        });
+      }
+
+      const request = await ctx.db.teamRequest.findUnique({
+        where: { id: input.requestId },
+      });
+      if (!request) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Request not found",
+        });
+      }
+      if (request.requestedTeam !== me.team.name) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This request is not for your team",
+        });
+      }
+
+      await ctx.db.teamRequest.update({
+        where: { id: input.requestId },
+        data: { status: "REJECTED" },
+      });
+
+      return { success: true };
+    }),
 });
 
 export type TeamType =

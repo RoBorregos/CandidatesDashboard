@@ -15,22 +15,31 @@ import {
   FormLabel,
   FormMessage,
 } from "rbrgs/app/_components/shadcn/ui/form";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "rbrgs/app/_components/shadcn/ui/radio-group";
 import { challengeBSchema } from "rbrgs/lib/schemas";
 import { Input } from "rbrgs/app/_components/shadcn/ui/input";
 import Select from "react-select";
-
 import { api } from "~/trpc/react";
+import { PatternGrid } from "rbrgs/app/_components/pattern";
 
 type FormData = z.infer<typeof challengeBSchema>;
 export type FormControlA = Control<FormData>;
 
 export const FormChallengeB = () => {
+
   const form = useForm<FormData>({
     resolver: zodResolver(challengeBSchema),
     defaultValues: {
-      trackPoints: 0,
+      trackData: {
+        trackPoints: 0,
+        patternsPassed: [],
+      },
       genericFormSchema: {
         obtainedBonus: false,
+        roundId: "1",
       },
     },
   });
@@ -83,17 +92,19 @@ export const FormChallengeB = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="w-2/3 space-y-6 text-white"
+        className="w-full space-y-6 text-white"
       >
         <FormField
           control={form.control}
-          name="trackPoints"
+          name="trackData"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Track Points (total)</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
+              <FormLabel>Track Points</FormLabel>
+              <PatternGrid
+                patterns={field.value.patternsPassed}
+                trackPoints={field.value.trackPoints}
+                onChange={field.onChange}
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -135,9 +146,22 @@ export const FormChallengeB = () => {
           name="genericFormSchema.roundId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Round Number (1, 2, or 3)</FormLabel>
+              <FormLabel>Round ID</FormLabel>
               <FormControl>
-                <Input type="string" {...field} />
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value.toString()}
+                  className="flex flex-col"
+                >
+                  {[1, 2, 3].map((value) => (
+                    <FormItem key={value} className="flex items-center gap-3">
+                      <FormControl>
+                        <RadioGroupItem value={value.toString()} />
+                      </FormControl>
+                      <FormLabel className="font-normal">{value}</FormLabel>
+                    </FormItem>
+                  ))}
+                </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>

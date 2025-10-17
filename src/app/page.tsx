@@ -10,7 +10,7 @@ import tapiocaHouse from "../../public/images/sponsors/tapiocaHouse.jpg";
 import kube from "../../public/images/sponsors/kube.jpg";
 import ball from "../../public/images/ball.jpg";
 import maze from "../../public/images/maze.jpg";
-import line from "../../public/images/line.jpeg";
+import line from "../../public/images/line.jpg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
 import ImageFade from "./_components/imageFade";

@@ -14,6 +14,7 @@ export default function Footer() {
         </p>
         <div className="mt-[1rem] flex w-full flex-col flex-wrap gap-2">
           <a href="mailto:info@roborregos.com">
+            {/* TODO: CHANGE EMAIL */}
             <p className="hover:underline">info@roborregos.com</p>
           </a>
           <Link href="https://www.roborregos.com/">

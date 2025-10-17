@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { InterviewArea } from "@prisma/client";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 
 export const staffManagementRouter = createTRPCRouter({
@@ -23,9 +24,31 @@ export const staffManagementRouter = createTRPCRouter({
     return ctx.db.user.findMany({
       where: { isStaff: true },
       orderBy: { email: "asc" },
-      select: { id: true, name: true, email: true, image: true, isStaff: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        isStaff: true,
+        interviewArea: true,
+      },
     });
   }),
+
+  setStaffArea: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        area: z.nativeEnum(InterviewArea).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.user.update({
+        where: { id: input.userId },
+        data: { interviewArea: input.area ?? null },
+      });
+      return { success: true };
+    }),
 
   // Unavailability CRUD
   listUnavailability: adminProcedure

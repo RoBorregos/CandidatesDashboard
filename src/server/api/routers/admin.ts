@@ -51,6 +51,7 @@ export const adminRouter = createTRPCRouter({
   // Staff Management
   setUserStaff: staffManagementRouter.setUserStaff,
   getStaffUsers: staffManagementRouter.getStaffUsers,
+  setStaffArea: staffManagementRouter.setStaffArea,
   listUnavailability: staffManagementRouter.listUnavailability,
   addUnavailability: staffManagementRouter.addUnavailability,
   deleteUnavailability: staffManagementRouter.deleteUnavailability,

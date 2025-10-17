@@ -3,6 +3,7 @@ import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "~/app/_components/custom-login-text";
 import Header from "~/app/_components/header";
 import RequestForm from "~/app/_components/request-form";
+import CreateTeam from "rbrgs/app/_components/create-team";
 
 export default async function RequestPage() {
   const session = await getServerAuthSession();
@@ -49,6 +50,7 @@ export default async function RequestPage() {
       </div>
       <div className="container mx-auto max-w-2xl space-y-6 p-4">
         <RequestForm teams={teams} userRequest={userRequest} />
+        <CreateTeam />
 
         <div className="rounded-lg bg-gray-800 p-6">
           <h3 className="mb-4 text-xl font-semibold">Available Teams</h3>

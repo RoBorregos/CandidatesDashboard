@@ -13,7 +13,6 @@ export default async function TeamPage({
   params: { teampage: string };
 }) {
   const session = await getServerAuthSession();
-
   if (!session) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -24,6 +23,7 @@ export default async function TeamPage({
       </div>
     );
   }
+
   const isInterviewer = await api.interviewer.isInterviewer();
   if (isInterviewer) {
     redirect("/interviewer");
@@ -33,6 +33,8 @@ export default async function TeamPage({
   if (!team) {
     redirect("/request");
   }
+
+  const me = await api.team.getCurrentUser();
 
   return (
     <div className="mt-[4rem] h-96 bg-black text-sm text-white md:text-base">
@@ -60,7 +62,9 @@ export default async function TeamPage({
           for us to access the docs)
         </div>
       </div>
-      <TeamInfo team={team} />
+
+      <TeamInfo team={team} userInterviewTime={me?.interviewTime ?? null} />
+
       <div className="px-20 pb-20">
         <TeamRequestsPanel />
       </div>

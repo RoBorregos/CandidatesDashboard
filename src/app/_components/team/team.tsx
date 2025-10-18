@@ -1,5 +1,5 @@
 "use client";
-import { Challenge, User } from "@prisma/client";
+import { Challenge } from "@prisma/client";
 import Table from "rbrgs/app/_components/table";
 import Input from "../input";
 import Spinner from "../spinner";
@@ -17,7 +17,7 @@ interface Data {
 }
 
 function transformChallengeData(challenges: Challenge[]): Data[] {
-  return challenges.map((challenge, key) => ({
+  return challenges.map((challenge) => ({
     col1: challenge.time.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -27,8 +27,13 @@ function transformChallengeData(challenges: Challenge[]): Data[] {
   }));
 }
 
-const TeamInfo = ({ team }: { team: TeamType }) => {
-  const [variant, setSelected] = useState("INFO");
+type TeamInfoProps = {
+  team: TeamType;
+  userInterviewTime: Date | null;
+};
+
+const TeamInfo = ({ team, userInterviewTime }: TeamInfoProps) => {
+  const [variant, setSelected] = useState<"INFO" | "RESULTS">("INFO");
   const toggleVariant = useCallback(() => {
     setSelected(variant === "INFO" ? "RESULTS" : "INFO");
   }, [variant]);
@@ -39,7 +44,7 @@ const TeamInfo = ({ team }: { team: TeamType }) => {
       {team?.name ? (
         <div className="pb-40">
           {variant === "INFO" ? (
-            <Schedules team={team} />
+            <Schedules team={team} userInterviewTime={userInterviewTime} />
           ) : (
             <Results team={team} />
           )}
@@ -69,9 +74,25 @@ const TeamInfo = ({ team }: { team: TeamType }) => {
   );
 };
 
-const Schedules = ({ team }: { team: TeamType }) => {
+const Schedules = ({
+  team,
+  userInterviewTime,
+}: {
+  team: TeamType;
+  userInterviewTime: Date | null;
+}) => {
   const rounds = team?.rounds;
   const interviewsTimes = interviewData.times;
+
+  const interviewTimeText = userInterviewTime
+    ? new Date(userInterviewTime).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : (interviewsTimes[team?.name as keyof typeof interviewsTimes] ??
+      "No interview time available, contact us");
+
   return (
     <div>
       <h1 className="m-5 text-center font-archivo text-4xl">Rounds</h1>
@@ -87,8 +108,7 @@ const Schedules = ({ team }: { team: TeamType }) => {
         Interview time
       </h1>
       <div className="text-center font-archivo text-3xl">
-        {interviewsTimes[team?.name as keyof typeof interviewsTimes] ??
-          "No interview time available, contact us"}
+        {interviewTimeText}
       </div>
     </div>
   );

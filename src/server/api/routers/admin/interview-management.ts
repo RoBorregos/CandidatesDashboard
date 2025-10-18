@@ -13,7 +13,6 @@ export const interviewManagementRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string(),
-        email: z.string().email(),
         area: z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]),
       }),
     )

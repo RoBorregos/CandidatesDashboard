@@ -52,7 +52,23 @@ const TeamInfo = ({ team, userInterviewTime }: TeamInfoProps) => {
           <h1 className="mb-5 mt-16 text-center font-archivo text-4xl">
             Documents
           </h1>
-          <Upload binnacleLink={team.binnacleLink} />
+          <Upload
+            title="Binnacle"
+            endpoint="binnacleUploader"
+            currentUrl={team.binnacleLink}
+            isImagePreview={false}
+          />
+
+          <h1 className="mb-5 mt-16 text-center font-archivo text-4xl">
+            Robot Image
+          </h1>
+          <Upload
+            title="Robot Image"
+            endpoint="robotImageUploader"
+            currentUrl={team.robotImageLink ?? null}
+            isImagePreview={true}
+          />
+
           <Input
             teamId={team.id}
             prevLink={team.driveLink ?? ""}

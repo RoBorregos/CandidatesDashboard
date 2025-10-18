@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import Select from "react-select";
 import { InterviewArea } from "@prisma/client";
+import type { job } from "@prisma/client";
 
 type UserListItem = {
   id: string;
@@ -11,6 +12,20 @@ type UserListItem = {
   email: string | null;
   image?: string | null;
   isStaff: boolean;
+};
+
+type ScheduleItem = {
+  id: string;
+  createdAt: Date;
+  userId: string;
+  roundNumber: number;
+  job: job;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    interviewArea: InterviewArea | null;
+  } | null;
 };
 
 export default function StaffManagement() {
@@ -68,6 +83,16 @@ export default function StaffManagement() {
     refetch: refetchSchedule,
     isLoading: scheduleLoading,
   } = api.admin.getStaffSchedule.useQuery();
+  const groupedSchedule = useMemo(() => {
+    return ((schedule ?? []) as ScheduleItem[]).reduce<
+      Record<number, ScheduleItem[]>
+    >((acc, a) => {
+      const key = a.roundNumber ?? 0;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(a);
+      return acc;
+    }, {});
+  }, [schedule]);
   const generateSchedule = api.admin.generateStaffSchedule.useMutation({
     onSuccess: async () => {
       await refetchSchedule();
@@ -341,16 +366,7 @@ export default function StaffManagement() {
           <div className="text-sm text-gray-400">No assignments yet.</div>
         ) : (
           <div className="overflow-hidden rounded-md border border-gray-800">
-            {Object.entries(
-              (schedule ?? []).reduce<Record<number, typeof schedule>>(
-                (acc, a) => {
-                  const key = a.roundNumber as number;
-                  (acc[key] ||= [] as any).push(a);
-                  return acc;
-                },
-                {},
-              ),
-            ).map(([round, items]) => (
+            {Object.entries(groupedSchedule).map(([round, items]) => (
               <div key={round} className="border-b border-gray-800">
                 <div className="bg-gray-900/50 px-4 py-2 text-sm font-medium uppercase tracking-wider text-gray-400">
                   Round {round}
@@ -370,7 +386,7 @@ export default function StaffManagement() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800 bg-black/40">
-                    {items!.map((a) => (
+                    {(items).map((a) => (
                       <tr key={a.id} className="hover:bg-gray-900/30">
                         <td className="px-4 py-2 text-sm text-white">
                           {String(a.job)}

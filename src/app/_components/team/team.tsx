@@ -49,7 +49,7 @@ const TeamInfo = ({ team, userInterviewTime }: TeamInfoProps) => {
             <Results team={team} />
           )}
 
-          <h1 className="mb-5 mt-16 text-center font-archivo text-4xl">
+          {/* <h1 className="mb-5 mt-16 text-center font-archivo text-4xl">
             Documents
           </h1>
           <Upload
@@ -73,7 +73,7 @@ const TeamInfo = ({ team, userInterviewTime }: TeamInfoProps) => {
             teamId={team.id}
             prevLink={team.driveLink ?? ""}
             prevGithub={team.githubLink ?? ""}
-          />
+          /> */}
         </div>
       ) : !team ? (
         <div>

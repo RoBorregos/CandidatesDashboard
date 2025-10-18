@@ -61,7 +61,7 @@ export default async function InterviewerPage() {
   return (
     <div className="mt-16 min-h-screen bg-black text-sm text-white md:text-base">
       <div className="md:pb-8">
-        <Header title="My Interviews" subtitle={session.user.name ?? ""} />
+        <Header title="Interviews" subtitle={"Schedule"} />
       </div>
 
       <main className="px-4 pb-20 pt-6 md:px-20">

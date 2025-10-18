@@ -44,7 +44,6 @@ export const interviewManagementRouter = createTRPCRouter({
 
     return users;
   }),
-  //  TODO: Fix this function
   scheduleInterview: adminProcedure
     .input(
       z.object({
@@ -54,14 +53,26 @@ export const interviewManagementRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const SLOT_MS = 15 * 60 * 1000;
+      const CHALLENGE_MS = 6 * 60 * 1000;
+
+      const toQuarterFloor = (d: Date): Date => {
+        const t = new Date(d);
+        const m = t.getMinutes();
+        const floor = Math.floor(m / 15) * 15;
+        t.setMinutes(floor, 0, 0);
+        return t;
+      };
+      const overlaps = (a1: Date, a2: Date, b1: Date, b2: Date): boolean =>
+        !(a2 <= b1 || a1 >= b2);
+
+      // 1) Load user and team with rounds/challenges
       const user = await ctx.db.user.findUnique({
         where: { id: input.userId },
         include: {
           team: {
             include: {
-              rounds: {
-                include: { challenges: true },
-              },
+              rounds: { include: { challenges: true } },
             },
           },
         },
@@ -74,80 +85,53 @@ export const interviewManagementRouter = createTRPCRouter({
         });
       }
 
-      const interviewStart = input.interviewTime;
-      const interviewEnd = new Date(interviewStart.getTime() + 15 * 60 * 1000);
+      const slotStart = toQuarterFloor(new Date(input.interviewTime));
+      const slotEnd = new Date(slotStart.getTime() + SLOT_MS);
 
       for (const round of user.team.rounds) {
-        for (const challenge of round.challenges) {
-          const challengeStart = challenge.time;
+        for (const ch of round.challenges) {
+          const challengeStart = new Date(ch.time);
           const challengeEnd = new Date(
-            challengeStart.getTime() + 5 * 60 * 1000,
+            challengeStart.getTime() + CHALLENGE_MS,
           );
 
-          const hasOverlap = !(
-            interviewEnd <= challengeStart || interviewStart >= challengeEnd
-          );
-
-          if (hasOverlap) {
+          if (overlaps(slotStart, slotEnd, challengeStart, challengeEnd)) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: `Interview time conflicts with ${challenge.name} at ${challengeStart.toLocaleTimeString()}`,
+              message: `Interview time conflicts with ${ch.name} at ${challengeStart.toLocaleTimeString()}`,
             });
           }
         }
       }
 
-      const conflictingInterview = await ctx.db.user.findFirst({
+      const existingForInterviewer = await ctx.db.user.findFirst({
         where: {
           interviewerId: input.interviewerId,
           interviewTime: {
-            gt: new Date(interviewStart.getTime() - 15 * 60 * 1000),
-            lt: new Date(interviewStart.getTime() + 15 * 60 * 1000),
+            gte: slotStart,
+            lt: slotEnd,
           },
         },
+        select: { id: true },
       });
 
-      if (conflictingInterview) {
+      if (existingForInterviewer) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Interviewer is not available at this time",
         });
       }
 
-      return ctx.db.user.update({
+      const updated = await ctx.db.user.update({
         where: { id: input.userId },
         data: {
-          interviewTime: input.interviewTime,
+          interviewTime: slotStart,
           interviewerId: input.interviewerId,
         },
       });
+
+      return updated;
     }),
-
-  clearInterview: adminProcedure
-    .input(z.object({ userId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      return ctx.db.user.update({
-        where: { id: input.userId },
-        data: {
-          interviewTime: null,
-          interviewerId: null,
-        },
-      });
-    }),
-
-  clearAllInterviews: adminProcedure.mutation(async ({ ctx }) => {
-    await ctx.db.user.updateMany({
-      where: {
-        interviewTime: { not: null },
-      },
-      data: {
-        interviewTime: null,
-        interviewerId: null,
-      },
-    });
-
-    return { success: true, message: "All interviews cleared" };
-  }),
 
   autoScheduleInterviews: adminProcedure
     .input(z.object({ startTime: z.date(), endTime: z.date() }))

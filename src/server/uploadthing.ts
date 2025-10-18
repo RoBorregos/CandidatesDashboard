@@ -1,5 +1,4 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { UploadThingError } from "uploadthing/server";
 import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 
@@ -11,7 +10,9 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await getServerAuthSession();
-      if (!session) throw new UploadThingError("Unauthorized");
+      if (!session) {
+        throw new Error("Unauthorized");
+      }
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
@@ -25,8 +26,9 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await getServerAuthSession();
-      if (!session?.user?.teamId)
-        throw new UploadThingError("User isn't in a team");
+      if (!session?.user?.teamId) {
+        throw new Error("User isn't in a team");
+      }
       return { teamId: session.user.teamId };
     })
     .onUploadComplete(async ({ metadata, file }) => {
@@ -43,15 +45,12 @@ export const ourFileRouter = {
   })
     .middleware(async () => {
       const session = await getServerAuthSession();
-      if (!session?.user?.teamId)
-        throw new UploadThingError("User isn't in a team");
+      if (!session?.user?.teamId) {
+        throw new Error("User isn't in a team");
+      }
       return { teamId: session.user.teamId };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // Extra security check
-      if (!["image/jpeg", "image/png"].includes(file.type)) {
-        throw new UploadThingError("Only PNG or JPEG images are allowed");
-      }
       await db.team.update({
         where: { id: metadata.teamId },
         data: { robotImageLink: file.ufsUrl },

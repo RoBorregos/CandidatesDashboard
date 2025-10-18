@@ -209,6 +209,12 @@ export const staffManagementRouter = createTRPCRouter({
         missingJobs: job[];
       }> = [];
 
+      const roundsCreated: Array<{
+        round: number;
+        created: { userId: string; job: job }[];
+        missingJobs: job[];
+      }> = [];
+
       // Round duration is 3 hours 45 minutes (225 minutes)
       const roundDurationMin = 3 * 60 + 45; // 225
 
@@ -247,6 +253,12 @@ export const staffManagementRouter = createTRPCRouter({
             if (assignedForThisJob >= count) break;
             if (assignedUserIds.has(u.id)) continue;
             if (neededArea && u.interviewArea !== neededArea) continue;
+            if (
+              roundsCreated.some((rc) =>
+                rc.created.some((a) => a.userId === u.id && a.job === j),
+              )
+            )
+              continue;
             assignments.push({ userId: u.id, job: j });
             assignedUserIds.add(u.id);
             assignedForThisJob++;
@@ -275,7 +287,7 @@ export const staffManagementRouter = createTRPCRouter({
             skipDuplicates: true,
           });
         }
-
+        roundsCreated.push({ round: r, created: assignments, missingJobs });
         results.push({ round: r, created: assignments.length, missingJobs });
       }
 

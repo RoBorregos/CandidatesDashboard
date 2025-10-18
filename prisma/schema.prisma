@@ -112,17 +112,18 @@ model Admin {
 }
 
 model Team {
-  id           String       @id @default(cuid())
-  name         String       @unique
-  driveLink    String?
-  binnacleLink String?
-  githubLink   String?
-  isActive     Boolean      @default(true)
-  challengeA   ChallengeA[]
-  challengeB   ChallengeB[]
-  challengeC   ChallengeC[]
-  rounds       Round[]
-  members      User[]
+  id             String       @id @default(cuid())
+  name           String       @unique
+  driveLink      String?
+  binnacleLink   String?
+  robotImageLink String?
+  githubLink     String?
+  isActive       Boolean      @default(true)
+  challengeA     ChallengeA[]
+  challengeB     ChallengeB[]
+  challengeC     ChallengeC[]
+  rounds         Round[]
+  members        User[]
 }
 
 model Round {

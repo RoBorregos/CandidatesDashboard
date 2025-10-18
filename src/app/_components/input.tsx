@@ -45,7 +45,8 @@ const Input: React.FC<InputProps> = ({
           </label>
           <p className="mb-2 text-sm text-gray-300">
             Got more things to share with us (cads, pcbs, pictures, etc.)? Share
-            a drive with us and make sure to give us access.
+            a drive with us and make sure to give us access and not modify it
+            after midnight.
           </p>
           <div className="flex gap-3">
             <input
@@ -76,7 +77,7 @@ const Input: React.FC<InputProps> = ({
             GitHub Repository Link
           </label>
           <p className="mb-2 text-sm text-gray-300">
-            Make sure to set its visibulity to public.
+            Make sure to set its visibility to public.
           </p>
           <div className="flex gap-3">
             <input

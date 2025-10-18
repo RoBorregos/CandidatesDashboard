@@ -160,15 +160,15 @@ export const staffManagementRouter = createTRPCRouter({
 
       // Required jobs with counts (at least N per)
       const requiredJobCounts: Array<{ job: job; count: number }> = [
+        { job: job.INTERVIEWER_PROGRAMMING, count: 2 }, // two programming interviewers
+        { job: job.INTERVIEWER_MECHANICS, count: 1 },
+        { job: job.INTERVIEWER_ELECTRONICS, count: 1 },
         { job: job.JUDGE_A, count: 1 },
         { job: job.JUDGE_B, count: 1 },
         { job: job.JUDGE_C, count: 1 },
         { job: job.SUBJUDGE_A, count: 1 },
         { job: job.SUBJUDGE_B, count: 1 },
         { job: job.SUBJUDGE_C, count: 1 },
-        { job: job.INTERVIEWER_PROGRAMMING, count: 2 }, // two programming interviewers
-        { job: job.INTERVIEWER_MECHANICS, count: 1 },
-        { job: job.INTERVIEWER_ELECTRONICS, count: 1 },
         { job: job.STREAMING, count: 1 },
       ];
 

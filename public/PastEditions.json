@@ -183,7 +183,230 @@
       "puntajeFinal": 0
     }
   ],
-  "2025":[
-    
+  "2025": [
+    {
+      "nombreEquipo": "Wall - E",
+      "puntajePistaA": 50,
+      "puntajePistaB": 216,
+      "puntajePistaC": 225,
+      "puntajeFinal": 491
+    },
+    {
+      "nombreEquipo": "SheepThieves++",
+      "puntajePistaA": 105,
+      "puntajePistaB": 287,
+      "puntajePistaC": 41,
+      "puntajeFinal": 433
+    },
+    {
+      "nombreEquipo": "Syntax Algodones",
+      "puntajePistaA": 40,
+      "puntajePistaB": 104,
+      "puntajePistaC": 87,
+      "puntajeFinal": 231
+    },
+    {
+      "nombreEquipo": "Robotec",
+      "puntajePistaA": 80,
+      "puntajePistaB": 63,
+      "puntajePistaC": 46,
+      "puntajeFinal": 189
+    },
+    {
+      "nombreEquipo": "BALBOA",
+      "puntajePistaA": 105,
+      "puntajePistaB": 19,
+      "puntajePistaC": 58,
+      "puntajeFinal": 182
+    },
+    {
+      "nombreEquipo": "CHAPPIE",
+      "puntajePistaA": 60,
+      "puntajePistaB": 112,
+      "puntajePistaC": 8,
+      "puntajeFinal": 180
+    },
+    {
+      "nombreEquipo": "Robopanas",
+      "puntajePistaA": 60,
+      "puntajePistaB": 70,
+      "puntajePistaC": 40,
+      "puntajeFinal": 170
+    },
+    {
+      "nombreEquipo": "Henry's Law Enforcemet",
+      "puntajePistaA": 20,
+      "puntajePistaB": 115,
+      "puntajePistaC": 34,
+      "puntajeFinal": 169
+    },
+    {
+      "nombreEquipo": "JADE Dynamics",
+      "puntajePistaA": 40,
+      "puntajePistaB": 57,
+      "puntajePistaC": 63,
+      "puntajeFinal": 160
+    },
+    {
+      "nombreEquipo": "VACA LOLA",
+      "puntajePistaA": 0,
+      "puntajePistaB": 89,
+      "puntajePistaC": 70,
+      "puntajeFinal": 159
+    },
+    {
+      "nombreEquipo": "Nova",
+      "puntajePistaA": 120,
+      "puntajePistaB": 26,
+      "puntajePistaC": 11,
+      "puntajeFinal": 157
+    },
+    {
+      "nombreEquipo": "404 Team not found",
+      "puntajePistaA": 20,
+      "puntajePistaB": 106,
+      "puntajePistaC": 20,
+      "puntajeFinal": 146
+    },
+    {
+      "nombreEquipo": "Shebots",
+      "puntajePistaA": 65,
+      "puntajePistaB": 2,
+      "puntajePistaC": 53,
+      "puntajeFinal": 120
+    },
+    {
+      "nombreEquipo": "Tecno-Ready",
+      "puntajePistaA": 50,
+      "puntajePistaB": 49,
+      "puntajePistaC": 16,
+      "puntajeFinal": 115
+    },
+    {
+      "nombreEquipo": "Ranas Trinarias",
+      "puntajePistaA": 40,
+      "puntajePistaB": 36,
+      "puntajePistaC": 28,
+      "puntajeFinal": 104
+    },
+    {
+      "nombreEquipo": "Robodex",
+      "puntajePistaA": 0,
+      "puntajePistaB": 94,
+      "puntajePistaC": 0,
+      "puntajeFinal": 94
+    },
+    {
+      "nombreEquipo": "AIZER",
+      "puntajePistaA": 40,
+      "puntajePistaB": 49,
+      "puntajePistaC": 3,
+      "puntajeFinal": 92
+    },
+    {
+      "nombreEquipo": "Tung tung tung sahur",
+      "puntajePistaA": 45,
+      "puntajePistaB": 14,
+      "puntajePistaC": 27,
+      "puntajeFinal": 86
+    },
+    {
+      "nombreEquipo": "Iron Tec",
+      "puntajePistaA": 40,
+      "puntajePistaB": 0,
+      "puntajePistaC": 46,
+      "puntajeFinal": 86
+    },
+    {
+      "nombreEquipo": "TARS",
+      "puntajePistaA": 0,
+      "puntajePistaB": 84,
+      "puntajePistaC": 0,
+      "puntajeFinal": 84
+    },
+    {
+      "nombreEquipo": "Sheldon Cooper",
+      "puntajePistaA": 65,
+      "puntajePistaB": 9,
+      "puntajePistaC": 8,
+      "puntajeFinal": 82
+    },
+    {
+      "nombreEquipo": "Robobots",
+      "puntajePistaA": 20,
+      "puntajePistaB": 50,
+      "puntajePistaC": 6,
+      "puntajeFinal": 76
+    },
+    {
+      "nombreEquipo": "Fantastic 4",
+      "puntajePistaA": 60,
+      "puntajePistaB": 0,
+      "puntajePistaC": 8,
+      "puntajeFinal": 68
+    },
+    {
+      "nombreEquipo": "Zbots",
+      "puntajePistaA": 20,
+      "puntajePistaB": 2,
+      "puntajePistaC": 28,
+      "puntajeFinal": 50
+    },
+    {
+      "nombreEquipo": "TECH",
+      "puntajePistaA": 0,
+      "puntajePistaB": 20,
+      "puntajePistaC": 0,
+      "puntajeFinal": 20
+    },
+    {
+      "nombreEquipo": "Mecatrones",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 20,
+      "puntajeFinal": 20
+    },
+    {
+      "nombreEquipo": "SuperMexicans",
+      "puntajePistaA": 0,
+      "puntajePistaB": 20,
+      "puntajePistaC": 0,
+      "puntajeFinal": 20
+    },
+    {
+      "nombreEquipo": "Foraneos",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 15,
+      "puntajeFinal": 15
+    },
+    {
+      "nombreEquipo": "The Gang",
+      "puntajePistaA": 0,
+      "puntajePistaB": 8,
+      "puntajePistaC": 0,
+      "puntajeFinal": 8
+    },
+    {
+      "nombreEquipo": "Space Invaders",
+      "puntajePistaA": 0,
+      "puntajePistaB": 5,
+      "puntajePistaC": 0,
+      "puntajeFinal": 5
+    },
+    {
+      "nombreEquipo": "IronMinds",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 0,
+      "puntajeFinal": 0
+    },
+    {
+      "nombreEquipo": "YOLG",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 0,
+      "puntajeFinal": 0
+    }
   ]
 }

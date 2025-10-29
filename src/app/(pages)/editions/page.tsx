@@ -11,13 +11,6 @@ type Edition = {
   imageUrl: string;
 };
 
-const pastEditions: Edition[] = [
-  {
-    year: 2024,
-    winner: "Foreños",
-    imageUrl: "/images/forexos.jpg",
-  },
-];
 
 export default function HistoryPage() {
   return (
@@ -45,7 +38,9 @@ export default function HistoryPage() {
         </div>
 
         <div className="mt-12 text-center">
-          <ScoreboardTable year={2024} />
+         <ScoreboardTable year={2024} />
+         <ScoreboardTable year={2025} />
+         
         </div>
       </section>
 

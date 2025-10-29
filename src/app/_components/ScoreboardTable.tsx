@@ -1,4 +1,3 @@
-// ScoreboardTable.tsx
 import scoreboardJson from "../../../public/PastEditions.json";
 
 type Team = {

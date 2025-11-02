@@ -1,5 +1,5 @@
 {
-  "2024":[
+  "2024": [
     {
       "nombreEquipo": "Foreños",
       "puntajePistaA": 340,
@@ -188,22 +188,22 @@
       "nombreEquipo": "Wall - E",
       "puntajePistaA": 50,
       "puntajePistaB": 216,
-      "puntajePistaC": 225,
-      "puntajeFinal": 491
+      "puntajePistaC": 155,
+      "puntajeFinal": 421
     },
     {
       "nombreEquipo": "SheepThieves++",
-      "puntajePistaA": 105,
-      "puntajePistaB": 287,
+      "puntajePistaA": 85,
+      "puntajePistaB": 152,
       "puntajePistaC": 41,
-      "puntajeFinal": 433
+      "puntajeFinal": 278
     },
     {
       "nombreEquipo": "Syntax Algodones",
       "puntajePistaA": 40,
       "puntajePistaB": 104,
-      "puntajePistaC": 87,
-      "puntajeFinal": 231
+      "puntajePistaC": 59,
+      "puntajeFinal": 203
     },
     {
       "nombreEquipo": "Robotec",
@@ -213,39 +213,11 @@
       "puntajeFinal": 189
     },
     {
-      "nombreEquipo": "BALBOA",
-      "puntajePistaA": 105,
-      "puntajePistaB": 19,
-      "puntajePistaC": 58,
-      "puntajeFinal": 182
-    },
-    {
       "nombreEquipo": "CHAPPIE",
       "puntajePistaA": 60,
       "puntajePistaB": 112,
       "puntajePistaC": 8,
       "puntajeFinal": 180
-    },
-    {
-      "nombreEquipo": "Robopanas",
-      "puntajePistaA": 60,
-      "puntajePistaB": 70,
-      "puntajePistaC": 40,
-      "puntajeFinal": 170
-    },
-    {
-      "nombreEquipo": "Henry's Law Enforcemet",
-      "puntajePistaA": 20,
-      "puntajePistaB": 115,
-      "puntajePistaC": 34,
-      "puntajeFinal": 169
-    },
-    {
-      "nombreEquipo": "JADE Dynamics",
-      "puntajePistaA": 40,
-      "puntajePistaB": 57,
-      "puntajePistaC": 63,
-      "puntajeFinal": 160
     },
     {
       "nombreEquipo": "VACA LOLA",
@@ -255,25 +227,32 @@
       "puntajeFinal": 159
     },
     {
-      "nombreEquipo": "Nova",
-      "puntajePistaA": 120,
-      "puntajePistaB": 26,
-      "puntajePistaC": 11,
+      "nombreEquipo": "JADE Dynamics",
+      "puntajePistaA": 40,
+      "puntajePistaB": 57,
+      "puntajePistaC": 60,
       "puntajeFinal": 157
+    },
+    {
+      "nombreEquipo": "Robopanas",
+      "puntajePistaA": 60,
+      "puntajePistaB": 70,
+      "puntajePistaC": 20,
+      "puntajeFinal": 150
+    },
+    {
+      "nombreEquipo": "BALBOA",
+      "puntajePistaA": 60,
+      "puntajePistaB": 19,
+      "puntajePistaC": 58,
+      "puntajeFinal": 137
     },
     {
       "nombreEquipo": "404 Team not found",
       "puntajePistaA": 20,
       "puntajePistaB": 106,
-      "puntajePistaC": 20,
-      "puntajeFinal": 146
-    },
-    {
-      "nombreEquipo": "Shebots",
-      "puntajePistaA": 65,
-      "puntajePistaB": 2,
-      "puntajePistaC": 53,
-      "puntajeFinal": 120
+      "puntajePistaC": 10,
+      "puntajeFinal": 136
     },
     {
       "nombreEquipo": "Tecno-Ready",
@@ -290,18 +269,25 @@
       "puntajeFinal": 104
     },
     {
+      "nombreEquipo": "Henry's Law Enforcemet",
+      "puntajePistaA": 20,
+      "puntajePistaB": 60,
+      "puntajePistaC": 23,
+      "puntajeFinal": 103
+    },
+    {
+      "nombreEquipo": "Nova",
+      "puntajePistaA": 60,
+      "puntajePistaB": 26,
+      "puntajePistaC": 11,
+      "puntajeFinal": 97
+    },
+    {
       "nombreEquipo": "Robodex",
       "puntajePistaA": 0,
       "puntajePistaB": 94,
       "puntajePistaC": 0,
       "puntajeFinal": 94
-    },
-    {
-      "nombreEquipo": "AIZER",
-      "puntajePistaA": 40,
-      "puntajePistaB": 49,
-      "puntajePistaC": 3,
-      "puntajeFinal": 92
     },
     {
       "nombreEquipo": "Tung tung tung sahur",
@@ -325,6 +311,13 @@
       "puntajeFinal": 84
     },
     {
+      "nombreEquipo": "AIZER",
+      "puntajePistaA": 40,
+      "puntajePistaB": 40,
+      "puntajePistaC": 3,
+      "puntajeFinal": 83
+    },
+    {
       "nombreEquipo": "Sheldon Cooper",
       "puntajePistaA": 65,
       "puntajePistaB": 9,
@@ -339,11 +332,18 @@
       "puntajeFinal": 76
     },
     {
+      "nombreEquipo": "Shebots",
+      "puntajePistaA": 45,
+      "puntajePistaB": 2,
+      "puntajePistaC": 28,
+      "puntajeFinal": 75
+    },
+    {
       "nombreEquipo": "Fantastic 4",
       "puntajePistaA": 60,
       "puntajePistaB": 0,
-      "puntajePistaC": 8,
-      "puntajeFinal": 68
+      "puntajePistaC": 0,
+      "puntajeFinal": 60
     },
     {
       "nombreEquipo": "Zbots",
@@ -353,13 +353,6 @@
       "puntajeFinal": 50
     },
     {
-      "nombreEquipo": "TECH",
-      "puntajePistaA": 0,
-      "puntajePistaB": 20,
-      "puntajePistaC": 0,
-      "puntajeFinal": 20
-    },
-    {
       "nombreEquipo": "Mecatrones",
       "puntajePistaA": 0,
       "puntajePistaB": 0,
@@ -367,7 +360,7 @@
       "puntajeFinal": 20
     },
     {
-      "nombreEquipo": "SuperMexicans",
+      "nombreEquipo": "TECH",
       "puntajePistaA": 0,
       "puntajePistaB": 20,
       "puntajePistaC": 0,
@@ -393,13 +386,6 @@
       "puntajePistaB": 5,
       "puntajePistaC": 0,
       "puntajeFinal": 5
-    },
-    {
-      "nombreEquipo": "IronMinds",
-      "puntajePistaA": 0,
-      "puntajePistaB": 0,
-      "puntajePistaC": 0,
-      "puntajeFinal": 0
     },
     {
       "nombreEquipo": "YOLG",

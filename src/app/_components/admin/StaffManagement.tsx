@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import Select from "react-select";
 import { InterviewArea } from "@prisma/client";
+import type { job } from "@prisma/client";
 
 type UserListItem = {
   id: string;
@@ -11,6 +12,20 @@ type UserListItem = {
   email: string | null;
   image?: string | null;
   isStaff: boolean;
+};
+
+type ScheduleItem = {
+  id: string;
+  createdAt: Date;
+  userId: string;
+  roundNumber: number;
+  job: job;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    interviewArea: InterviewArea | null;
+  } | null;
 };
 
 export default function StaffManagement() {
@@ -59,6 +74,33 @@ export default function StaffManagement() {
   const deleteUnavailability = api.admin.deleteUnavailability.useMutation({
     onSuccess: async () => {
       await refetchUnavailability();
+    },
+  });
+
+  // Staff schedule hooks
+  const {
+    data: schedule,
+    refetch: refetchSchedule,
+    isLoading: scheduleLoading,
+  } = api.admin.getStaffSchedule.useQuery();
+  const groupedSchedule = useMemo(() => {
+    return ((schedule ?? []) as ScheduleItem[]).reduce<
+      Record<number, ScheduleItem[]>
+    >((acc, a) => {
+      const key = a.roundNumber ?? 0;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(a);
+      return acc;
+    }, {});
+  }, [schedule]);
+  const generateSchedule = api.admin.generateStaffSchedule.useMutation({
+    onSuccess: async () => {
+      await refetchSchedule();
+    },
+  });
+  const clearSchedule = api.admin.clearStaffSchedule.useMutation({
+    onSuccess: async () => {
+      await refetchSchedule();
     },
   });
 
@@ -294,6 +336,75 @@ export default function StaffManagement() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Staff schedule */}
+      <div className="rounded-lg border border-gray-800 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-white">Staff Schedule</h3>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-md bg-roboblue px-3 py-2 text-sm font-medium text-black disabled:opacity-50"
+              disabled={generateSchedule.isPending}
+              onClick={() => generateSchedule.mutate({ overwrite: true })}
+            >
+              {generateSchedule.isPending ? "Generating…" : "Generate schedule"}
+            </button>
+            <button
+              className="rounded-md bg-gray-800 px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 disabled:opacity-50"
+              disabled={clearSchedule.isPending}
+              onClick={() => clearSchedule.mutate({})}
+            >
+              {clearSchedule.isPending ? "Clearing…" : "Clear"}
+            </button>
+          </div>
+        </div>
+
+        {scheduleLoading ? (
+          <div className="text-sm text-gray-400">Loading schedule…</div>
+        ) : (schedule ?? []).length === 0 ? (
+          <div className="text-sm text-gray-400">No assignments yet.</div>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-gray-800">
+            {Object.entries(groupedSchedule).map(([round, items]) => (
+              <div key={round} className="border-b border-gray-800">
+                <div className="bg-gray-900/50 px-4 py-2 text-sm font-medium uppercase tracking-wider text-gray-400">
+                  Round {round}
+                </div>
+                <table className="min-w-full divide-y divide-gray-800">
+                  <thead className="bg-black/40">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        Job
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        User
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        Area
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800 bg-black/40">
+                    {(items).map((a) => (
+                      <tr key={a.id} className="hover:bg-gray-900/30">
+                        <td className="px-4 py-2 text-sm text-white">
+                          {String(a.job)}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-300">
+                          {a.user?.name ?? a.user?.email ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-300">
+                          {a.user?.interviewArea ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Unavailability editor */}

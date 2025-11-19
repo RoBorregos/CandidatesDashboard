@@ -24,7 +24,7 @@ export default async function TeamPage({
     );
   }
 
-  const isInterviewer = await api.interviewer.isInterviewer();
+  const isInterviewer = await api.interviewer.isStaff();
   if (isInterviewer) {
     redirect("/interviewer");
   }

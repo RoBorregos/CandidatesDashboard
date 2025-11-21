@@ -14,6 +14,29 @@ type TeamScore = {
   puntajeFinal: number;
 };
 
+function isTeamScoreArray(val: unknown): val is TeamScore[] {
+  return (
+    Array.isArray(val) &&
+    val.every(
+      (v) =>
+        v &&
+        typeof v === "object" &&
+        "nombreEquipo" in v &&
+        "puntajePistaA" in v &&
+        "puntajePistaB" in v &&
+        "puntajePistaC" in v &&
+        "puntajeFinal" in v,
+    )
+  );
+}
+
+function isRecordTeamScoreArray(
+  val: unknown,
+): val is Record<string, TeamScore[]> {
+  if (!val || typeof val !== "object") return false;
+  return Object.values(val).every(isTeamScoreArray);
+}
+
 // Helper to aggregate latest entries per (teamId, roundId), returning per-team round points
 function accumulateLatest<
   T extends {
@@ -97,9 +120,9 @@ export async function exportUsersToCSV() {
     const scores: TeamScore[] = [];
     for (const teamId of teamIds) {
       const name =
-        aPerTeam[teamId]?.name ||
-        bPerTeam[teamId]?.name ||
-        cPerTeam[teamId]?.name ||
+        aPerTeam[teamId]?.name ??
+        bPerTeam[teamId]?.name ??
+        cPerTeam[teamId]?.name ??
         "Unknown";
       const puntajePistaA = sumTopTwo(aPerTeam[teamId]?.rounds ?? []);
       const puntajePistaB = sumTopTwo(bPerTeam[teamId]?.rounds ?? []);
@@ -121,10 +144,10 @@ export async function exportUsersToCSV() {
     let existing: Record<string, TeamScore[]> = {};
     try {
       const raw = await fs.readFile(OUTPUT_FILE, "utf8");
-      existing = JSON.parse(raw);
+      const parsed: unknown = JSON.parse(raw);
+      if (isRecordTeamScoreArray(parsed)) existing = parsed;
     } catch (e) {
-      // File may not exist yet; proceed with empty structure
-      existing = {};
+      // ignore; keep empty existing
     }
 
     existing[EDITION_NAME] = scores; // Replace / create current year entry

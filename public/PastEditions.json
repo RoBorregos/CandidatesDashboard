@@ -394,5 +394,91 @@
       "puntajePistaC": 0,
       "puntajeFinal": 0
     }
+  ],
+  "LARC 2025": [
+    {
+      "nombreEquipo": "Wall - E",
+      "puntajePistaA": 140,
+      "puntajePistaB": 261,
+      "puntajePistaC": 119,
+      "puntajeFinal": 520
+    },
+    {
+      "nombreEquipo": "Balboa",
+      "puntajePistaA": 90,
+      "puntajePistaB": 74,
+      "puntajePistaC": 203,
+      "puntajeFinal": 367
+    },
+    {
+      "nombreEquipo": "CHAPPIE",
+      "puntajePistaA": 50,
+      "puntajePistaB": 205,
+      "puntajePistaC": 42,
+      "puntajeFinal": 297
+    },
+    {
+      "nombreEquipo": "404 Team Not Found",
+      "puntajePistaA": 50,
+      "puntajePistaB": 165,
+      "puntajePistaC": 55,
+      "puntajeFinal": 270
+    },
+    {
+      "nombreEquipo": "Henry's Law Enforcement",
+      "puntajePistaA": 65,
+      "puntajePistaB": 137,
+      "puntajePistaC": 12,
+      "puntajeFinal": 214
+    },
+    {
+      "nombreEquipo": "JADE Dynamics",
+      "puntajePistaA": 60,
+      "puntajePistaB": 74,
+      "puntajePistaC": 38,
+      "puntajeFinal": 172
+    },
+    {
+      "nombreEquipo": "Vaca Lola",
+      "puntajePistaA": 0,
+      "puntajePistaB": 126,
+      "puntajePistaC": 9,
+      "puntajeFinal": 135
+    },
+    {
+      "nombreEquipo": "Nova",
+      "puntajePistaA": 80,
+      "puntajePistaB": 8,
+      "puntajePistaC": 37,
+      "puntajeFinal": 125
+    },
+    {
+      "nombreEquipo": "Tecno-Ready",
+      "puntajePistaA": 50,
+      "puntajePistaB": 0,
+      "puntajePistaC": 56,
+      "puntajeFinal": 106
+    },
+    {
+      "nombreEquipo": "Shebots",
+      "puntajePistaA": 40,
+      "puntajePistaB": 3,
+      "puntajePistaC": 12,
+      "puntajeFinal": 55
+    },
+    {
+      "nombreEquipo": "Space Invaders",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 0,
+      "puntajeFinal": 0
+    },
+    {
+      "nombreEquipo": "TECH",
+      "puntajePistaA": 0,
+      "puntajePistaB": 0,
+      "puntajePistaC": 0,
+      "puntajeFinal": 0
+    }
   ]
 }

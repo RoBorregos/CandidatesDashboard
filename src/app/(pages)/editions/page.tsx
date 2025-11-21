@@ -11,7 +11,6 @@ type Edition = {
   imageUrl: string;
 };
 
-
 export default function HistoryPage() {
   return (
     <main className="bg-black text-white">
@@ -38,9 +37,9 @@ export default function HistoryPage() {
         </div>
 
         <div className="mt-12 text-center">
-         <ScoreboardTable year={2024} />
-         <ScoreboardTable year={2025} />
-         
+          <ScoreboardTable year={"LARC 2025"} />
+          <ScoreboardTable year={2025} />
+          <ScoreboardTable year={2024} />
         </div>
       </section>
 

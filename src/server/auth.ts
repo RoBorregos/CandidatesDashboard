@@ -38,87 +38,64 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authOptions: NextAuthOptions = {
-  // events: {
-  // signIn: async (event) => {
-  //     if (event.user.email) {
-  //       const isAdmin = await db.admin.findUnique({
-  //         where: {
-  //           email: event.user.email,
-  //         },
-  //       });
-  //       if (isAdmin) {
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             role: Role.ADMIN,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       const isJudge = await db.judge.findFirst({
-  //         where: {
-  //           email: {
-  //             equals: event.user.email,
-  //             // Warning: If developing with mysql this will cause build to fail
-  //             mode: "insensitive",
-  //           },
-  //         },
-  //       });
-  //       if (isJudge) {
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             role: Role.JUDGE,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       const isContestant = await db.emailTeam.findFirst({
-  //         where: {
-  //           email: {
-  //             equals: event.user.email,
-  //             mode: "insensitive",
-  //           },
-  //         },
-  //       });
-  //       if (isContestant) {
-  //         const team = await db.team.findUnique({
-  //           where: {
-  //             name: isContestant.team,
-  //           },
-  //           select: {
-  //             id: true,
-  //           },
-  //         });
-  //         if (!team) {
-  //           throw new Error("Team not found");
-  //         }
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             teamId: team.id,
-  //             role: Role.CONTESTANT,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       await db.user.update({
-  //         where: {
-  //           email: event.user.email,
-  //         },
-  //         data: {
-  //           role: Role.UNASSIGNED,
-  //         },
-  //       });
-  //     }
-  //   },
-  // },
+  events: {
+
+    signIn: async ({ user }) => {
+      const email = user.email;
+      if (!email) return;
+
+      const current = await db.user.findUnique({
+        where: { email },
+        select: { role: true, teamId: true },
+      });
+      if (!current) return;
+
+      const isAdmin = await db.admin.findUnique({ where: { email } });
+      if (isAdmin) {
+        if (current.role !== Role.ADMIN) {
+          await db.user.update({ where: { email }, data: { role: Role.ADMIN } });
+        }
+        return;
+      }
+
+      const isJudge = await db.judge.findFirst({
+        where: {
+          // Warning: If developing with mysql this will cause build to fail
+          email: { equals: email, mode: "insensitive" },
+        },
+      });
+      if (isJudge) {
+        if (current.role !== Role.JUDGE) {
+          await db.user.update({ where: { email }, data: { role: Role.JUDGE } });
+        }
+        return;
+      }
+
+      // Ya tiene equipo: no hay nada que resolver.
+      if (current.teamId) return;
+
+      const assignment = await db.emailTeam.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
+      if (!assignment) return;
+
+      const team = await db.team.findUnique({
+        where: { name: assignment.team },
+        select: { id: true },
+      });
+      // El equipo puede no existir todavia si el registro no se ha aceptado.
+      if (!team) return;
+
+      await db.user.update({
+        where: { email },
+        data: {
+          teamId: team.id,
+          role:
+            current.role === Role.UNASSIGNED ? Role.CONTESTANT : current.role,
+        },
+      });
+    },
+  },
   callbacks: {
     session: ({ session, user }) => ({
       ...session,

@@ -58,6 +58,63 @@ enum InterviewArea {
   PROGRAMMING
 }
 
+enum CompetitionTrack {
+  BEGINNER
+  ADVANCED
+}
+
+enum Origin {
+  LOCAL
+  FOREIGN
+}
+
+enum RegistrationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Registration {
+  id               String               @id @default(cuid())
+  edition          Int                  @default(2026)
+  track            CompetitionTrack
+  status           RegistrationStatus   @default(PENDING)
+  challenge        String?
+  hasTeam          Boolean
+  teamName         String?
+  wantsExtraMember Boolean?
+  knowsExtraMember Boolean?
+  origin           Origin?
+  funFacts         String?
+  contactEmail     String
+  // Equipo generado al aceptar el registro. Nulo mientras no se acepte.
+  teamId           String?
+  members          RegistrationMember[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([contactEmail, edition])
+  @@index([edition, status])
+}
+
+model RegistrationMember {
+  id             String        @id @default(cuid())
+  registrationId String
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  order          Int
+  name           String
+  email          String
+  phone          String
+  career         String
+  semester       Int
+  role           InterviewArea
+
+  @@unique([registrationId, order])
+  @@index([email])
+  @@index([career])
+  @@index([semester])
+}
+
 model Interviewer {
   id    String        @id @default(cuid())
   name  String

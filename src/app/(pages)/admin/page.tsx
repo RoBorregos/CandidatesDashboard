@@ -9,11 +9,19 @@ import ScheduleControl from "~/app/_components/admin/ScheduleControl";
 import RoundControl from "~/app/_components/admin/RoundControl";
 import InterviewManagement from "~/app/_components/admin/InterviewManagement";
 import StaffManagement from "~/app/_components/admin/StaffManagement";
+import RegistrationManagement from "~/app/_components/admin/RegistrationManagement";
+
+type AdminTab =
+  | "management"
+  | "registrations"
+  | "teams"
+  | "schedule"
+  | "rounds"
+  | "interviews"
+  | "staff";
 
 export default function AdminPage() {
-  const [selectedTab, setSelectedTab] = useState<
-    "management" | "teams" | "schedule" | "rounds" | "interviews" | "staff"
-  >("management");
+  const [selectedTab, setSelectedTab] = useState<AdminTab>("management");
 
   const { data: users, refetch: refetchUsers } =
     api.admin.getAllUsers.useQuery();
@@ -50,6 +58,7 @@ export default function AdminPage() {
         <nav className="flex space-x-8 px-4">
           {[
             { id: "management", label: "Team Management" },
+            { id: "registrations", label: "Registrations" },
             { id: "teams", label: "Active Teams" },
             { id: "schedule", label: "Schedule Control" },
             { id: "rounds", label: "Round Control" },
@@ -58,17 +67,7 @@ export default function AdminPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() =>
-                setSelectedTab(
-                  tab.id as
-                    | "management"
-                    | "teams"
-                    | "schedule"
-                    | "rounds"
-                    | "interviews"
-                    | "staff",
-                )
-              }
+              onClick={() => setSelectedTab(tab.id as AdminTab)}
               className={`border-b-2 px-1 py-2 text-sm font-medium ${
                 selectedTab === tab.id
                   ? "border-roboblue text-roboblue"
@@ -90,6 +89,8 @@ export default function AdminPage() {
             refetchAll={refetchAll}
           />
         )}
+
+        {selectedTab === "registrations" && <RegistrationManagement />}
 
         {selectedTab === "teams" && (
           <TeamStatusManagement

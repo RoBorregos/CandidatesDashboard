@@ -22,6 +22,9 @@ export default async function Navbar() {
         />
       </Link>
       <div className="ml-10 hidden w-full items-center justify-start gap-x-10 text-white lg:flex xl:text-xl">
+        <Link href="register" className="font-semibold text-roboblue">
+          Register
+        </Link>
         <Link href="scoreboard">Scoreboard</Link>
         <Link href="schedule">Schedule</Link>
         <Link href="team">Team</Link>

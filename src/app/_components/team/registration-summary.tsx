@@ -7,7 +7,7 @@ type SummaryMember = {
   order: number;
   name: string;
   email: string;
-  role: InterviewArea;
+  role: InterviewArea | null;
 };
 
 export type RegistrationSummaryData = {
@@ -86,10 +86,13 @@ export default function RegistrationSummary({
               className="rounded-lg border border-neutral-800 bg-black/40 p-3"
             >
               <p className="font-medium text-white">
-                {member.name}{" "}
-                <span className="text-roboblue">
-                  · {ROLE_LABELS[member.role]}
-                </span>
+                {member.name}
+                {member.role && (
+                  <span className="text-roboblue">
+                    {" "}
+                    · {ROLE_LABELS[member.role]}
+                  </span>
+                )}
               </p>
               <p className="text-sm text-neutral-400">{member.email}</p>
             </div>

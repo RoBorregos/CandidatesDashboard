@@ -102,7 +102,7 @@ export default function RegistrationManagement() {
           member.phone,
           member.career,
           String(member.semester),
-          ROLE_LABELS[member.role],
+          member.role ? ROLE_LABELS[member.role] : "",
         ]
           .map(escape)
           .join(","),
@@ -240,10 +240,13 @@ export default function RegistrationManagement() {
                 {registration.members.map((member) => (
                   <div key={member.id} className="rounded bg-gray-800 p-3">
                     <p className="font-medium">
-                      {member.order}. {member.name} —{" "}
-                      <span className="text-roboblue">
-                        {ROLE_LABELS[member.role]}
-                      </span>
+                      {member.order}. {member.name}
+                      {member.role && (
+                        <span className="text-roboblue">
+                          {" "}
+                          — {ROLE_LABELS[member.role]}
+                        </span>
+                      )}
                     </p>
                     <p className="text-sm text-gray-400">{member.email}</p>
                     <p className="text-sm text-gray-400">{member.phone}</p>

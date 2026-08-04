@@ -60,10 +60,18 @@ export const MAX_TEAM_MEMBERS = 4;
 /** Semestre maximo seleccionable en el formulario. */
 export const MAX_SEMESTER = 8;
 
+export const BEGINNER_MAX_SEMESTER = 3;
+
 export const SEMESTER_OPTIONS = Array.from(
   { length: MAX_SEMESTER },
   (_, index) => index + 1,
 );
+
+export function semesterOptionsFor(track: "BEGINNER" | "ADVANCED" | "") {
+  return track === "BEGINNER"
+    ? SEMESTER_OPTIONS.filter((semester) => semester <= BEGINNER_MAX_SEMESTER)
+    : SEMESTER_OPTIONS;
+}
 
 export const CAREER_SUGGESTIONS = [
   "IRS",
@@ -98,7 +106,8 @@ export const memberSchema = z.object({
     .int()
     .min(1, { message: "Selecciona tu semestre" })
     .max(MAX_SEMESTER, { message: `Máximo ${MAX_SEMESTER}` }),
-  role: z.enum(MEMBER_ROLES, { message: "Selecciona un rol" }),
+  // Solo se pide en principiantes: en avanzados el area la define el reto.
+  role: z.enum(MEMBER_ROLES).optional(),
 });
 
 export type RegistrationMemberInput = z.infer<typeof memberSchema>;
@@ -202,6 +211,25 @@ export const registrationSchema = z
         });
       }
     }
+
+    // Reglas que en principiantes aplican a cada integrante por separado.
+    data.members.forEach((member, index) => {
+      if (!member.role) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["members", index, "role"],
+          message: "Selecciona un rol",
+        });
+      }
+
+      if (member.semester > BEGINNER_MAX_SEMESTER) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["members", index, "semester"],
+          message: `Principiantes es de 1o a ${BEGINNER_MAX_SEMESTER}o semestre`,
+        });
+      }
+    });
 
     // Un mismo correo no puede aparecer dos veces en el equipo.
     const seen = new Set<string>();

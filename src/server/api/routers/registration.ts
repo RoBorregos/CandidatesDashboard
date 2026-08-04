@@ -66,7 +66,7 @@ export const registrationRouter = createTRPCRouter({
               phone: member.phone,
               career: member.career,
               semester: member.semester,
-              role: member.role,
+              role: member.role ?? null,
             })),
           },
         },

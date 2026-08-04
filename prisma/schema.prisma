@@ -107,7 +107,7 @@ model RegistrationMember {
   phone          String
   career         String
   semester       Int
-  role           InterviewArea
+  role           InterviewArea?
 
   @@unique([registrationId, order])
   @@index([email])

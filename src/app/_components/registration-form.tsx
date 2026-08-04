@@ -12,9 +12,9 @@ import {
   MIN_TEAM_MEMBERS,
   ORIGIN_LABELS,
   ROLE_LABELS,
-  SEMESTER_OPTIONS,
   TRACKS,
   registrationSchema,
+  semesterOptionsFor,
 } from "~/lib/registration";
 
 type Track = (typeof TRACKS)[number]["value"];
@@ -118,12 +118,14 @@ function MemberFields({
   title,
   member,
   index,
+  track,
   errors,
   onChange,
 }: {
   title: string;
   member: MemberDraft;
   index: number;
+  track: Track;
   errors: Record<string, string>;
   onChange: (patch: Partial<MemberDraft>) => void;
 }) {
@@ -196,7 +198,7 @@ function MemberFields({
               className={inputClass}
             >
               <option value="">Selecciona...</option>
-              {SEMESTER_OPTIONS.map((semester) => (
+              {semesterOptionsFor(track).map((semester) => (
                 <option key={semester} value={semester}>
                   {semester}
                 </option>
@@ -205,22 +207,24 @@ function MemberFields({
             <FieldError message={errorFor("semester")} />
           </div>
 
-          <div>
-            <label className={labelClass}>Rol *</label>
-            <select
-              value={member.role}
-              onChange={(e) => onChange({ role: e.target.value as Role })}
-              className={inputClass}
-            >
-              <option value="">Selecciona...</option>
-              {MEMBER_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </select>
-            <FieldError message={errorFor("role")} />
-          </div>
+          {track === "BEGINNER" && (
+            <div>
+              <label className={labelClass}>Rol *</label>
+              <select
+                value={member.role}
+                onChange={(e) => onChange({ role: e.target.value as Role })}
+                className={inputClass}
+              >
+                <option value="">Selecciona...</option>
+                {MEMBER_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
+                ))}
+              </select>
+              <FieldError message={errorFor("role")} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -325,7 +329,11 @@ export default function RegistrationForm() {
       challenge: track === "ADVANCED" ? challenge || undefined : undefined,
       hasTeam: hasTeam ?? false,
       teamName: hasTeam ? teamName : undefined,
-      members,
+      // El rol se queda vacio en avanzados, donde no se pregunta.
+      members: members.map((member) => ({
+        ...member,
+        role: member.role || undefined,
+      })),
       wantsExtraMember: hasTeam ? (wantsExtraMember ?? false) : undefined,
       knowsExtraMember: hasTeam ? (knowsExtraMember ?? false) : undefined,
       origin: hasTeam === false ? origin || undefined : undefined,
@@ -460,6 +468,7 @@ export default function RegistrationForm() {
                 index={index}
                 title={index === 0 ? "Miembro 1 (tú)" : `Miembro ${index + 1}`}
                 member={member}
+                track={track}
                 errors={errors}
                 onChange={(patch) => updateMember(index, patch)}
               />
@@ -517,6 +526,7 @@ export default function RegistrationForm() {
                     index={index}
                     title="Miembro 4"
                     member={member}
+                    track={track}
                     errors={errors}
                     onChange={(patch) => updateMember(index, patch)}
                   />
@@ -543,6 +553,7 @@ export default function RegistrationForm() {
                 index={index}
                 title="Datos personales"
                 member={member}
+                track={track}
                 errors={errors}
                 onChange={(patch) => updateMember(index, patch)}
               />

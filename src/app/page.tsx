@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { HydrateClient } from "rbrgs/trpc/server";
 import capitalOne from "../../public/images/sponsors/CapitalOne.png";
 import stanser from "../../public/images/sponsors/Stanser.png";
@@ -43,6 +44,12 @@ export default async function Home() {
             <p className="mt-[-2vw] font-anton text-[6vw] text-white lg:text-[3vw]">
               By RoBorregos
             </p>
+            <Link
+              href="/register"
+              className="mt-[4vw] inline-block rounded-full bg-roboblue px-[6vw] py-[2vw] font-archivo text-[4vw] font-semibold text-black transition-opacity hover:opacity-90 lg:mt-[1.5vw] lg:px-[3vw] lg:py-[0.8vw] lg:text-[1.5vw]"
+            >
+              Regístrate
+            </Link>
           </div>
           <div className="absolute left-1/2 top-[80vw] -z-10 -translate-x-1/2 -translate-y-1/2 transform lg:top-1/2">
             <Image

@@ -29,6 +29,14 @@ export default function NavDropdown({ session }: { session: Session | null }) {
             </Link>
           </SheetClose>
           <SheetClose asChild>
+            <Link
+              href="/register"
+              className="w-full text-lg font-semibold text-roboblue"
+            >
+              Register
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
             <Link href="/scoreboard" className="w-full text-lg">
               Scoreboard
             </Link>

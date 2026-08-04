@@ -1,17 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { HydrateClient } from "rbrgs/trpc/server";
-import capitalOne from "../../public/images/sponsors/CapitalOne.png";
-import stanser from "../../public/images/sponsors/Stanser.png";
-import github from "../../public/images/sponsors/github.png";
 import robologo from "../../public/images/white-logo.png";
-import coffeeCart from "../../public/images/sponsors/coffeeCart.png";
-import peckers from "../../public/images/sponsors/peckers.png";
-import tapiocaHouse from "../../public/images/sponsors/tapiocaHouse.jpg";
-import kube from "../../public/images/sponsors/kube.jpg";
+import acuityBrands from "../../public/images/sponsors/AcuityBrandsLogo.webp";
 import digikey from "../../public/images/sponsors/DigiKey.png";
-import kiko from "../../public/images/sponsors/kiko.jpg";
-import heppy from "../../public/images/sponsors/heppy.png";
+import enerman from "../../public/images/sponsors/EnermanLogo.png";
+import vitro from "../../public/images/sponsors/vitro.png";
 import ball from "../../public/images/ball.jpg";
 import maze from "../../public/images/maze.jpg";
 import line from "../../public/images/line.jpg";
@@ -29,16 +23,15 @@ const SHOW_EVENT_SCHEDULE = false;
 
 export default async function Home() {
   const sponsors = [
-    capitalOne,
-    stanser,
-    github,
-    digikey,
-    tapiocaHouse,
-    coffeeCart,
-    peckers,
-    kube,
-    kiko,
-    heppy,
+    { src: acuityBrands, alt: "Acuity Brands" },
+    { src: digikey, alt: "DigiKey" },
+    {
+      src: enerman,
+      alt: "Enerman",
+      backdrop: "bg-neutral-900",
+      zoom: "scale-150",
+    },
+    { src: vitro, alt: "Vitro" },
   ];
 
   return (
@@ -170,13 +163,20 @@ export default async function Home() {
           </span>
         </div>
 
-        <section className="mt-[3rem] grid w-full grid-cols-2 gap-5 bg-white px-[5vw] py-5 lg:grid-cols-5 lg:px-[5rem]">
-          {sponsors.map((sponsor, index) => (
-            <div key={index} className="flex items-center justify-center">
+        <section className="mt-[3rem] grid w-full grid-cols-2 gap-5 bg-white px-[5vw] py-5 lg:grid-cols-4 lg:px-[5rem]">
+          {sponsors.map((sponsor) => (
+            <div
+              key={sponsor.alt}
+              className={`flex items-center justify-center overflow-hidden rounded-lg ${
+                sponsor.backdrop ?? ""
+              }`}
+            >
               <Image
-                src={sponsor}
-                alt={sponsor.src}
-                className="h-[5rem] w-full max-w-[200px] object-contain"
+                src={sponsor.src}
+                alt={sponsor.alt}
+                className={`h-[5rem] w-full max-w-[200px] object-contain ${
+                  sponsor.zoom ?? ""
+                }`}
               />
             </div>
           ))}

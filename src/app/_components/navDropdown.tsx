@@ -29,10 +29,7 @@ export default function NavDropdown({ session }: { session: Session | null }) {
             </Link>
           </SheetClose>
           <SheetClose asChild>
-            <Link
-              href="/register"
-              className="w-full text-lg font-semibold text-roboblue"
-            >
+            <Link href="/register" className="w-full text-lg">
               Register
             </Link>
           </SheetClose>

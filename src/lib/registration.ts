@@ -28,6 +28,7 @@ export const ADVANCED_CHALLENGES = [
   "@Home Challenge Visión",
   "@Home Challenge Reto de Mecánica",
   "@Home Challenge Reto de Electrónica",
+  "@Home Challenge Simulación",
 ] as const;
 
 export const MEMBER_ROLES = [

@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-<<<<<<< HEAD
 import { RegistrationStatus, Role } from "@prisma/client";
-=======
-import { RegistrationStatus } from "@prisma/client";
->>>>>>> 6033ba2754dd78324b4c966359731efad015338d
 
 import {
   adminProcedure,

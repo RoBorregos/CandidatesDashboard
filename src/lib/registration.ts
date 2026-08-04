@@ -18,11 +18,7 @@ export const TRACKS = [
   },
 ] as const;
 
-/**
- * Retos disponibles para la rama de avanzados.
- * Editar esta lista es suficiente para cambiar las opciones: el reto se guarda
- * como texto en Registration.challenge, así que no hace falta migrar la BD.
- */
+
 export const ADVANCED_CHALLENGES = [
   "@Home Challenge Human Robot Interaction (HRI)",
   "@Home Challenge Visión",
@@ -30,6 +26,8 @@ export const ADVANCED_CHALLENGES = [
   "@Home Challenge Reto de Electrónica",
   "@Home Challenge Simulación",
 ] as const;
+
+export const ALLOWED_EMAIL_DOMAINS: readonly string[] = ["tec.mx", "itesm.mx"];
 
 export const MEMBER_ROLES = [
   "PROGRAMMING",
@@ -91,7 +89,13 @@ export const memberSchema = z.object({
     .trim()
     .toLowerCase()
     .email({ message: "Escribe un correo válido" })
-    .max(100, { message: "Máximo 100 caracteres" }),
+    .max(100, { message: "Máximo 100 caracteres" })
+    .refine(
+      (value) =>
+        ALLOWED_EMAIL_DOMAINS.length === 0 ||
+        ALLOWED_EMAIL_DOMAINS.some((domain) => value.endsWith(`@${domain}`)),
+      { message: "Usa tu correo institucional (@tec.mx)" },
+    ),
   phone: z
     .string()
     .trim()

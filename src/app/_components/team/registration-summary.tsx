@@ -32,8 +32,7 @@ const STATUS_BADGES: Record<RegistrationStatus, string> = {
 };
 
 const STATUS_MESSAGES: Record<RegistrationStatus, string> = {
-  PENDING:
-    "Tu registro está en revisión. Te avisaremos por correo cuando quede confirmado.",
+  PENDING: "Tu registro está en revisión.",
   ACCEPTED: "¡Tu registro fue aceptado! Ya eres parte de Candidates 2026.",
   REJECTED:
     "Tu registro no fue aceptado en esta edición. Si crees que es un error, escríbenos.",

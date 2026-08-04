@@ -71,6 +71,12 @@ export default function RegistrationManagement() {
       return;
     }
 
+
+    const DELIMITER = ";";
+
+    const escape = (value: string) =>
+      /[";\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+
     const header = [
       "equipo",
       "competencia",
@@ -84,18 +90,17 @@ export default function RegistrationManagement() {
       "carrera",
       "semestre",
       "rol",
+      "fecha",
     ];
-
-    const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
     const rows = registrations.flatMap((registration) =>
       registration.members.map((member) =>
         [
           registration.teamName ?? "Sin equipo",
-          registration.track,
+          registration.track === "ADVANCED" ? "Avanzados" : "Principiantes",
           registration.challenge ?? "",
-          registration.status,
-          registration.origin ?? "",
+          STATUS_LABELS[registration.status],
+          registration.origin ? ORIGIN_LABELS[registration.origin] : "",
           String(member.order),
           member.name,
           member.email,
@@ -103,20 +108,25 @@ export default function RegistrationManagement() {
           member.career,
           String(member.semester),
           member.role ? ROLE_LABELS[member.role] : "",
+          registration.createdAt.toLocaleDateString("es-MX"),
         ]
           .map(escape)
-          .join(","),
+          .join(DELIMITER),
       ),
     );
 
-    const csv = [header.join(","), ...rows].join("\n");
+    const BOM = String.fromCharCode(0xfeff);
+    const csv = BOM + [header.join(DELIMITER), ...rows].join("\r\n");
+
     const url = URL.createObjectURL(
       new Blob([csv], { type: "text/csv;charset=utf-8;" }),
     );
     const link = document.createElement("a");
     link.href = url;
     link.download = `registros-${CURRENT_EDITION}.csv`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 

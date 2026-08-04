@@ -2,10 +2,11 @@ import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { db } from "rbrgs/server/db";
+import { CURRENT_EDITION } from "~/lib/registration";
 
 export const userManagementRouter = createTRPCRouter({
   getAllUsers: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findMany({
+    const users = await ctx.db.user.findMany({
       include: {
         team: true,
       },
@@ -13,6 +14,34 @@ export const userManagementRouter = createTRPCRouter({
         email: "asc",
       },
     });
+
+  
+    const registrationMembers = await ctx.db.registrationMember.findMany({
+      where: {
+        registration: { edition: CURRENT_EDITION },
+        email: {
+          in: users.flatMap((user) => (user.email ? [user.email] : [])),
+        },
+      },
+      select: {
+        email: true,
+        registration: { select: { track: true, status: true } },
+      },
+    });
+
+    const byEmail = new Map(
+      registrationMembers.map((member) => [
+        member.email.toLowerCase(),
+        member.registration,
+      ]),
+    );
+
+    return users.map((user) => ({
+      ...user,
+      registration: user.email
+        ? (byEmail.get(user.email.toLowerCase()) ?? null)
+        : null,
+    }));
   }),
 
   assignUserToTeam: adminProcedure

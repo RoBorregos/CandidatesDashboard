@@ -368,7 +368,7 @@ export default function RegistrationForm() {
         </h3>
         <p className="mt-4 font-archivo text-neutral-300">
           Recibimos tu solicitud para Candidates 2026. Nos pondremos en contacto
-          por correo y WhatsApp con los siguientes pasos.
+          por WhatsApp con los siguientes pasos.
         </p>
         {createRegistration.data?.teamName && (
           <p className="mt-4 font-anton text-xl tracking-wide text-white">

@@ -10,6 +10,8 @@ type UserDisplay = {
   email: string | null;
   role?: string;
   team?: { name: string } | null;
+  // Rama en la que se registro, cruzada por correo. Null si no se registro.
+  registration?: { track: string; status: string } | null;
 };
 
 type TeamDisplay = {
@@ -237,7 +239,34 @@ export default function TeamManagement({
                 className="flex items-center justify-between rounded bg-gray-700 p-4"
               >
                 <div>
-                  <p className="font-semibold">{getDisplayName(user)}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{getDisplayName(user)}</p>
+                    {user.registration ? (
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          user.registration.track === "ADVANCED"
+                            ? "bg-purple-800"
+                            : "bg-blue-800"
+                        }`}
+                        title={
+                          user.registration.track === "ADVANCED"
+                            ? "Compite solo: no necesita equipo"
+                            : "Espera que le asignes equipo"
+                        }
+                      >
+                        {user.registration.track === "ADVANCED"
+                          ? "Avanzados · individual"
+                          : "Principiantes"}
+                      </span>
+                    ) : (
+                      <span
+                        className="rounded bg-gray-600 px-2 py-0.5 text-xs"
+                        title="No encontramos un registro con este correo"
+                      >
+                        sin registro
+                      </span>
+                    )}
+                  </div>
                   {user.name && (
                     <p className="text-sm text-gray-500">{user.email}</p>
                   )}

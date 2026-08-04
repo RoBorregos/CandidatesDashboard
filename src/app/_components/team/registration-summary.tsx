@@ -20,9 +20,15 @@ export type RegistrationSummaryData = {
 };
 
 const STATUS_STYLES: Record<RegistrationStatus, string> = {
-  PENDING: "bg-yellow-800",
-  ACCEPTED: "bg-green-800",
-  REJECTED: "bg-red-800",
+  PENDING: "border-yellow-600/50",
+  ACCEPTED: "border-roboblue/50",
+  REJECTED: "border-red-600/50",
+};
+
+const STATUS_BADGES: Record<RegistrationStatus, string> = {
+  PENDING: "bg-yellow-700",
+  ACCEPTED: "bg-roboblue",
+  REJECTED: "bg-red-700",
 };
 
 const STATUS_MESSAGES: Record<RegistrationStatus, string> = {
@@ -39,28 +45,36 @@ export default function RegistrationSummary({
   registration: RegistrationSummaryData;
 }) {
   return (
-    <div className="space-y-4 font-archivo">
-      <div className={`rounded-lg p-6 ${STATUS_STYLES[registration.status]}`}>
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h3 className="text-xl font-semibold">
+    <div className="space-y-6 font-archivo">
+      <div
+        className={`rounded-xl border bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8 ${STATUS_STYLES[registration.status]}`}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h3 className="font-jersey_25 text-4xl leading-none text-roboblue">
             {registration.teamName ?? "Registro individual"}
           </h3>
-          <span className="rounded bg-black/30 px-2 py-0.5 text-sm">
+          <span
+            className={`rounded px-2 py-0.5 text-sm text-white ${STATUS_BADGES[registration.status]}`}
+          >
             {STATUS_LABELS[registration.status]}
           </span>
         </div>
-        <p>{STATUS_MESSAGES[registration.status]}</p>
+        <p className="text-neutral-300">
+          {STATUS_MESSAGES[registration.status]}
+        </p>
         {!registration.hasTeam && registration.status !== "REJECTED" && (
-          <p className="mt-2 text-sm text-gray-200">
+          <p className="mt-2 text-sm text-neutral-400">
             Te registraste sin equipo, así que nosotros te asignamos uno antes de
             la competencia.
           </p>
         )}
       </div>
 
-      <div className="rounded-lg bg-gray-800 p-6">
-        <h4 className="mb-1 text-lg font-semibold">Lo que registraste</h4>
-        <p className="mb-4 text-sm text-gray-400">
+      <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
+        <h4 className="font-anton text-xl tracking-wide text-white">
+          Lo que registraste
+        </h4>
+        <p className="mb-4 mt-1 text-sm text-neutral-400">
           {registration.track === "ADVANCED" ? "Avanzados" : "Principiantes"}
           {registration.challenge && ` · ${registration.challenge}`}
         </p>
@@ -69,20 +83,20 @@ export default function RegistrationSummary({
           {registration.members.map((member) => (
             <div
               key={member.id}
-              className="rounded border border-gray-700 bg-gray-900 p-3"
+              className="rounded-lg border border-neutral-800 bg-black/40 p-3"
             >
-              <p className="font-medium">
+              <p className="font-medium text-white">
                 {member.name}{" "}
                 <span className="text-roboblue">
                   · {ROLE_LABELS[member.role]}
                 </span>
               </p>
-              <p className="text-sm text-gray-400">{member.email}</p>
+              <p className="text-sm text-neutral-400">{member.email}</p>
             </div>
           ))}
         </div>
 
-        <p className="mt-4 text-sm text-gray-400">
+        <p className="mt-4 text-sm text-neutral-400">
           ¿Algún dato está mal? Escríbenos a{" "}
           <a
             href="mailto:roborregosteam@gmail.com"

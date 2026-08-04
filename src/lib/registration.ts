@@ -8,13 +8,13 @@ export const TRACKS = [
     value: "BEGINNER",
     label: "Candidates Principiantes",
     description:
-      "Para quienes van empezando en robótica. No necesitas experiencia previa.",
+      "Para estudiantes de primer a tercer semestre. Se compite en equipo y no necesitas experiencia previa.",
   },
   {
     value: "ADVANCED",
     label: "Candidates Avanzados",
     description:
-      "Para quienes ya tienen experiencia y quieren competir en uno de los retos del @Home Challenge.",
+      "Reto individual del @Home Challenge, para quienes ya tienen experiencia",
   },
 ] as const;
 
@@ -118,12 +118,34 @@ export const registrationSchema = z
     funFacts: z.string().trim().max(600).optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.track === "ADVANCED" && !data.challenge) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["challenge"],
-        message: "Selecciona el reto que te interesa",
-      });
+    const isSolo = data.members.length === 1;
+
+    if (data.track === "ADVANCED") {
+      if (!data.challenge) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["challenge"],
+          message: "Selecciona el reto que te interesa",
+        });
+      }
+
+      if (data.hasTeam || !isSolo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["members"],
+          message: "Los retos avanzados son individuales",
+        });
+      }
+
+      if (!data.origin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["origin"],
+          message: "Selecciona de dónde eres",
+        });
+      }
+
+      return;
     }
 
     if (data.hasTeam) {
@@ -155,7 +177,7 @@ export const registrationSchema = z
         });
       }
     } else {
-      if (data.members.length !== 1) {
+      if (!isSolo) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["members"],
@@ -170,6 +192,7 @@ export const registrationSchema = z
           message: "Selecciona de dónde eres",
         });
       }
+
 
       if (!data.funFacts) {
         ctx.addIssue({

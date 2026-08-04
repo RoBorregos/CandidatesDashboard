@@ -40,11 +40,13 @@ const EMPTY_MEMBER: MemberDraft = {
 };
 
 const inputClass =
-  "w-full rounded border border-gray-600 bg-gray-700 p-3 text-white placeholder-gray-400 focus:border-roboblue focus:outline-none";
+  "w-full rounded-lg border border-neutral-700 bg-neutral-900 p-3 font-archivo text-white placeholder-neutral-500 transition-colors focus:border-roboblue focus:outline-none focus:ring-1 focus:ring-roboblue";
+
+const labelClass = "mb-1 block font-archivo text-sm text-neutral-300";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-sm text-red-400">{message}</p>;
+  return <p className="mt-1 font-archivo text-sm text-red-400">{message}</p>;
 }
 
 function Section({
@@ -59,13 +61,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg bg-gray-800 p-6">
-      <h3 className="text-xl font-semibold">
-        <span className="mr-2 text-roboblue">{step}.</span>
+    <section className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
+      <h3 className="flex items-baseline gap-3 font-archivo text-lg font-semibold text-white lg:text-xl">
+        <span className="font-jersey_25 text-3xl leading-none text-roboblue">
+          {step}
+        </span>
         {title}
       </h3>
-      {hint && <p className="mt-1 text-sm text-gray-400">{hint}</p>}
-      <div className="mt-4 space-y-4">{children}</div>
+      {hint && (
+        <p className="mt-2 font-archivo text-sm text-neutral-400">{hint}</p>
+      )}
+      <div className="mt-5 space-y-4">{children}</div>
     </section>
   );
 }
@@ -85,10 +91,10 @@ function RadioOption({
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-3 rounded border p-3 transition-colors ${
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-archivo transition-colors ${
         checked
-          ? "border-roboblue bg-gray-700"
-          : "border-gray-600 hover:border-gray-500"
+          ? "border-roboblue bg-roboblue/10"
+          : "border-neutral-700 hover:border-neutral-500"
       }`}
     >
       <input
@@ -99,9 +105,9 @@ function RadioOption({
         className="mt-1 accent-roboblue"
       />
       <span>
-        <span className="block font-medium">{label}</span>
+        <span className="block font-medium text-white">{label}</span>
         {description && (
-          <span className="block text-sm text-gray-400">{description}</span>
+          <span className="block text-sm text-neutral-400">{description}</span>
         )}
       </span>
     </label>
@@ -125,13 +131,14 @@ function MemberFields({
     errors[`members.${index}.${field}`];
 
   return (
-    <div className="rounded border border-gray-700 bg-gray-900 p-4">
-      <h4 className="mb-3 font-semibold text-roboblue">{title}</h4>
+    <div className="rounded-lg border border-neutral-800 bg-black/40 p-4">
+      <h4 className="mb-4 font-anton text-lg tracking-wide text-roboblue">
+        {title}
+      </h4>
+
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-sm font-medium">
-            Nombre completo *
-          </label>
+          <label className={labelClass}>Nombre completo *</label>
           <input
             type="text"
             value={member.name}
@@ -142,7 +149,7 @@ function MemberFields({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">
+          <label className={labelClass}>
             Correo electrónico institucional *
           </label>
           <input
@@ -155,65 +162,65 @@ function MemberFields({
           <FieldError message={errorFor("email")} />
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Número de teléfono (WhatsApp) *
-          </label>
-          <input
-            type="tel"
-            value={member.phone}
-            onChange={(e) => onChange({ phone: e.target.value })}
-            placeholder="8112345678"
-            className={inputClass}
-          />
-          <FieldError message={errorFor("phone")} />
-        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Teléfono (WhatsApp) *</label>
+            <input
+              type="tel"
+              value={member.phone}
+              onChange={(e) => onChange({ phone: e.target.value })}
+              placeholder="8112345678"
+              className={inputClass}
+            />
+            <FieldError message={errorFor("phone")} />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Carrera *</label>
-          <input
-            type="text"
-            value={member.career}
-            onChange={(e) => onChange({ career: e.target.value })}
-            placeholder="IRS"
-            list="carreras-tec"
-            className={inputClass}
-          />
-          <FieldError message={errorFor("career")} />
-        </div>
+          <div>
+            <label className={labelClass}>Carrera *</label>
+            <input
+              type="text"
+              value={member.career}
+              onChange={(e) => onChange({ career: e.target.value })}
+              placeholder="IRS"
+              list="carreras-tec"
+              className={inputClass}
+            />
+            <FieldError message={errorFor("career")} />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Semestre *</label>
-          <select
-            value={member.semester}
-            onChange={(e) => onChange({ semester: e.target.value })}
-            className={inputClass}
-          >
-            <option value="">Selecciona tu semestre...</option>
-            {SEMESTER_OPTIONS.map((semester) => (
-              <option key={semester} value={semester}>
-                {semester}
-              </option>
-            ))}
-          </select>
-          <FieldError message={errorFor("semester")} />
-        </div>
+          <div>
+            <label className={labelClass}>Semestre *</label>
+            <select
+              value={member.semester}
+              onChange={(e) => onChange({ semester: e.target.value })}
+              className={inputClass}
+            >
+              <option value="">Selecciona...</option>
+              {SEMESTER_OPTIONS.map((semester) => (
+                <option key={semester} value={semester}>
+                  {semester}
+                </option>
+              ))}
+            </select>
+            <FieldError message={errorFor("semester")} />
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Rol *</label>
-          <select
-            value={member.role}
-            onChange={(e) => onChange({ role: e.target.value as Role })}
-            className={inputClass}
-          >
-            <option value="">Selecciona un rol...</option>
-            {MEMBER_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {ROLE_LABELS[role]}
-              </option>
-            ))}
-          </select>
-          <FieldError message={errorFor("role")} />
+          <div>
+            <label className={labelClass}>Rol *</label>
+            <select
+              value={member.role}
+              onChange={(e) => onChange({ role: e.target.value as Role })}
+              className={inputClass}
+            >
+              <option value="">Selecciona...</option>
+              {MEMBER_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
+            </select>
+            <FieldError message={errorFor("role")} />
+          </div>
         </div>
       </div>
     </div>
@@ -249,6 +256,24 @@ export default function RegistrationForm() {
       while (next.length < count) next.push({ ...EMPTY_MEMBER });
       return next;
     });
+  };
+
+  const chooseTrack = (value: Track) => {
+    setTrack(value);
+    setErrors({});
+    resizeMembers(1);
+    setTeamName("");
+    setWantsExtraMember(null);
+    setKnowsExtraMember(null);
+
+    if (value === "ADVANCED") {
+  
+      setHasTeam(false);
+      setFunFacts("");
+    } else {
+      setChallenge("");
+      setHasTeam(null);
+    }
   };
 
   const chooseHasTeam = (value: boolean) => {
@@ -304,7 +329,8 @@ export default function RegistrationForm() {
       wantsExtraMember: hasTeam ? (wantsExtraMember ?? false) : undefined,
       knowsExtraMember: hasTeam ? (knowsExtraMember ?? false) : undefined,
       origin: hasTeam === false ? origin || undefined : undefined,
-      funFacts: hasTeam === false ? funFacts : undefined,
+      funFacts:
+        track === "BEGINNER" && hasTeam === false ? funFacts : undefined,
     });
 
     if (!parsed.success) {
@@ -328,15 +354,17 @@ export default function RegistrationForm() {
 
   if (createRegistration.isSuccess) {
     return (
-      <div className="rounded-lg bg-green-800 p-6 text-center">
-        <h3 className="mb-2 text-2xl font-semibold">¡Registro enviado!</h3>
-        <p>
+      <div className="rounded-xl border border-roboblue/40 bg-gradient-to-tr from-neutral-950 to-neutral-800 p-8 text-center">
+        <h3 className="font-jersey_25 text-5xl leading-none text-roboblue">
+          ¡Registro enviado!
+        </h3>
+        <p className="mt-4 font-archivo text-neutral-300">
           Recibimos tu solicitud para Candidates 2026. Nos pondremos en contacto
           por correo y WhatsApp con los siguientes pasos.
         </p>
         {createRegistration.data?.teamName && (
-          <p className="mt-2 text-sm text-green-200">
-            Equipo registrado: <strong>{createRegistration.data.teamName}</strong>
+          <p className="mt-4 font-anton text-xl tracking-wide text-white">
+            {createRegistration.data.teamName}
           </p>
         )}
       </div>
@@ -359,10 +387,7 @@ export default function RegistrationForm() {
               key={option.value}
               name="track"
               checked={track === option.value}
-              onChange={() => {
-                setTrack(option.value);
-                if (option.value === "BEGINNER") setChallenge("");
-              }}
+              onChange={() => chooseTrack(option.value)}
               label={option.label}
               description={option.description}
             />
@@ -389,8 +414,8 @@ export default function RegistrationForm() {
         </Section>
       )}
 
-      {track !== "" && (
-        <Section step={track === "ADVANCED" ? 3 : 2} title="¿Ya tienes equipo? *">
+      {track === "BEGINNER" && (
+        <Section step={2} title="¿Ya tienes equipo? *">
           <div className="space-y-3">
             <RadioOption
               name="hasTeam"
@@ -411,17 +436,15 @@ export default function RegistrationForm() {
         </Section>
       )}
 
-      {hasTeam === true && (
+      {track === "BEGINNER" && hasTeam === true && (
         <>
           <Section
-            step={track === "ADVANCED" ? 4 : 3}
+            step={3}
             title="Registro de equipo"
             hint={`Necesitamos los datos de ${MIN_TEAM_MEMBERS} miembros. El miembro 1 eres tú.`}
           >
             <div>
-              <label className="mb-1 block text-sm font-medium">
-                Nombre del equipo *
-              </label>
+              <label className={labelClass}>Nombre del equipo *</label>
               <input
                 type="text"
                 value={teamName}
@@ -445,7 +468,7 @@ export default function RegistrationForm() {
           </Section>
 
           <Section
-            step={track === "ADVANCED" ? 5 : 4}
+            step={4}
             title="¿Te gustaría tener alguien más en tu equipo? *"
           >
             <div className="space-y-3">
@@ -465,8 +488,10 @@ export default function RegistrationForm() {
             <FieldError message={errors.wantsExtraMember} />
 
             {wantsExtraMember === true && (
-              <div className="mt-4 space-y-3 border-t border-gray-700 pt-4">
-                <p className="font-medium">¿Ya conoces al otro miembro? *</p>
+              <div className="mt-4 space-y-3 border-t border-neutral-700 pt-4">
+                <p className="font-archivo font-medium text-white">
+                  ¿Ya conoces al otro miembro? *
+                </p>
                 <RadioOption
                   name="knowsExtraMember"
                   checked={knowsExtraMember === true}
@@ -501,11 +526,15 @@ export default function RegistrationForm() {
         </>
       )}
 
-      {hasTeam === false && (
+      {track !== "" && hasTeam === false && (
         <Section
-          step={track === "ADVANCED" ? 4 : 3}
+          step={3}
           title="Tus datos"
-          hint="No te preocupes, te conseguiremos un equipo."
+          hint={
+            track === "ADVANCED"
+              ? "El reto avanzado se compite de forma individual."
+              : "No te preocupes, te conseguiremos un equipo."
+          }
         >
           {members.map((member, index) =>
             index === 0 ? (
@@ -521,9 +550,7 @@ export default function RegistrationForm() {
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium">
-              ¿De dónde eres? *
-            </label>
+            <label className={labelClass}>¿De dónde eres? *</label>
             <div className="space-y-3">
               {(
                 Object.keys(ORIGIN_LABELS) as Array<keyof typeof ORIGIN_LABELS>
@@ -540,18 +567,22 @@ export default function RegistrationForm() {
             <FieldError message={errors.origin} />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Menciona algunos fun facts sobre ti *
-            </label>
-            <textarea
-              value={funFacts}
-              onChange={(e) => setFunFacts(e.target.value)}
-              placeholder="Nos ayuda a armar equipos que se lleven bien."
-              className={`${inputClass} h-28`}
-            />
-            <FieldError message={errors.funFacts} />
-          </div>
+          {/* Los fun facts nos sirven para armar equipos, asi que no aplican
+              a la rama avanzada, que es individual. */}
+          {track === "BEGINNER" && (
+            <div>
+              <label className={labelClass}>
+                Menciona algunos fun facts sobre ti *
+              </label>
+              <textarea
+                value={funFacts}
+                onChange={(e) => setFunFacts(e.target.value)}
+                placeholder="Nos ayuda a armar equipos que se lleven bien."
+                className={`${inputClass} h-28`}
+              />
+              <FieldError message={errors.funFacts} />
+            </div>
+          )}
         </Section>
       )}
 
@@ -559,7 +590,7 @@ export default function RegistrationForm() {
         <button
           type="submit"
           disabled={createRegistration.isPending}
-          className="w-full rounded bg-roboblue py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-xl bg-roboblue py-4 font-anton text-xl tracking-wide text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {createRegistration.isPending ? (
             <div className="flex items-center justify-center space-x-2">

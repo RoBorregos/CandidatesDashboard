@@ -5,6 +5,7 @@ import { RegistrationStatus, Role } from "@prisma/client";
 import {
   adminProcedure,
   createTRPCRouter,
+  protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 import { CURRENT_EDITION, registrationSchema } from "~/lib/registration";
@@ -74,6 +75,19 @@ export const registrationRouter = createTRPCRouter({
 
       return registration;
     }),
+
+  getMine: protectedProcedure.query(async ({ ctx }) => {
+    const email = ctx.session.user.email;
+    if (!email) return null;
+
+    return ctx.db.registration.findFirst({
+      where: {
+        edition: CURRENT_EDITION,
+        members: { some: { email: { equals: email, mode: "insensitive" } } },
+      },
+      include: { members: { orderBy: { order: "asc" } } },
+    });
+  }),
 
   getAll: adminProcedure
     .input(

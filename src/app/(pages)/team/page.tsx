@@ -5,6 +5,8 @@ import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import TeamInfo from "../../_components/team/team";
 import TeamRequestsPanel from "../../_components/team/requests";
+import TeamPreseason from "../../_components/team/preseason";
+import RegistrationSummary from "../../_components/team/registration-summary";
 import { redirect } from "next/navigation";
 
 export default async function TeamPage({
@@ -30,8 +32,44 @@ export default async function TeamPage({
   }
 
   const team = await api.team.getTeam();
+  const registration = await api.registration.getMine();
+
+
   if (!team) {
-    redirect("/request");
+    if (!registration) {
+      redirect("/request");
+    }
+
+    return (
+      <div className="min-h-screen bg-black text-sm text-white md:text-base">
+        <div className="pt-16 lg:pt-0">
+          <Header title="Team" subtitle="Tu registro" />
+        </div>
+        <div className="mx-auto max-w-3xl px-6 pb-20">
+          <RegistrationSummary registration={registration} />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const competitionStarted = await api.config.isCompetitionStarted();
+
+
+  if (!competitionStarted) {
+    return (
+      <div className="min-h-screen bg-black text-sm text-white md:text-base">
+        <div className="pt-16 lg:pt-0">
+          <Header title="Team" subtitle={team.name} />
+        </div>
+        <TeamPreseason
+          teamName={team.name}
+          members={team.members}
+          registration={registration}
+        />
+        <Footer />
+      </div>
+    );
   }
 
   const me = await api.team.getCurrentUser();

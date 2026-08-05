@@ -35,11 +35,6 @@ export const teamRouter = createTRPCRouter({
         data: { name: input.name },
       });
 
-      // Clear any pending team request from this user
-      await ctx.db.teamRequest.deleteMany({
-        where: { userId: ctx.session.user.id },
-      });
-
       // Assign user to the team and set role/interview area
 
       await ctx.db.user.update({
@@ -157,16 +152,6 @@ export const teamRouter = createTRPCRouter({
   }),
 
   leaveTeam: protectedProcedure.mutation(async ({ ctx }) => {
-    const teamRequest = await ctx.db.teamRequest.findFirst({
-      where: { userId: ctx.session.user.id },
-    });
-
-    if (teamRequest) {
-      await ctx.db.teamRequest.delete({
-        where: { id: teamRequest.id },
-      });
-    }
-
     await ctx.db.user.update({
       where: { id: ctx.session.user.id },
       data: {

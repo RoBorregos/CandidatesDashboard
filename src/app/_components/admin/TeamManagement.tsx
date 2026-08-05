@@ -27,24 +27,15 @@ type TeamDisplay = {
   members: UserDisplay[];
 };
 
-interface PendingRequest {
-  id: string;
-  user: UserDisplay;
-  requestedTeam: string;
-  message?: string | null;
-}
-
 interface TeamManagementProps {
   users?: UserDisplay[];
   teams?: TeamDisplay[];
-  pendingRequests?: PendingRequest[];
   refetchAll: () => void;
 }
 
 export default function TeamManagement({
   users,
   teams,
-  pendingRequests,
   refetchAll,
 }: TeamManagementProps) {
   const [newTeamName, setNewTeamName] = useState<string>("");
@@ -82,28 +73,6 @@ export default function TeamManagement({
     },
     onError(error) {
       toast("Error creating team");
-      console.error(error);
-    },
-  });
-
-  const approveRequest = api.admin.approveTeamRequest.useMutation({
-    onSuccess() {
-      toast("Request approved!");
-      refetchAll();
-    },
-    onError(error) {
-      toast("Error approving request");
-      console.error(error);
-    },
-  });
-
-  const rejectRequest = api.admin.rejectTeamRequest.useMutation({
-    onSuccess() {
-      toast("Request rejected!");
-      refetchAll();
-    },
-    onError(error) {
-      toast("Error rejecting request");
       console.error(error);
     },
   });
@@ -163,57 +132,6 @@ export default function TeamManagement({
 
   return (
     <>
-      {pendingRequests && pendingRequests.length > 0 && (
-        <div className="rounded-lg bg-yellow-900 p-6">
-          <h3 className="mb-4 text-xl font-semibold">Pending Team Requests</h3>
-          <div className="space-y-3">
-            {pendingRequests?.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center justify-between rounded bg-yellow-800 p-4"
-              >
-                <div>
-                  <p className="font-semibold">
-                    {getDisplayName(request.user)}
-                  </p>
-                  {request.user.name && (
-                    <p className="text-sm text-gray-400">
-                      {request.user.email}
-                    </p>
-                  )}
-                  <p className="text-sm text-gray-300">
-                    Requested team: {request.requestedTeam}
-                  </p>
-                  {request.message && (
-                    <p className="text-sm text-gray-400">
-                      Message: {request.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      approveRequest.mutate({ requestId: request.id })
-                    }
-                    className="rounded bg-green-600 px-3 py-1 hover:bg-green-700"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() =>
-                      rejectRequest.mutate({ requestId: request.id })
-                    }
-                    className="rounded bg-red-600 px-3 py-1 hover:bg-red-700"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">Create New Team</h3>
         <div className="flex gap-4">

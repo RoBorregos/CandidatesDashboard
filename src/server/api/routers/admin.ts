@@ -2,7 +2,6 @@
 import { createTRPCRouter } from "../trpc";
 import { userManagementRouter } from "./admin/user-management";
 import { teamManagementRouter } from "./admin/team-management";
-import { requestManagementRouter } from "./admin/request-management";
 import { scheduleManagementRouter } from "./admin/schedule-management";
 import { roundControlRouter } from "./admin/round-control";
 import { interviewManagementRouter } from "./admin/interview-management";
@@ -20,11 +19,6 @@ export const adminRouter = createTRPCRouter({
   createTeam: teamManagementRouter.createTeam,
   getTeams: teamManagementRouter.getTeams,
   toggleTeamStatus: teamManagementRouter.toggleTeamStatus,
-
-  // Request Management
-  getPendingRequests: requestManagementRouter.getPendingRequests,
-  approveTeamRequest: requestManagementRouter.approveTeamRequest,
-  rejectTeamRequest: requestManagementRouter.rejectTeamRequest,
 
   // Schedule Management
   uploadTeamData: scheduleManagementRouter.uploadTeamData,

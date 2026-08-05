@@ -27,8 +27,6 @@ export default function AdminPage() {
     api.admin.getAllUsers.useQuery();
   const { data: teams, refetch: refetchTeams } =
     api.admin.getAllTeams.useQuery();
-  const { data: pendingRequests, refetch: refetchRequests } =
-    api.admin.getPendingRequests.useQuery();
   const { data: scheduleTeams, refetch: refetchScheduleTeams } =
     api.admin.getTeams.useQuery();
   const { data: config, refetch: refetchConfig } =
@@ -37,7 +35,6 @@ export default function AdminPage() {
   const refetchAll = () => {
     void refetchUsers();
     void refetchTeams();
-    void refetchRequests();
     void refetchScheduleTeams();
     void refetchConfig();
   };
@@ -85,7 +82,6 @@ export default function AdminPage() {
           <TeamManagement
             users={users}
             teams={teams}
-            pendingRequests={pendingRequests}
             refetchAll={refetchAll}
           />
         )}

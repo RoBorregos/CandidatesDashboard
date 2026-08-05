@@ -3,6 +3,10 @@
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
+import {
+  type CompetitionTrack,
+  type RegistrationStatus,
+} from "@prisma/client";
 
 type UserDisplay = {
   id: string;
@@ -10,6 +14,10 @@ type UserDisplay = {
   email: string | null;
   role?: string;
   team?: { name: string } | null;
+  registration?: {
+    track: CompetitionTrack;
+    status: RegistrationStatus;
+  } | null;
 };
 
 type TeamDisplay = {
@@ -19,24 +27,15 @@ type TeamDisplay = {
   members: UserDisplay[];
 };
 
-interface PendingRequest {
-  id: string;
-  user: UserDisplay;
-  requestedTeam: string;
-  message?: string | null;
-}
-
 interface TeamManagementProps {
   users?: UserDisplay[];
   teams?: TeamDisplay[];
-  pendingRequests?: PendingRequest[];
   refetchAll: () => void;
 }
 
 export default function TeamManagement({
   users,
   teams,
-  pendingRequests,
   refetchAll,
 }: TeamManagementProps) {
   const [newTeamName, setNewTeamName] = useState<string>("");
@@ -74,28 +73,6 @@ export default function TeamManagement({
     },
     onError(error) {
       toast("Error creating team");
-      console.error(error);
-    },
-  });
-
-  const approveRequest = api.admin.approveTeamRequest.useMutation({
-    onSuccess() {
-      toast("Request approved!");
-      refetchAll();
-    },
-    onError(error) {
-      toast("Error approving request");
-      console.error(error);
-    },
-  });
-
-  const rejectRequest = api.admin.rejectTeamRequest.useMutation({
-    onSuccess() {
-      toast("Request rejected!");
-      refetchAll();
-    },
-    onError(error) {
-      toast("Error rejecting request");
       console.error(error);
     },
   });
@@ -155,57 +132,6 @@ export default function TeamManagement({
 
   return (
     <>
-      {pendingRequests && pendingRequests.length > 0 && (
-        <div className="rounded-lg bg-yellow-900 p-6">
-          <h3 className="mb-4 text-xl font-semibold">Pending Team Requests</h3>
-          <div className="space-y-3">
-            {pendingRequests?.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center justify-between rounded bg-yellow-800 p-4"
-              >
-                <div>
-                  <p className="font-semibold">
-                    {getDisplayName(request.user)}
-                  </p>
-                  {request.user.name && (
-                    <p className="text-sm text-gray-400">
-                      {request.user.email}
-                    </p>
-                  )}
-                  <p className="text-sm text-gray-300">
-                    Requested team: {request.requestedTeam}
-                  </p>
-                  {request.message && (
-                    <p className="text-sm text-gray-400">
-                      Message: {request.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      approveRequest.mutate({ requestId: request.id })
-                    }
-                    className="rounded bg-green-600 px-3 py-1 hover:bg-green-700"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() =>
-                      rejectRequest.mutate({ requestId: request.id })
-                    }
-                    className="rounded bg-red-600 px-3 py-1 hover:bg-red-700"
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="rounded-lg bg-gray-800 p-6">
         <h3 className="mb-4 text-xl font-semibold">Create New Team</h3>
         <div className="flex gap-4">
@@ -237,7 +163,34 @@ export default function TeamManagement({
                 className="flex items-center justify-between rounded bg-gray-700 p-4"
               >
                 <div>
-                  <p className="font-semibold">{getDisplayName(user)}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{getDisplayName(user)}</p>
+                    {user.registration ? (
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          user.registration.track === "ADVANCED"
+                            ? "bg-purple-800"
+                            : "bg-blue-800"
+                        }`}
+                        title={
+                          user.registration.track === "ADVANCED"
+                            ? "Compite solo: no necesita equipo"
+                            : "Espera que le asignes equipo"
+                        }
+                      >
+                        {user.registration.track === "ADVANCED"
+                          ? "Avanzados · individual"
+                          : "Principiantes"}
+                      </span>
+                    ) : (
+                      <span
+                        className="rounded bg-gray-600 px-2 py-0.5 text-xs"
+                        title="No encontramos un registro con este correo"
+                      >
+                        sin registro
+                      </span>
+                    )}
+                  </div>
                   {user.name && (
                     <p className="text-sm text-gray-500">{user.email}</p>
                   )}

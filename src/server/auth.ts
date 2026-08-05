@@ -9,7 +9,8 @@ import Google from "next-auth/providers/google";
 
 import { env } from "rbrgs/env";
 import { db } from "rbrgs/server/db";
-import { Role } from "@prisma/client";
+import { Role, RegistrationStatus } from "@prisma/client";
+import { CURRENT_EDITION } from "~/lib/registration";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -31,6 +32,28 @@ declare module "next-auth" {
     teamId: string | null;
   }
 }
+async function resolveTeamId(
+  email: string,
+  registration: { status: RegistrationStatus; teamId: string | null } | null,
+) {
+  if (
+    registration?.status === RegistrationStatus.ACCEPTED &&
+    registration.teamId
+  ) {
+    return registration.teamId;
+  }
+
+  const assignment = await db.emailTeam.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+  if (!assignment) return null;
+
+  const team = await db.team.findUnique({
+    where: { name: assignment.team },
+    select: { id: true },
+  });
+  return team?.id ?? null;
+}
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -38,87 +61,92 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authOptions: NextAuthOptions = {
-  // events: {
-  // signIn: async (event) => {
-  //     if (event.user.email) {
-  //       const isAdmin = await db.admin.findUnique({
-  //         where: {
-  //           email: event.user.email,
-  //         },
-  //       });
-  //       if (isAdmin) {
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             role: Role.ADMIN,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       const isJudge = await db.judge.findFirst({
-  //         where: {
-  //           email: {
-  //             equals: event.user.email,
-  //             // Warning: If developing with mysql this will cause build to fail
-  //             mode: "insensitive",
-  //           },
-  //         },
-  //       });
-  //       if (isJudge) {
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             role: Role.JUDGE,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       const isContestant = await db.emailTeam.findFirst({
-  //         where: {
-  //           email: {
-  //             equals: event.user.email,
-  //             mode: "insensitive",
-  //           },
-  //         },
-  //       });
-  //       if (isContestant) {
-  //         const team = await db.team.findUnique({
-  //           where: {
-  //             name: isContestant.team,
-  //           },
-  //           select: {
-  //             id: true,
-  //           },
-  //         });
-  //         if (!team) {
-  //           throw new Error("Team not found");
-  //         }
-  //         await db.user.update({
-  //           where: {
-  //             email: event.user.email,
-  //           },
-  //           data: {
-  //             teamId: team.id,
-  //             role: Role.CONTESTANT,
-  //           },
-  //         });
-  //         return;
-  //       }
-  //       await db.user.update({
-  //         where: {
-  //           email: event.user.email,
-  //         },
-  //         data: {
-  //           role: Role.UNASSIGNED,
-  //         },
-  //       });
-  //     }
-  //   },
-  // },
+  events: {
+
+    signIn: async ({ user }) => {
+      const email = user.email;
+      if (!email) return;
+
+      const current = await db.user.findUnique({
+        where: { email },
+        select: { id: true, role: true, teamId: true, interviewArea: true },
+      });
+      if (!current) return;
+
+      const isAdmin = await db.admin.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
+      if (isAdmin) {
+        if (current.role !== Role.ADMIN) {
+          await db.user.update({ where: { email }, data: { role: Role.ADMIN } });
+        }
+        return;
+      }
+
+      const isJudge = await db.judge.findFirst({
+        where: {
+          // Warning: If developing with mysql this will cause build to fail
+          email: { equals: email, mode: "insensitive" },
+        },
+      });
+      if (isJudge) {
+        if (current.role !== Role.JUDGE) {
+          await db.user.update({ where: { email }, data: { role: Role.JUDGE } });
+        }
+        return;
+      }
+
+      // What this person filled in the registration form, if anything.
+      const member = await db.registrationMember.findFirst({
+        where: {
+          edition: CURRENT_EDITION,
+          email: { equals: email, mode: "insensitive" },
+        },
+        select: {
+          id: true,
+          userId: true,
+          interviewArea: true,
+          registration: { select: { status: true, teamId: true } },
+        },
+      });
+
+      // Tie the form submission to the account now that it exists.
+      if (member && member.userId !== current.id) {
+        await db.registrationMember.update({
+          where: { id: member.id },
+          data: { userId: current.id },
+        });
+      }
+
+      // The area answered in the form seeds interview scheduling.
+      const interviewArea =
+        !current.interviewArea && member?.interviewArea
+          ? member.interviewArea
+          : undefined;
+
+      const teamId = current.teamId
+        ? null
+        : await resolveTeamId(email, member?.registration ?? null);
+
+      if (!teamId && !interviewArea) return;
+
+      await db.user.update({
+        where: { email },
+        data: {
+          ...(interviewArea ? { interviewArea } : {}),
+          ...(teamId
+            ? {
+                teamId,
+                role:
+                  current.role === Role.UNASSIGNED
+                    ? Role.CONTESTANT
+                    : current.role,
+              }
+            : {}),
+        },
+      });
+    },
+  },
   callbacks: {
     session: ({ session, user }) => ({
       ...session,

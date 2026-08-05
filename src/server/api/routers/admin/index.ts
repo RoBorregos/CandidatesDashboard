@@ -1,7 +1,6 @@
 import { createTRPCRouter } from "~/server/api/trpc";
 import { userManagementRouter } from "./user-management";
 import { teamManagementRouter } from "./team-management";
-import { requestManagementRouter } from "./request-management";
 import { roundControlRouter } from "./round-control";
 import { scheduleManagementRouter } from "./schedule-management";
 import { interviewManagementRouter } from "./interview-management";
@@ -14,9 +13,6 @@ export const adminRouter = createTRPCRouter({
 
   // Team Management
   ...teamManagementRouter._def.procedures,
-
-  // Request Management
-  ...requestManagementRouter._def.procedures,
 
   // Round Control
   ...roundControlRouter._def.procedures,

@@ -35,27 +35,69 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model TeamRequest {
-  id            String        @id @default(cuid())
-  userId        String        @unique
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  requestedTeam String
-  message       String?
-  status        RequestStatus @default(PENDING)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-}
-
-enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 enum InterviewArea {
   MECHANICS
   ELECTRONICS
   PROGRAMMING
+}
+
+enum CompetitionTrack {
+  BEGINNER
+  ADVANCED
+}
+
+enum Origin {
+  LOCAL
+  FOREIGN
+}
+
+enum RegistrationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Registration {
+  id               String               @id @default(cuid())
+  edition          Int                  @default(2026)
+  track            CompetitionTrack
+  status           RegistrationStatus   @default(PENDING)
+  challenge        String?
+  hasTeam          Boolean
+  teamName         String?
+  wantsExtraMember Boolean?
+  knowsExtraMember Boolean?
+  origin           Origin?
+  funFacts         String?
+  teamId           String?
+  team             Team?                @relation(fields: [teamId], references: [id])
+  members          RegistrationMember[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([edition, status])
+}
+
+model RegistrationMember {
+  id             String         @id @default(cuid())
+  registrationId String
+  registration   Registration   @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  order          Int
+  name           String
+  email          String
+  phone          String
+  career         String
+  semester       Int
+  interviewArea  InterviewArea?
+  edition        Int            @default(2026)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([registrationId, order])
+  @@unique([email, edition])
+  @@unique([userId, edition])
+  @@index([career])
+  @@index([semester])
 }
 
 model Interviewer {
@@ -67,26 +109,26 @@ model Interviewer {
 }
 
 model User {
-  id               String           @id @default(cuid())
-  name             String?
-  email            String?          @unique
-  emailVerified    DateTime?
-  image            String?
-  interviewTime    DateTime?
-  interviewArea    InterviewArea?
-  interviewerId    String?
-  role             Role             @default(UNASSIGNED)
-  teamId           String?
-  isStaff          Boolean          @default(false)
-  accounts         Account[]
-  judgedChallengeA ChallengeA[]
-  judgedChallengeB ChallengeB[]
-  judgedChallengeC ChallengeC[]
-  sessions         Session[]
-  team             Team?            @relation(fields: [teamId], references: [id])
-  teamRequests     TeamRequest?
-  interviewer      Interviewer?     @relation(fields: [interviewerId], references: [id])
-  unavailabilities Unavailability[]
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String?              @unique
+  emailVerified       DateTime?
+  image               String?
+  interviewTime       DateTime?
+  interviewArea       InterviewArea?
+  interviewerId       String?
+  role                Role                 @default(UNASSIGNED)
+  teamId              String?
+  isStaff             Boolean              @default(false)
+  registrationMembers RegistrationMember[]
+  accounts            Account[]
+  judgedChallengeA    ChallengeA[]
+  judgedChallengeB    ChallengeB[]
+  judgedChallengeC    ChallengeC[]
+  sessions            Session[]
+  team                Team?                @relation(fields: [teamId], references: [id])
+  interviewer         Interviewer?         @relation(fields: [interviewerId], references: [id])
+  unavailabilities    Unavailability[]
 }
 
 model VerificationToken {
@@ -111,18 +153,19 @@ model Admin {
 }
 
 model Team {
-  id             String       @id @default(cuid())
-  name           String       @unique
+  id             String         @id @default(cuid())
+  name           String         @unique
   driveLink      String?
   binnacleLink   String?
   robotImageLink String?
   githubLink     String?
-  isActive       Boolean      @default(true)
+  isActive       Boolean        @default(true)
   challengeA     ChallengeA[]
   challengeB     ChallengeB[]
   challengeC     ChallengeC[]
   rounds         Round[]
   members        User[]
+  registrations  Registration[]
 }
 
 model Round {

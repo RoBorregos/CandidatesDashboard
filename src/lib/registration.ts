@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Edición a la que pertenecen los registros nuevos. */
+/** Edition that new registrations belong to. */
 export const CURRENT_EDITION = 2026;
 
 export const TRACKS = [
@@ -52,11 +52,11 @@ export const STATUS_LABELS = {
   REJECTED: "Rechazado",
 } as const;
 
-/** Miembros que un equipo debe registrar antes de poder enviar la solicitud. */
+/** Members a team must register before it can submit. */
 export const MIN_TEAM_MEMBERS = 3;
 export const MAX_TEAM_MEMBERS = 4;
 
-/** Semestre maximo seleccionable en el formulario. */
+/** Highest semester selectable in the form. */
 export const MAX_SEMESTER = 8;
 
 export const BEGINNER_MAX_SEMESTER = 3;
@@ -111,7 +111,7 @@ export const memberSchema = z.object({
     .int()
     .min(1, { message: "Selecciona tu semestre" })
     .max(MAX_SEMESTER, { message: `Máximo ${MAX_SEMESTER}` }),
-  // Solo se pide en principiantes: en avanzados el area la define el reto.
+  // Only asked for beginners: for advanced, the chosen challenge implies the area.
   role: z.enum(MEMBER_ROLES).optional(),
 });
 
@@ -179,7 +179,7 @@ export const registrationSchema = z
         });
       }
 
-      // El cuarto miembro solo se captura si el equipo lo quiere y ya lo conoce.
+      // The fourth member is only captured if the team wants one and already knows them.
       if (
         data.members.length > MIN_TEAM_MEMBERS &&
         !(data.wantsExtraMember && data.knowsExtraMember)
@@ -217,7 +217,7 @@ export const registrationSchema = z
       }
     }
 
-    // Reglas que en principiantes aplican a cada integrante por separado.
+    // Rules that apply to each beginner member individually.
     data.members.forEach((member, index) => {
       if (!member.role) {
         ctx.addIssue({
@@ -236,7 +236,7 @@ export const registrationSchema = z
       }
     });
 
-    // Un mismo correo no puede aparecer dos veces en el equipo.
+    // The same email cannot appear twice within a team.
     const seen = new Set<string>();
     data.members.forEach((member, index) => {
       if (seen.has(member.email)) {

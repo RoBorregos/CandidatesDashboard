@@ -34,7 +34,6 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
 model TeamRequest {
   id            String        @id @default(cuid())
   userId        String        @unique
@@ -87,7 +86,7 @@ model Registration {
   origin           Origin?
   funFacts         String?
   contactEmail     String
-  // Equipo generado al aceptar el registro. Nulo mientras no se acepte.
+  // Team created when the registration is accepted. Null until then.
   teamId           String?
   members          RegistrationMember[]
   createdAt        DateTime             @default(now())

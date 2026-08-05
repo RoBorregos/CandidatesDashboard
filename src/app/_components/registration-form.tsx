@@ -314,7 +314,7 @@ export default function RegistrationForm() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    // Las preguntas de si/no no las cubre zod: null no es un booleano valido.
+    // Zod cannot cover the yes/no questions: null is not a valid boolean.
     const pending: Record<string, string> = {};
     if (hasTeam === null) pending.hasTeam = "Selecciona una opción";
     if (hasTeam && wantsExtraMember === null) {
@@ -329,7 +329,7 @@ export default function RegistrationForm() {
       challenge: track === "ADVANCED" ? challenge || undefined : undefined,
       hasTeam: hasTeam ?? false,
       teamName: hasTeam ? teamName : undefined,
-      // El rol se queda vacio en avanzados, donde no se pregunta.
+      // Role stays empty for advanced, where it is not asked.
       members: members.map((member) => ({
         ...member,
         role: member.role || undefined,

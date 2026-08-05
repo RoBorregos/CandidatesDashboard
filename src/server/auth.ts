@@ -73,7 +73,7 @@ export const authOptions: NextAuthOptions = {
         return;
       }
 
-      // Ya tiene equipo: no hay nada que resolver.
+      // Already on a team: nothing to resolve.
       if (current.teamId) return;
 
       const assignment = await db.emailTeam.findFirst({
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
         where: { name: assignment.team },
         select: { id: true },
       });
-      // El equipo puede no existir todavia si el registro no se ha aceptado.
+      // The team may not exist yet if the registration has not been accepted.
       if (!team) return;
 
       await db.user.update({

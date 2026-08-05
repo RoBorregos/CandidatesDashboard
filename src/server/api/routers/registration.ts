@@ -11,7 +11,7 @@ import {
 import { CURRENT_EDITION, registrationSchema } from "~/lib/registration";
 
 export const registrationRouter = createTRPCRouter({
-  // Formulario publico: cualquiera puede registrarse sin iniciar sesion.
+  // Public form: anyone can register without signing in.
   create: publicProcedure
     .input(registrationSchema)
     .mutation(async ({ ctx, input }) => {
@@ -26,7 +26,7 @@ export const registrationRouter = createTRPCRouter({
 
       const emails = input.members.map((member) => member.email);
 
-      // Ningun correo puede aparecer en dos registros de la misma edicion.
+      // No email may appear in two registrations of the same edition.
       const taken = await ctx.db.registrationMember.findFirst({
         where: {
           email: { in: emails },

@@ -3,6 +3,10 @@
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
+import {
+  type CompetitionTrack,
+  type RegistrationStatus,
+} from "@prisma/client";
 
 type UserDisplay = {
   id: string;
@@ -10,8 +14,10 @@ type UserDisplay = {
   email: string | null;
   role?: string;
   team?: { name: string } | null;
-  // Rama en la que se registro, cruzada por correo. Null si no se registro.
-  registration?: { track: string; status: string } | null;
+  registration?: {
+    track: CompetitionTrack;
+    status: RegistrationStatus;
+  } | null;
 };
 
 type TeamDisplay = {

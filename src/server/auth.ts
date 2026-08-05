@@ -50,7 +50,9 @@ export const authOptions: NextAuthOptions = {
       });
       if (!current) return;
 
-      const isAdmin = await db.admin.findUnique({ where: { email } });
+      const isAdmin = await db.admin.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
       if (isAdmin) {
         if (current.role !== Role.ADMIN) {
           await db.user.update({ where: { email }, data: { role: Role.ADMIN } });

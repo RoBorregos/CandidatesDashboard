@@ -98,9 +98,9 @@ model Registration {
 }
 
 model RegistrationMember {
-  id             String        @id @default(cuid())
+  id             String         @id @default(cuid())
   registrationId String
-  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration   Registration   @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   order          Int
   name           String
   email          String
@@ -108,9 +108,10 @@ model RegistrationMember {
   career         String
   semester       Int
   role           InterviewArea?
+  edition        Int            @default(2026)
 
   @@unique([registrationId, order])
-  @@index([email])
+  @@unique([email, edition])
   @@index([career])
   @@index([semester])
 }

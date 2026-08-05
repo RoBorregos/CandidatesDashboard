@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { RegistrationStatus, Role } from "@prisma/client";
+import { Prisma, RegistrationStatus, Role } from "@prisma/client";
 
 import {
   adminProcedure,
@@ -42,38 +42,51 @@ export const registrationRouter = createTRPCRouter({
         });
       }
 
-      const registration = await ctx.db.registration.create({
-        data: {
-          edition: CURRENT_EDITION,
-          track: input.track,
-          challenge: input.track === "ADVANCED" ? input.challenge : null,
-          hasTeam: input.hasTeam,
-          teamName: input.hasTeam ? input.teamName : null,
-          wantsExtraMember: input.hasTeam
-            ? (input.wantsExtraMember ?? false)
-            : null,
-          knowsExtraMember: input.hasTeam
-            ? (input.knowsExtraMember ?? false)
-            : null,
-          origin: input.hasTeam ? null : input.origin,
-          funFacts: input.hasTeam ? null : input.funFacts,
-          contactEmail: contact.email,
-          members: {
-            create: input.members.map((member, index) => ({
-              order: index + 1,
-              name: member.name,
-              email: member.email,
-              phone: member.phone,
-              career: member.career,
-              semester: member.semester,
-              role: member.role ?? null,
-            })),
+      try {
+        return await ctx.db.registration.create({
+          data: {
+            edition: CURRENT_EDITION,
+            track: input.track,
+            challenge: input.track === "ADVANCED" ? input.challenge : null,
+            hasTeam: input.hasTeam,
+            teamName: input.hasTeam ? input.teamName : null,
+            wantsExtraMember: input.hasTeam
+              ? (input.wantsExtraMember ?? false)
+              : null,
+            knowsExtraMember: input.hasTeam
+              ? (input.knowsExtraMember ?? false)
+              : null,
+            origin: input.hasTeam ? null : input.origin,
+            funFacts: input.hasTeam ? null : input.funFacts,
+            contactEmail: contact.email,
+            members: {
+              create: input.members.map((member, index) => ({
+                order: index + 1,
+                name: member.name,
+                email: member.email,
+                phone: member.phone,
+                career: member.career,
+                semester: member.semester,
+                role: member.role ?? null,
+                edition: CURRENT_EDITION,
+              })),
+            },
           },
-        },
-        select: { id: true, teamName: true, hasTeam: true },
-      });
-
-      return registration;
+          select: { id: true, teamName: true, hasTeam: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Alguno de los correos ya está registrado en esta edición. Revísalos e intenta de nuevo.",
+          });
+        }
+        throw error;
+      }
     }),
 
   getMine: protectedProcedure.query(async ({ ctx }) => {
@@ -139,7 +152,6 @@ export const registrationRouter = createTRPCRouter({
         where: { name: teamName },
       });
 
-    
       if (existingTeam && existingTeam.id !== registration.teamId) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -160,7 +172,7 @@ export const registrationRouter = createTRPCRouter({
             update: { team: team.name },
           });
         }
-   
+
         await tx.user.updateMany({
           where: { email: { in: emails }, teamId: null },
           data: { teamId: team.id },

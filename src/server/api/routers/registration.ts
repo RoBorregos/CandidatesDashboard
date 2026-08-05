@@ -15,15 +15,6 @@ export const registrationRouter = createTRPCRouter({
   create: publicProcedure
     .input(registrationSchema)
     .mutation(async ({ ctx, input }) => {
-      const [contact] = input.members;
-
-      if (!contact) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Faltan los datos del primer miembro.",
-        });
-      }
-
       const emails = input.members.map((member) => member.email);
 
       // No email may appear in two registrations of the same edition.
@@ -58,7 +49,6 @@ export const registrationRouter = createTRPCRouter({
               : null,
             origin: input.hasTeam ? null : input.origin,
             funFacts: input.hasTeam ? null : input.funFacts,
-            contactEmail: contact.email,
             members: {
               create: input.members.map((member, index) => ({
                 order: index + 1,
@@ -67,7 +57,7 @@ export const registrationRouter = createTRPCRouter({
                 phone: member.phone,
                 career: member.career,
                 semester: member.semester,
-                role: member.role ?? null,
+                interviewArea: member.interviewArea ?? null,
                 edition: CURRENT_EDITION,
               })),
             },
@@ -165,13 +155,6 @@ export const registrationRouter = createTRPCRouter({
         const team =
           existingTeam ?? (await tx.team.create({ data: { name: teamName } }));
 
-        for (const member of registration.members) {
-          await tx.emailTeam.upsert({
-            where: { email: member.email },
-            create: { email: member.email, team: team.name },
-            update: { team: team.name },
-          });
-        }
 
         await tx.user.updateMany({
           where: { email: { in: emails }, teamId: null },
@@ -181,6 +164,14 @@ export const registrationRouter = createTRPCRouter({
           where: { email: { in: emails }, role: Role.UNASSIGNED },
           data: { role: Role.CONTESTANT },
         });
+
+        for (const member of registration.members) {
+          if (!member.interviewArea) continue;
+          await tx.user.updateMany({
+            where: { email: member.email, interviewArea: null },
+            data: { interviewArea: member.interviewArea },
+          });
+        }
 
         await tx.registration.update({
           where: { id: registration.id },

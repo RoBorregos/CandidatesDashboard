@@ -1,13 +1,13 @@
 import { type InterviewArea, type RegistrationStatus } from "@prisma/client";
 
-import { ROLE_LABELS, STATUS_LABELS } from "~/lib/registration";
+import { AREA_LABELS, STATUS_LABELS } from "~/lib/registration";
 
 type SummaryMember = {
   id: string;
   order: number;
   name: string;
   email: string;
-  role: InterviewArea | null;
+  interviewArea: InterviewArea | null;
 };
 
 export type RegistrationSummaryData = {
@@ -86,10 +86,10 @@ export default function RegistrationSummary({
             >
               <p className="font-medium text-white">
                 {member.name}
-                {member.role && (
+                {member.interviewArea && (
                   <span className="text-roboblue">
                     {" "}
-                    · {ROLE_LABELS[member.role]}
+                    · {AREA_LABELS[member.interviewArea]}
                   </span>
                 )}
               </p>

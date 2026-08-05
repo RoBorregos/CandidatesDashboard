@@ -6,9 +6,9 @@ import { type RegistrationStatus } from "@prisma/client";
 
 import { api } from "~/trpc/react";
 import {
+  AREA_LABELS,
   CURRENT_EDITION,
   ORIGIN_LABELS,
-  ROLE_LABELS,
   STATUS_LABELS,
 } from "~/lib/registration";
 
@@ -107,7 +107,7 @@ export default function RegistrationManagement() {
           member.phone,
           member.career,
           String(member.semester),
-          member.role ? ROLE_LABELS[member.role] : "",
+          member.interviewArea ? AREA_LABELS[member.interviewArea] : "",
           registration.createdAt.toLocaleDateString("es-MX"),
         ]
           .map(escape)
@@ -206,7 +206,7 @@ export default function RegistrationManagement() {
                   }`}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {registration.contactEmail}
+                  {registration.members[0]?.email}
                 </p>
               </div>
 
@@ -251,10 +251,10 @@ export default function RegistrationManagement() {
                   <div key={member.id} className="rounded bg-gray-800 p-3">
                     <p className="font-medium">
                       {member.order}. {member.name}
-                      {member.role && (
+                      {member.interviewArea && (
                         <span className="text-roboblue">
                           {" "}
-                          — {ROLE_LABELS[member.role]}
+                          — {AREA_LABELS[member.interviewArea]}
                         </span>
                       )}
                     </p>

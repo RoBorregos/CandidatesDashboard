@@ -9,7 +9,8 @@ import Google from "next-auth/providers/google";
 
 import { env } from "rbrgs/env";
 import { db } from "rbrgs/server/db";
-import { Role } from "@prisma/client";
+import { Role, RegistrationStatus } from "@prisma/client";
+import { CURRENT_EDITION } from "~/lib/registration";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -31,6 +32,28 @@ declare module "next-auth" {
     teamId: string | null;
   }
 }
+async function resolveTeamId(
+  email: string,
+  registration: { status: RegistrationStatus; teamId: string | null } | null,
+) {
+  if (
+    registration?.status === RegistrationStatus.ACCEPTED &&
+    registration.teamId
+  ) {
+    return registration.teamId;
+  }
+
+  const assignment = await db.emailTeam.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+  if (!assignment) return null;
+
+  const team = await db.team.findUnique({
+    where: { name: assignment.team },
+    select: { id: true },
+  });
+  return team?.id ?? null;
+}
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -46,7 +69,7 @@ export const authOptions: NextAuthOptions = {
 
       const current = await db.user.findUnique({
         where: { email },
-        select: { role: true, teamId: true },
+        select: { id: true, role: true, teamId: true, interviewArea: true },
       });
       if (!current) return;
 
@@ -73,27 +96,53 @@ export const authOptions: NextAuthOptions = {
         return;
       }
 
-      // Already on a team: nothing to resolve.
-      if (current.teamId) return;
-
-      const assignment = await db.emailTeam.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } },
+      // What this person filled in the registration form, if anything.
+      const member = await db.registrationMember.findFirst({
+        where: {
+          edition: CURRENT_EDITION,
+          email: { equals: email, mode: "insensitive" },
+        },
+        select: {
+          id: true,
+          userId: true,
+          interviewArea: true,
+          registration: { select: { status: true, teamId: true } },
+        },
       });
-      if (!assignment) return;
 
-      const team = await db.team.findUnique({
-        where: { name: assignment.team },
-        select: { id: true },
-      });
-      // The team may not exist yet if the registration has not been accepted.
-      if (!team) return;
+      // Tie the form submission to the account now that it exists.
+      if (member && member.userId !== current.id) {
+        await db.registrationMember.update({
+          where: { id: member.id },
+          data: { userId: current.id },
+        });
+      }
+
+      // The area answered in the form seeds interview scheduling.
+      const interviewArea =
+        !current.interviewArea && member?.interviewArea
+          ? member.interviewArea
+          : undefined;
+
+      const teamId = current.teamId
+        ? null
+        : await resolveTeamId(email, member?.registration ?? null);
+
+      if (!teamId && !interviewArea) return;
 
       await db.user.update({
         where: { email },
         data: {
-          teamId: team.id,
-          role:
-            current.role === Role.UNASSIGNED ? Role.CONTESTANT : current.role,
+          ...(interviewArea ? { interviewArea } : {}),
+          ...(teamId
+            ? {
+                teamId,
+                role:
+                  current.role === Role.UNASSIGNED
+                    ? Role.CONTESTANT
+                    : current.role,
+              }
+            : {}),
         },
       });
     },

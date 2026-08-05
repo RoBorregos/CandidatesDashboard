@@ -1,6 +1,6 @@
 import { type InterviewArea } from "@prisma/client";
 
-import { ROLE_LABELS } from "~/lib/registration";
+import { AREA_LABELS } from "~/lib/registration";
 import RegistrationSummary, {
   type RegistrationSummaryData,
 } from "./registration-summary";
@@ -40,7 +40,7 @@ export default function TeamPreseason({
                 {member.interviewArea && (
                   <span className="text-roboblue">
                     {" "}
-                    · {ROLE_LABELS[member.interviewArea]}
+                    · {AREA_LABELS[member.interviewArea]}
                   </span>
                 )}
               </p>

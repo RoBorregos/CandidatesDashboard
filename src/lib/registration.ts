@@ -29,13 +29,13 @@ export const ADVANCED_CHALLENGES = [
 
 export const ALLOWED_EMAIL_DOMAINS: readonly string[] = ["tec.mx", "itesm.mx"];
 
-export const MEMBER_ROLES = [
+export const INTERVIEW_AREAS = [
   "PROGRAMMING",
   "MECHANICS",
   "ELECTRONICS",
 ] as const;
 
-export const ROLE_LABELS: Record<(typeof MEMBER_ROLES)[number], string> = {
+export const AREA_LABELS: Record<(typeof INTERVIEW_AREAS)[number], string> = {
   PROGRAMMING: "Programación",
   MECHANICS: "Mecánica",
   ELECTRONICS: "Electrónica",
@@ -111,8 +111,7 @@ export const memberSchema = z.object({
     .int()
     .min(1, { message: "Selecciona tu semestre" })
     .max(MAX_SEMESTER, { message: `Máximo ${MAX_SEMESTER}` }),
-  // Only asked for beginners: for advanced, the chosen challenge implies the area.
-  role: z.enum(MEMBER_ROLES).optional(),
+  interviewArea: z.enum(INTERVIEW_AREAS).optional(),
 });
 
 export type RegistrationMemberInput = z.infer<typeof memberSchema>;
@@ -219,10 +218,10 @@ export const registrationSchema = z
 
     // Rules that apply to each beginner member individually.
     data.members.forEach((member, index) => {
-      if (!member.role) {
+      if (!member.interviewArea) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["members", index, "role"],
+          path: ["members", index, "interviewArea"],
           message: "Selecciona un rol",
         });
       }

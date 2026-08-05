@@ -34,6 +34,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 enum InterviewArea {
   MECHANICS
   ELECTRONICS
@@ -68,14 +69,12 @@ model Registration {
   knowsExtraMember Boolean?
   origin           Origin?
   funFacts         String?
-  contactEmail     String
-  // Team created when the registration is accepted. Null until then.
   teamId           String?
+  team             Team?                @relation(fields: [teamId], references: [id])
   members          RegistrationMember[]
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
-  @@unique([contactEmail, edition])
   @@index([edition, status])
 }
 
@@ -89,11 +88,14 @@ model RegistrationMember {
   phone          String
   career         String
   semester       Int
-  role           InterviewArea?
+  interviewArea  InterviewArea?
   edition        Int            @default(2026)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([registrationId, order])
   @@unique([email, edition])
+  @@unique([userId, edition])
   @@index([career])
   @@index([semester])
 }
@@ -107,25 +109,26 @@ model Interviewer {
 }
 
 model User {
-  id               String           @id @default(cuid())
-  name             String?
-  email            String?          @unique
-  emailVerified    DateTime?
-  image            String?
-  interviewTime    DateTime?
-  interviewArea    InterviewArea?
-  interviewerId    String?
-  role             Role             @default(UNASSIGNED)
-  teamId           String?
-  isStaff          Boolean          @default(false)
-  accounts         Account[]
-  judgedChallengeA ChallengeA[]
-  judgedChallengeB ChallengeB[]
-  judgedChallengeC ChallengeC[]
-  sessions         Session[]
-  team             Team?            @relation(fields: [teamId], references: [id])
-  interviewer      Interviewer?     @relation(fields: [interviewerId], references: [id])
-  unavailabilities Unavailability[]
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String?              @unique
+  emailVerified       DateTime?
+  image               String?
+  interviewTime       DateTime?
+  interviewArea       InterviewArea?
+  interviewerId       String?
+  role                Role                 @default(UNASSIGNED)
+  teamId              String?
+  isStaff             Boolean              @default(false)
+  registrationMembers RegistrationMember[]
+  accounts            Account[]
+  judgedChallengeA    ChallengeA[]
+  judgedChallengeB    ChallengeB[]
+  judgedChallengeC    ChallengeC[]
+  sessions            Session[]
+  team                Team?                @relation(fields: [teamId], references: [id])
+  interviewer         Interviewer?         @relation(fields: [interviewerId], references: [id])
+  unavailabilities    Unavailability[]
 }
 
 model VerificationToken {
@@ -150,18 +153,19 @@ model Admin {
 }
 
 model Team {
-  id             String       @id @default(cuid())
-  name           String       @unique
+  id             String         @id @default(cuid())
+  name           String         @unique
   driveLink      String?
   binnacleLink   String?
   robotImageLink String?
   githubLink     String?
-  isActive       Boolean      @default(true)
+  isActive       Boolean        @default(true)
   challengeA     ChallengeA[]
   challengeB     ChallengeB[]
   challengeC     ChallengeC[]
   rounds         Round[]
   members        User[]
+  registrations  Registration[]
 }
 
 model Round {

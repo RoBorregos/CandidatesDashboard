@@ -6,19 +6,19 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import {
   ADVANCED_CHALLENGES,
+  AREA_LABELS,
   CAREER_SUGGESTIONS,
+  INTERVIEW_AREAS,
   MAX_TEAM_MEMBERS,
-  MEMBER_ROLES,
   MIN_TEAM_MEMBERS,
   ORIGIN_LABELS,
-  ROLE_LABELS,
   TRACKS,
   registrationSchema,
   semesterOptionsFor,
 } from "~/lib/registration";
 
 type Track = (typeof TRACKS)[number]["value"];
-type Role = (typeof MEMBER_ROLES)[number];
+type Area = (typeof INTERVIEW_AREAS)[number];
 type OriginValue = keyof typeof ORIGIN_LABELS;
 
 type MemberDraft = {
@@ -27,7 +27,7 @@ type MemberDraft = {
   phone: string;
   career: string;
   semester: string;
-  role: Role | "";
+  interviewArea: Area | "";
 };
 
 const EMPTY_MEMBER: MemberDraft = {
@@ -36,7 +36,7 @@ const EMPTY_MEMBER: MemberDraft = {
   phone: "",
   career: "",
   semester: "",
-  role: "",
+  interviewArea: "",
 };
 
 const inputClass =
@@ -211,18 +211,20 @@ function MemberFields({
             <div>
               <label className={labelClass}>Rol *</label>
               <select
-                value={member.role}
-                onChange={(e) => onChange({ role: e.target.value as Role })}
+                value={member.interviewArea}
+                onChange={(e) =>
+                  onChange({ interviewArea: e.target.value as Area })
+                }
                 className={inputClass}
               >
                 <option value="">Selecciona...</option>
-                {MEMBER_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {ROLE_LABELS[role]}
+                {INTERVIEW_AREAS.map((area) => (
+                  <option key={area} value={area}>
+                    {AREA_LABELS[area]}
                   </option>
                 ))}
               </select>
-              <FieldError message={errorFor("role")} />
+              <FieldError message={errorFor("interviewArea")} />
             </div>
           )}
         </div>
@@ -332,7 +334,7 @@ export default function RegistrationForm() {
       // Role stays empty for advanced, where it is not asked.
       members: members.map((member) => ({
         ...member,
-        role: member.role || undefined,
+        interviewArea: member.interviewArea || undefined,
       })),
       wantsExtraMember: hasTeam ? (wantsExtraMember ?? false) : undefined,
       knowsExtraMember: hasTeam ? (knowsExtraMember ?? false) : undefined,

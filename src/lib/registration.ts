@@ -20,8 +20,7 @@ export const TRACKS = [
 
 
 export const ADVANCED_CHALLENGES = [
-  "@Home Challenge Human Robot Interaction (HRI)",
-  "@Home Challenge Visión",
+  "@Home Challenge Human Robot Interaction (HRI) / Visión",
   "@Home Challenge Reto de Mecánica",
   "@Home Challenge Reto de Electrónica",
   "@Home Challenge Simulación",

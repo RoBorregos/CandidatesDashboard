@@ -7,6 +7,7 @@ import { roundControlRouter } from "./admin/round-control";
 import { interviewManagementRouter } from "./admin/interview-management";
 import { testingUtilitiesRouter } from "./admin/testing-utilities";
 import { staffManagementRouter } from "./admin/staff-management";
+import { mentorManagementRouter } from "./admin/mentor-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -53,4 +54,11 @@ export const adminRouter = createTRPCRouter({
   // Testing Utilities
   runTestCase: testingUtilitiesRouter.runTestCase,
   debugTeamSchedules: testingUtilitiesRouter.debugTeamSchedules,
+
+    // Mentor Management
+  getMentors: mentorManagementRouter.getMentors,
+  getCandidates: mentorManagementRouter.getCandidates,
+  getAssignments: mentorManagementRouter.getAssignments,
+  assignMentor: mentorManagementRouter.assignMentor,
+  removeMentor: mentorManagementRouter.removeMentor,
 });

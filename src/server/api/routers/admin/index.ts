@@ -6,6 +6,7 @@ import { scheduleManagementRouter } from "./schedule-management";
 import { interviewManagementRouter } from "./interview-management";
 import { testingUtilitiesRouter } from "./testing-utilities";
 import { staffManagementRouter } from "./staff-management";
+import { mentorManagementRouter } from "./mentor-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -25,6 +26,9 @@ export const adminRouter = createTRPCRouter({
 
   // Staff Management
   ...staffManagementRouter._def.procedures,
+
+  // Mentor Management
+  ...mentorManagementRouter._def.procedures,
 
   // Testing Utilities
   ...testingUtilitiesRouter._def.procedures,

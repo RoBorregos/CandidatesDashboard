@@ -79,25 +79,42 @@ model Registration {
 }
 
 model RegistrationMember {
-  id             String         @id @default(cuid())
-  registrationId String
-  registration   Registration   @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  order          Int
-  name           String
-  email          String
-  phone          String
-  career         String
-  semester       Int
-  interviewArea  InterviewArea?
-  edition        Int            @default(2026)
-  userId         String?
-  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id               String            @id @default(cuid())
+  registrationId   String
+  registration     Registration      @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  order            Int
+  name             String
+  email            String
+  phone            String
+  career           String
+  semester         Int
+  interviewArea    InterviewArea?
+  edition          Int               @default(2026)
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mentorAssignment MentorAssignment?
 
   @@unique([registrationId, order])
   @@unique([email, edition])
   @@unique([userId, edition])
   @@index([career])
   @@index([semester])
+}
+
+model MentorAssignment {
+  id String @id @default(cuid())
+
+  mentorId String
+  mentor   User   @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  userId String? @unique
+  user   User?   @relation("UserMentorAssignment", fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationMemberId String?             @unique
+  registrationMember   RegistrationMember? @relation(fields: [registrationMemberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Interviewer {
@@ -129,6 +146,8 @@ model User {
   team                Team?                @relation(fields: [teamId], references: [id])
   interviewer         Interviewer?         @relation(fields: [interviewerId], references: [id])
   unavailabilities    Unavailability[]
+  mentorAssignments   MentorAssignment[]   @relation("MentorAssignments")
+  mentorAssignment    MentorAssignment?    @relation("UserMentorAssignment")
 }
 
 model VerificationToken {
@@ -260,6 +279,7 @@ model Unavailability {
 
 enum Role {
   CONTESTANT
+  MENTOR
   JUDGE
   ADMIN
   UNASSIGNED

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
 
@@ -111,6 +111,16 @@ export const mentorManagementRouter = createTRPCRouter({
         throw new Error("Selected user is not a mentor.");
       }
 
+      /*
+       * One person can exist as a RegistrationMember, as a User, or as both.
+       * Resolve whichever identity wasn't passed in, so the duplicate check
+       * below covers the whole person instead of only the id we happened to
+       * receive — otherwise the same candidate could be assigned once by
+       * registrationMemberId and again by userId.
+       */
+      let candidateUserId: string | null = null;
+      let candidateRegistrationMemberId: string | null = null;
+
       // Candidate represented by User
       if (input.userId) {
         const candidate = await ctx.db.user.findUnique({
@@ -126,14 +136,13 @@ export const mentorManagementRouter = createTRPCRouter({
           throw new Error("Selected user is not a contestant.");
         }
 
-        const existingAssignment =
-          await ctx.db.mentorAssignment.findUnique({
-            where: { userId: input.userId },
-          });
+        const member = await ctx.db.registrationMember.findFirst({
+          where: { userId: candidate.id, edition: CURRENT_EDITION },
+          select: { id: true },
+        });
 
-        if (existingAssignment) {
-          throw new Error("This candidate already has a mentor.");
-        }
+        candidateUserId = candidate.id;
+        candidateRegistrationMemberId = member?.id ?? null;
       }
 
       // Candidate represented by RegistrationMember
@@ -142,6 +151,7 @@ export const mentorManagementRouter = createTRPCRouter({
           where: { id: input.registrationMemberId },
           select: {
             id: true,
+            userId: true,
             registration: {
               select: {
                 edition: true,
@@ -158,48 +168,72 @@ export const mentorManagementRouter = createTRPCRouter({
           throw new Error("This candidate is not from the current edition.");
         }
 
-        const existingAssignment =
-          await ctx.db.mentorAssignment.findUnique({
-            where: {
-              registrationMemberId: input.registrationMemberId,
-            },
-          });
-
-        if (existingAssignment) {
-          throw new Error("This candidate already has a mentor.");
-        }
+        candidateUserId = candidate.userId;
+        candidateRegistrationMemberId = candidate.id;
       }
 
-      return ctx.db.mentorAssignment.create({
-        data: {
-          mentorId: input.mentorId,
-          userId: input.userId,
-          registrationMemberId: input.registrationMemberId,
-        },
-        include: {
-          mentor: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          registrationMember: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
+      const existingAssignment = await ctx.db.mentorAssignment.findFirst({
+        where: {
+          OR: [
+            ...(candidateUserId ? [{ userId: candidateUserId }] : []),
+            ...(candidateRegistrationMemberId
+              ? [{ registrationMemberId: candidateRegistrationMemberId }]
+              : []),
+          ],
         },
       });
+
+      if (existingAssignment) {
+        throw new Error("This candidate already has a mentor.");
+      }
+
+      /*
+       * Store both identities. The unique indexes then reject a second
+       * assignment for the same person even if two requests race past the
+       * check above, or if a later caller passes the other id.
+       */
+      try {
+        return await ctx.db.mentorAssignment.create({
+          data: {
+            mentorId: input.mentorId,
+            userId: candidateUserId,
+            registrationMemberId: candidateRegistrationMemberId,
+          },
+          include: {
+            mentor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            registrationMember: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        });
+      } catch (error) {
+        // A concurrent assignment won the race against the check above.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new Error("This candidate already has a mentor.");
+        }
+
+        throw error;
+      }
     }),
 
   removeMentor: adminProcedure

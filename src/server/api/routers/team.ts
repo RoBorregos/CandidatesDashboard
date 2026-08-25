@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { Role } from "@prisma/client";
 
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { roleAfterJoiningTeam, roleAfterLeavingTeam } from "~/lib/roles";
 
 export const teamRouter = createTRPCRouter({
   createTeam: protectedProcedure
@@ -41,11 +41,7 @@ export const teamRouter = createTRPCRouter({
         where: { id: ctx.session.user.id },
         data: {
           teamId: team.id,
-          role:
-            ctx.session.user.role === Role.ADMIN ||
-            ctx.session.user.role === Role.JUDGE
-              ? ctx.session.user.role
-              : Role.CONTESTANT,
+          role: roleAfterJoiningTeam(ctx.session.user.role),
           ...(input.userArea ? { interviewArea: input.userArea } : {}),
         },
       });
@@ -156,10 +152,7 @@ export const teamRouter = createTRPCRouter({
       where: { id: ctx.session.user.id },
       data: {
         teamId: null,
-        role:
-          ctx.session.user.role === Role.CONTESTANT
-            ? Role.UNASSIGNED
-            : ctx.session.user.role,
+        role: roleAfterLeavingTeam(ctx.session.user.role),
       },
     });
 

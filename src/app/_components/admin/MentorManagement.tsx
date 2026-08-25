@@ -62,6 +62,19 @@ export default function MentorManagement() {
   }, [assignments]);
 
   /*
+   * The same person can be assigned through their linked User instead of
+   * their RegistrationMember, so match on that identity too — otherwise
+   * they would look unassigned here and the server would reject the assign.
+   */
+  const assignedUserIds = useMemo(() => {
+    return new Set(
+      (assignments ?? [])
+        .map((assignment) => assignment.user?.id)
+        .filter((id): id is string => Boolean(id)),
+    );
+  }, [assignments]);
+
+  /*
    * Only show contestants who don't already have a mentor.
    *
    * getCandidates currently returns RegistrationMembers for the
@@ -70,9 +83,11 @@ export default function MentorManagement() {
    */
   const unassignedCandidates = useMemo(() => {
     return (candidates ?? []).filter(
-      (candidate) => !assignedCandidateIds.has(candidate.id),
+      (candidate) =>
+        !assignedCandidateIds.has(candidate.id) &&
+        !(candidate.userId && assignedUserIds.has(candidate.userId)),
     );
-  }, [candidates, assignedCandidateIds]);
+  }, [candidates, assignedCandidateIds, assignedUserIds]);
 
   /*
    * Search contestants by name or email.
@@ -396,7 +411,9 @@ export default function MentorManagement() {
             disabled={
               !selectedMentorId ||
               !selectedCandidateId ||
-              assignMentor.isPending
+              assignMentor.isPending ||
+              // Duplicate prevention reads `assignments`; don't act without it.
+              assignmentsLoading
             }
             className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >

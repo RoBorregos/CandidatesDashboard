@@ -49,6 +49,22 @@ export const mentorManagementRouter = createTRPCRouter({
 
   getAssignments: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.mentorAssignment.findMany({
+      where: {
+        OR: [
+          // Anchored to a candidate who registered this edition.
+          {
+            registrationMember: {
+              registration: { edition: CURRENT_EDITION },
+            },
+          },
+          /*
+           * No registration to date it against — keep it visible rather than
+           * hiding an assignment an admin may still need to remove. Only
+           * assignments provably belonging to a past edition are filtered out.
+           */
+          { registrationMemberId: null },
+        ],
+      },
       include: {
         mentor: {
           select: {

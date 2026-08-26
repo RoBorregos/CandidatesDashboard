@@ -14,6 +14,8 @@ export const adminRouter = createTRPCRouter({
   getAllUsers: userManagementRouter.getAllUsers,
   assignUserToTeam: userManagementRouter.assignUserToTeam,
   removeUserFromTeam: userManagementRouter.removeUserFromTeam,
+  previewAutoAssign: userManagementRouter.previewAutoAssign,
+  autoAssignUsers: userManagementRouter.autoAssignUsers,
 
   // Team Management
   getAllTeams: teamManagementRouter.getAllTeams,

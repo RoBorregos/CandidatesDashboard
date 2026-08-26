@@ -7,6 +7,29 @@ import { InterviewArea, Role } from "@prisma/client";
 
 const MAX_TEAM_SIZE = 4;
 
+const zUserStub = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+  interviewArea: z.nativeEnum(InterviewArea).nullable(),
+  role: z.nativeEnum(Role),
+});
+
+const zAssignmentStep = z.union([
+  z.object({
+    kind: z.literal("fill"),
+    teamId: z.string(),
+    teamName: z.string(),
+    user: zUserStub,
+    afterCount: z.number(),
+  }),
+  z.object({
+    kind: z.literal("create"),
+    teamName: z.string(),
+    members: z.array(zUserStub),
+  }),
+]);
+
 type UserStub = {
   id: string;
   name: string | null;
@@ -277,71 +300,38 @@ export const userManagementRouter = createTRPCRouter({
     return computeAutoAssignPlan(userStubs, teamStubs);
   }),
 
-  autoAssignUsers: adminProcedure.mutation(async () => {
-    const unassigned = await db.user.findMany({
-      where: { role: Role.UNASSIGNED, teamId: null },
-      orderBy: { email: "asc" },
-    });
-
-    const teams = await db.team.findMany({
-      where: { isActive: true },
-      include: { members: true, _count: { select: { members: true } } },
-      orderBy: { name: "asc" },
-    });
-
-    const teamStubs: TeamStub[] = teams.map((t) => ({
-      id: t.id,
-      name: t.name,
-      members: t.members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        interviewArea: m.interviewArea,
-        role: m.role,
-      })),
-      count: t._count.members,
-    }));
-
-    const userStubs: UserStub[] = unassigned.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      interviewArea: u.interviewArea,
-      role: u.role,
-    }));
-
-    const { steps, remaining } = computeAutoAssignPlan(userStubs, teamStubs);
-
-    let created = 0;
-    await db.$transaction(async (tx) => {
-      for (const step of steps) {
-        if (step.kind === "fill") {
-          await tx.user.update({
-            where: { id: step.user.id },
-            data: {
-              teamId: step.teamId,
-              role: roleAfterJoiningTeam(step.user.role),
-            },
-          });
-        } else {
-          const team = await tx.team.create({
-            data: { name: step.teamName },
-          });
-          created++;
-          for (const user of step.members) {
+  autoAssignUsers: adminProcedure
+    .input(z.object({ steps: z.array(zAssignmentStep) }))
+    .mutation(async ({ input }) => {
+      let created = 0;
+      await db.$transaction(async (tx) => {
+        for (const step of input.steps) {
+          if (step.kind === "fill") {
             await tx.user.update({
-              where: { id: user.id },
-              data: { teamId: team.id, role: roleAfterJoiningTeam(user.role) },
+              where: { id: step.user.id },
+              data: {
+                teamId: step.teamId,
+                role: roleAfterJoiningTeam(step.user.role),
+              },
             });
+          } else {
+            const team = await tx.team.create({
+              data: { name: step.teamName },
+            });
+            created++;
+            for (const user of step.members) {
+              await tx.user.update({
+                where: { id: user.id },
+                data: { teamId: team.id, role: roleAfterJoiningTeam(user.role) },
+              });
+            }
           }
         }
-      }
-    });
+      });
 
-    return {
-      assigned: steps.length,
-      created,
-      remaining: remaining.length,
-    };
-  }),
+      return {
+        assigned: input.steps.length,
+        created,
+      };
+    }),
 });

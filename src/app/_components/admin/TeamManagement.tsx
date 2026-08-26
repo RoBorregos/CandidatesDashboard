@@ -100,7 +100,7 @@ export default function TeamManagement({
   const autoAssign = api.admin.autoAssignUsers.useMutation({
     onSuccess(data) {
       toast(
-        `Auto-assigned ${data.assigned} user(s), created ${data.created} team(s). ${data.remaining} remaining.`,
+        `Auto-assigned ${data.assigned} user(s), created ${data.created} team(s).`,
       );
       setShowPreview(false);
       refetchAll();
@@ -502,7 +502,11 @@ export default function TeamManagement({
                 Cancel
               </button>
               <button
-                onClick={() => autoAssign.mutate()}
+                onClick={() => {
+                  if (preview.data) {
+                    autoAssign.mutate({ steps: preview.data.steps });
+                  }
+                }}
                 disabled={
                   !preview.data ||
                   preview.data.steps.length === 0 ||

@@ -1,8 +1,8 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { z } from "zod";
-import { Role } from "@prisma/client";
 import { db } from "rbrgs/server/db";
 import { CURRENT_EDITION } from "~/lib/registration";
+import { roleAfterJoiningTeam, roleAfterLeavingTeam } from "~/lib/roles";
 
 export const userManagementRouter = createTRPCRouter({
   getAllUsers: adminProcedure.query(async ({ ctx }) => {
@@ -77,10 +77,7 @@ export const userManagementRouter = createTRPCRouter({
         where: { id: input.userId },
         data: {
           teamId: team.id,
-          role:
-            userRole === Role.ADMIN || userRole === Role.JUDGE
-              ? userRole
-              : Role.CONTESTANT,
+          role: roleAfterJoiningTeam(userRole),
         },
       });
 
@@ -104,10 +101,7 @@ export const userManagementRouter = createTRPCRouter({
         where: { id: input.userId },
         data: {
           teamId: null,
-          role:
-            userRole === Role.ADMIN || userRole === Role.JUDGE
-              ? userRole
-              : Role.UNASSIGNED,
+          role: roleAfterLeavingTeam(userRole),
         },
       });
 

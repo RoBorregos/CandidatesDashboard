@@ -79,25 +79,42 @@ model Registration {
 }
 
 model RegistrationMember {
-  id             String         @id @default(cuid())
-  registrationId String
-  registration   Registration   @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  order          Int
-  name           String
-  email          String
-  phone          String
-  career         String
-  semester       Int
-  interviewArea  InterviewArea?
-  edition        Int            @default(2026)
-  userId         String?
-  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id               String            @id @default(cuid())
+  registrationId   String
+  registration     Registration      @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  order            Int
+  name             String
+  email            String
+  phone            String
+  career           String
+  semester         Int
+  interviewArea    InterviewArea?
+  edition          Int               @default(2026)
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mentorAssignment MentorAssignment?
 
   @@unique([registrationId, order])
   @@unique([email, edition])
   @@unique([userId, edition])
   @@index([career])
   @@index([semester])
+}
+
+model MentorAssignment {
+  id String @id @default(cuid())
+
+  mentorId String
+  mentor   User   @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  userId String? @unique
+  user   User?   @relation("UserMentorAssignment", fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationMemberId String?             @unique
+  registrationMember   RegistrationMember? @relation(fields: [registrationMemberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Interviewer {
@@ -120,6 +137,10 @@ model User {
   role                Role                 @default(UNASSIGNED)
   teamId              String?
   isStaff             Boolean              @default(false)
+  // Mentoring is a capability granted on top of `role`, never a replacement for
+  // it, so a mentor stays an ADMIN. This is the only source of truth for "is a
+  // mentor" — there is deliberately no MENTOR value in `Role` to check against.
+  isMentor            Boolean              @default(false)
   registrationMembers RegistrationMember[]
   accounts            Account[]
   judgedChallengeA    ChallengeA[]
@@ -129,6 +150,8 @@ model User {
   team                Team?                @relation(fields: [teamId], references: [id])
   interviewer         Interviewer?         @relation(fields: [interviewerId], references: [id])
   unavailabilities    Unavailability[]
+  mentorAssignments   MentorAssignment[]   @relation("MentorAssignments")
+  mentorAssignment    MentorAssignment?    @relation("UserMentorAssignment")
 }
 
 model VerificationToken {

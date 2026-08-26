@@ -1,24 +1,95 @@
 import { z } from "zod";
 import { Prisma, Role } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
+
+/*
+ * Mentoring is an admin-only capability. `isMentor` records the grant, but the
+ * role is re-checked everywhere the grant is honoured: if someone stops being
+ * an ADMIN, a flag left behind on their row must not keep working.
+ */
+const MENTOR_WHERE = { isMentor: true, role: Role.ADMIN } as const;
 
 export const mentorManagementRouter = createTRPCRouter({
   getMentors: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.user.findMany({
-      where: {
-        role: Role.MENTOR,
-      },
+      where: MENTOR_WHERE,
       select: {
         id: true,
         name: true,
         email: true,
+        _count: {
+          // Surfaced in the UI so an admin can see why a revoke is blocked
+          // before they attempt it.
+          select: { mentorAssignments: true },
+        },
       },
       orderBy: {
         name: "asc",
       },
     });
   }),
+
+  /*
+   * Grant or revoke the mentor capability. Granting requires the target to
+   * already be an ADMIN — a contestant can never mentor. Revoking is always
+   * permitted, so a stale grant can be cleared even after a role change.
+   */
+  setUserMentor: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        isMentor: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          role: true,
+          _count: { select: { mentorAssignments: true } },
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "User not found.",
+        });
+      }
+
+      if (input.isMentor && user.role !== Role.ADMIN) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can be mentors.",
+        });
+      }
+
+      /*
+       * Revoking someone who still has contestants would leave those
+       * assignments pointing at a non-mentor. Make the admin clear them first
+       * rather than silently orphaning or cascade-deleting them.
+       */
+      if (!input.isMentor && user._count.mentorAssignments > 0) {
+        const count = user._count.mentorAssignments;
+
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `This mentor still has ${count} assigned contestant${
+            count === 1 ? "" : "s"
+          }. Remove the assignment${count === 1 ? "" : "s"} first.`,
+        });
+      }
+
+      await ctx.db.user.update({
+        where: { id: user.id },
+        data: { isMentor: input.isMentor },
+      });
+
+      return { success: true, isMentor: input.isMentor };
+    }),
 
   getCandidates: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.registrationMember.findMany({
@@ -113,17 +184,13 @@ export const mentorManagementRouter = createTRPCRouter({
         );
       }
 
-      // Verify the mentor exists and actually has the mentor role.
-      const mentor = await ctx.db.user.findUnique({
-        where: { id: input.mentorId },
-        select: { id: true, role: true },
+      // Verify the mentor exists and still holds the grant as an admin.
+      const mentor = await ctx.db.user.findFirst({
+        where: { id: input.mentorId, ...MENTOR_WHERE },
+        select: { id: true },
       });
 
       if (!mentor) {
-        throw new Error("Mentor not found.");
-      }
-
-      if (mentor.role !== Role.MENTOR) {
         throw new Error("Selected user is not a mentor.");
       }
 

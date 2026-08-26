@@ -8,16 +8,18 @@ export default function MentorManagement() {
   const [selectedMentorId, setSelectedMentorId] = useState("");
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [candidateSearch, setCandidateSearch] = useState("");
+  // Whose mentor access the "Mentor Access" card is currently editing.
+  const [selectedAdminId, setSelectedAdminId] = useState("");
 
-  const {
-    data: mentors,
-    isLoading: mentorsLoading,
-  } = api.admin.getMentors.useQuery();
+  const utils = api.useUtils();
 
-  const {
-    data: candidates,
-    isLoading: candidatesLoading,
-  } = api.admin.getCandidates.useQuery();
+  const { data: mentors, isLoading: mentorsLoading } =
+    api.admin.getMentors.useQuery();
+
+  const { data: allUsers } = api.admin.getAllUsers.useQuery();
+
+  const { data: candidates, isLoading: candidatesLoading } =
+    api.admin.getCandidates.useQuery();
 
   const {
     data: assignments = [],
@@ -48,6 +50,35 @@ export default function MentorManagement() {
       toast.error(error.message);
     },
   });
+
+  const setUserMentor = api.admin.setUserMentor.useMutation({
+    onSuccess: async (result) => {
+      toast.success(
+        result.isMentor ? "Mentor access granted." : "Mentor access removed.",
+      );
+
+      await utils.admin.getAllUsers.invalidate();
+      await utils.admin.getMentors.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  /*
+   * Only admins may mentor, so the picker never offers anyone else. The server
+   * rejects non-admins regardless; this just avoids showing dead options.
+   */
+  const eligibleAdmins = useMemo(
+    () => (allUsers ?? []).filter((user) => user.role === "ADMIN"),
+    [allUsers],
+  );
+
+  // The admin currently picked in the Mentor Access card, if any.
+  const selectedAdmin = useMemo(
+    () => eligibleAdmins.find((user) => user.id === selectedAdminId) ?? null,
+    [eligibleAdmins, selectedAdminId],
+  );
 
   /*
    * A candidate is considered assigned if their registrationMemberId
@@ -108,16 +139,14 @@ export default function MentorManagement() {
   }, [unassignedCandidates, candidateSearch]);
 
   const selectedMentor = useMemo(
-    () =>
-      mentors?.find((mentor) => mentor.id === selectedMentorId) ?? null,
+    () => mentors?.find((mentor) => mentor.id === selectedMentorId) ?? null,
     [mentors, selectedMentorId],
   );
 
   const selectedCandidate = useMemo(
     () =>
-      candidates?.find(
-        (candidate) => candidate.id === selectedCandidateId,
-      ) ?? null,
+      candidates?.find((candidate) => candidate.id === selectedCandidateId) ??
+      null,
     [candidates, selectedCandidateId],
   );
 
@@ -144,9 +173,7 @@ export default function MentorManagement() {
   };
 
   const handleRemove = (assignmentId: string) => {
-    const assignment = assignments?.find(
-      (item) => item.id === assignmentId,
-    );
+    const assignment = assignments?.find((item) => item.id === assignmentId);
 
     const candidateName =
       assignment?.registrationMember?.name ??
@@ -156,9 +183,7 @@ export default function MentorManagement() {
       "this contestant";
 
     const mentorName =
-      assignment?.mentor?.name ??
-      assignment?.mentor?.email ??
-      "this mentor";
+      assignment?.mentor?.name ?? assignment?.mentor?.email ?? "this mentor";
 
     const confirmed = window.confirm(
       `Remove ${mentorName} as mentor for ${candidateName}?`,
@@ -176,9 +201,7 @@ export default function MentorManagement() {
   if (mentorsLoading || candidatesLoading) {
     return (
       <div className="rounded-lg bg-gray-800 p-6">
-        <p className="text-gray-300">
-          Loading mentor management...
-        </p>
+        <p className="text-gray-300">Loading mentor management...</p>
       </div>
     );
   }
@@ -219,18 +242,110 @@ export default function MentorManagement() {
       </div>
 
       {/* ========================================================= */}
+      {/* Mentor Access */}
+      {/* ========================================================= */}
+
+      <div className="rounded-lg bg-gray-800 p-6">
+        <div className="mb-5">
+          <h3 className="text-xl font-semibold text-white">Mentor Access</h3>
+
+          <p className="mt-1 text-sm text-gray-400">
+            Grant or revoke the mentor capability. Only admins can be mentors —
+            the grant is added on top of their admin role, never replacing it.
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="mentor-access-select"
+            className="mb-2 block text-sm font-medium text-gray-300"
+          >
+            Admin
+          </label>
+
+          <select
+            id="mentor-access-select"
+            value={selectedAdminId}
+            onChange={(event) => setSelectedAdminId(event.target.value)}
+            disabled={eligibleAdmins.length === 0 || setUserMentor.isPending}
+            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Select an admin...</option>
+
+            {eligibleAdmins.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name ?? "Unnamed admin"}
+                {user.email ? ` — ${user.email}` : ""}
+                {user.isMentor ? " (mentor)" : ""}
+              </option>
+            ))}
+          </select>
+
+          {eligibleAdmins.length === 0 && (
+            <p className="mt-2 text-sm text-yellow-400">
+              No admins found. A user must be an admin before they can mentor.
+            </p>
+          )}
+        </div>
+
+        {selectedAdmin && (
+          <div className="mt-5 flex flex-col gap-4 rounded-md border border-gray-700 bg-gray-900/50 p-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm">
+              <div className="font-medium text-white">
+                {selectedAdmin.name ?? selectedAdmin.email ?? "Unnamed admin"}
+              </div>
+
+              <div className="text-gray-400">{selectedAdmin.email ?? "—"}</div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {selectedAdmin.isMentor ? (
+                <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
+                  Mentor
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-gray-700 px-2.5 py-1 text-xs font-medium text-gray-300">
+                  Not a mentor
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setUserMentor.mutate({
+                    userId: selectedAdmin.id,
+                    isMentor: !selectedAdmin.isMentor,
+                  })
+                }
+                disabled={setUserMentor.isPending}
+                className={`rounded-md px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
+                  selectedAdmin.isMentor
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              >
+                {setUserMentor.isPending
+                  ? "Saving..."
+                  : selectedAdmin.isMentor
+                    ? "Remove Mentor"
+                    : "Make Mentor"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
       {/* Assign Mentor */}
       {/* ========================================================= */}
 
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-5">
-          <h3 className="text-xl font-semibold text-white">
-            Assign Mentor
-          </h3>
+          <h3 className="text-xl font-semibold text-white">Assign Mentor</h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Select a mentor and a current-edition contestant to create
-            a mentor assignment.
+            Select a mentor and a current-edition contestant to create a mentor
+            assignment.
           </p>
         </div>
 
@@ -247,12 +362,8 @@ export default function MentorManagement() {
             <select
               id="mentor-select"
               value={selectedMentorId}
-              onChange={(event) =>
-                setSelectedMentorId(event.target.value)
-              }
-              disabled={
-                mentors?.length === 0 || assignMentor.isPending
-              }
+              onChange={(event) => setSelectedMentorId(event.target.value)}
+              disabled={mentors?.length === 0 || assignMentor.isPending}
               className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="">Select a mentor...</option>
@@ -261,13 +372,17 @@ export default function MentorManagement() {
                 <option key={mentor.id} value={mentor.id}>
                   {mentor.name ?? "Unnamed mentor"}
                   {mentor.email ? ` — ${mentor.email}` : ""}
+                  {mentor._count.mentorAssignments > 0
+                    ? ` (${mentor._count.mentorAssignments} assigned)`
+                    : ""}
                 </option>
               ))}
             </select>
 
             {mentors?.length === 0 && (
               <p className="mt-2 text-sm text-yellow-400">
-                No users currently have the MENTOR role.
+                No mentors yet. Use Mentor Access above to grant an admin the
+                mentor capability.
               </p>
             )}
           </div>
@@ -284,12 +399,9 @@ export default function MentorManagement() {
             <select
               id="candidate-select"
               value={selectedCandidateId}
-              onChange={(event) =>
-                setSelectedCandidateId(event.target.value)
-              }
+              onChange={(event) => setSelectedCandidateId(event.target.value)}
               disabled={
-                filteredCandidates.length === 0 ||
-                assignMentor.isPending
+                filteredCandidates.length === 0 || assignMentor.isPending
               }
               className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -351,7 +463,7 @@ export default function MentorManagement() {
             }}
             placeholder="Search by name or email..."
             disabled={assignMentor.isPending}
-            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white placeholder:text-gray-500 outline-none focus:border-blue-500 disabled:opacity-50"
+            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none placeholder:text-gray-500 focus:border-blue-500 disabled:opacity-50"
           />
 
           <p className="mt-2 text-xs text-gray-500">
@@ -396,9 +508,7 @@ export default function MentorManagement() {
             }}
             disabled={
               assignMentor.isPending ||
-              (!selectedMentorId &&
-                !selectedCandidateId &&
-                !candidateSearch)
+              (!selectedMentorId && !selectedCandidateId && !candidateSearch)
             }
             className="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -417,9 +527,7 @@ export default function MentorManagement() {
             }
             className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {assignMentor.isPending
-              ? "Assigning..."
-              : "Assign Mentor"}
+            {assignMentor.isPending ? "Assigning..." : "Assign Mentor"}
           </button>
         </div>
       </div>
@@ -498,21 +606,17 @@ export default function MentorManagement() {
                     null;
 
                   return (
-                    <tr
-                      key={assignment.id}
-                      className="hover:bg-gray-750"
-                    >
+                    <tr key={assignment.id} className="hover:bg-gray-750">
                       <td className="px-4 py-4">
                         <div className="font-medium text-white">
                           {mentorName}
                         </div>
 
-                        {assignment.mentor.email &&
-                          assignment.mentor.name && (
-                            <div className="text-sm text-gray-500">
-                              {assignment.mentor.email}
-                            </div>
-                          )}
+                        {assignment.mentor.email && assignment.mentor.name && (
+                          <div className="text-sm text-gray-500">
+                            {assignment.mentor.email}
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-4">
@@ -531,15 +635,11 @@ export default function MentorManagement() {
                       <td className="px-4 py-4 text-right">
                         <button
                           type="button"
-                          onClick={() =>
-                            handleRemove(assignment.id)
-                          }
+                          onClick={() => handleRemove(assignment.id)}
                           disabled={removeMentor.isPending}
                           className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {removeMentor.isPending
-                            ? "Removing..."
-                            : "Remove"}
+                          {removeMentor.isPending ? "Removing..." : "Remove"}
                         </button>
                       </td>
                     </tr>
@@ -562,8 +662,8 @@ export default function MentorManagement() {
           </h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Overview of contestants from the current edition and their
-            mentor status.
+            Overview of contestants from the current edition and their mentor
+            status.
           </p>
         </div>
 
@@ -597,20 +697,14 @@ export default function MentorManagement() {
               <tbody className="divide-y divide-gray-700 bg-gray-800">
                 {(candidates ?? []).map((candidate) => {
                   const assignment = assignments?.find(
-                    (item) =>
-                      item.registrationMember?.id === candidate.id,
+                    (item) => item.registrationMember?.id === candidate.id,
                   );
 
                   const mentorName =
-                    assignment?.mentor.name ??
-                    assignment?.mentor.email ??
-                    null;
+                    assignment?.mentor.name ?? assignment?.mentor.email ?? null;
 
                   return (
-                    <tr
-                      key={candidate.id}
-                      className="hover:bg-gray-750"
-                    >
+                    <tr key={candidate.id} className="hover:bg-gray-750">
                       <td className="px-4 py-3 text-sm font-medium text-white">
                         {candidate.name ?? "Unnamed contestant"}
                       </td>

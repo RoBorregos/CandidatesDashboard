@@ -56,6 +56,7 @@ export const adminRouter = createTRPCRouter({
   debugTeamSchedules: testingUtilitiesRouter.debugTeamSchedules,
 
   // Mentor Management
+  setUserMentor: mentorManagementRouter.setUserMentor,
   getMentors: mentorManagementRouter.getMentors,
   getCandidates: mentorManagementRouter.getCandidates,
   getAssignments: mentorManagementRouter.getAssignments,

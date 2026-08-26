@@ -313,28 +313,30 @@ export const userManagementRouter = createTRPCRouter({
     const { steps, remaining } = computeAutoAssignPlan(userStubs, teamStubs);
 
     let created = 0;
-    for (const step of steps) {
-      if (step.kind === "fill") {
-        await db.user.update({
-          where: { id: step.user.id },
-          data: {
-            teamId: step.teamId,
-            role: roleAfterJoiningTeam(step.user.role),
-          },
-        });
-      } else {
-        const team = await db.team.create({
-          data: { name: step.teamName },
-        });
-        created++;
-        for (const user of step.members) {
-          await db.user.update({
-            where: { id: user.id },
-            data: { teamId: team.id, role: roleAfterJoiningTeam(user.role) },
+    await db.$transaction(async (tx) => {
+      for (const step of steps) {
+        if (step.kind === "fill") {
+          await tx.user.update({
+            where: { id: step.user.id },
+            data: {
+              teamId: step.teamId,
+              role: roleAfterJoiningTeam(step.user.role),
+            },
           });
+        } else {
+          const team = await tx.team.create({
+            data: { name: step.teamName },
+          });
+          created++;
+          for (const user of step.members) {
+            await tx.user.update({
+              where: { id: user.id },
+              data: { teamId: team.id, role: roleAfterJoiningTeam(user.role) },
+            });
+          }
         }
       }
-    }
+    });
 
     return {
       assigned: steps.length,

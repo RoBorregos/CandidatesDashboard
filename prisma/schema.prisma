@@ -146,6 +146,9 @@ model TeamMentorPair {
   mentorPairId String
   mentorPair   MentorPair @relation(fields: [mentorPairId], references: [id], onDelete: Cascade)
   assignedAt   DateTime   @default(now())
+
+  mentorAKnowsTeam Boolean?
+  mentorBKnowsTeam Boolean?
 }
 
 model Interviewer {

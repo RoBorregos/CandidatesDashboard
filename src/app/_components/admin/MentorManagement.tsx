@@ -65,19 +65,13 @@ export default function MentorManagement() {
     },
   });
 
-  /*
-   * Only admins may mentor, so the picker never offers anyone else. The server
-   * rejects non-admins regardless; this just avoids showing dead options.
-   */
-  const eligibleAdmins = useMemo(
-    () => (allUsers ?? []).filter((user) => user.role === "ADMIN"),
-    [allUsers],
-  );
+  // Any user is eligible to be a mentor, independent of their role.
+  const eligibleUsers = useMemo(() => allUsers ?? [], [allUsers]);
 
-  // The admin currently picked in the Mentor Access card, if any.
+  // The user currently picked in the Mentor Access card, if any.
   const selectedAdmin = useMemo(
-    () => eligibleAdmins.find((user) => user.id === selectedAdminId) ?? null,
-    [eligibleAdmins, selectedAdminId],
+    () => eligibleUsers.find((user) => user.id === selectedAdminId) ?? null,
+    [eligibleUsers, selectedAdminId],
   );
 
   /*
@@ -250,8 +244,8 @@ export default function MentorManagement() {
           <h3 className="text-xl font-semibold text-white">Mentor Access</h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Grant or revoke the mentor capability. Only admins can be mentors —
-            the grant is added on top of their admin role, never replacing it.
+            Grant or revoke the mentor capability. Mentor access is
+            independent of a user&apos;s role — any user can be a mentor.
           </p>
         </div>
 
@@ -260,30 +254,30 @@ export default function MentorManagement() {
             htmlFor="mentor-access-select"
             className="mb-2 block text-sm font-medium text-gray-300"
           >
-            Admin
+            User
           </label>
 
           <select
             id="mentor-access-select"
             value={selectedAdminId}
             onChange={(event) => setSelectedAdminId(event.target.value)}
-            disabled={eligibleAdmins.length === 0 || setUserMentor.isPending}
+            disabled={eligibleUsers.length === 0 || setUserMentor.isPending}
             className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <option value="">Select an admin...</option>
+            <option value="">Select a user...</option>
 
-            {eligibleAdmins.map((user) => (
+            {eligibleUsers.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.name ?? "Unnamed admin"}
+                {user.name ?? "Unnamed user"}
                 {user.email ? ` — ${user.email}` : ""}
                 {user.isMentor ? " (mentor)" : ""}
               </option>
             ))}
           </select>
 
-          {eligibleAdmins.length === 0 && (
+          {eligibleUsers.length === 0 && (
             <p className="mt-2 text-sm text-yellow-400">
-              No admins found. A user must be an admin before they can mentor.
+              No users found.
             </p>
           )}
         </div>
@@ -292,7 +286,7 @@ export default function MentorManagement() {
           <div className="mt-5 flex flex-col gap-4 rounded-md border border-gray-700 bg-gray-900/50 p-4 md:flex-row md:items-center md:justify-between">
             <div className="text-sm">
               <div className="font-medium text-white">
-                {selectedAdmin.name ?? selectedAdmin.email ?? "Unnamed admin"}
+                {selectedAdmin.name ?? selectedAdmin.email ?? "Unnamed user"}
               </div>
 
               <div className="text-gray-400">{selectedAdmin.email ?? "—"}</div>
@@ -381,7 +375,7 @@ export default function MentorManagement() {
 
             {mentors?.length === 0 && (
               <p className="mt-2 text-sm text-yellow-400">
-                No mentors yet. Use Mentor Access above to grant an admin the
+                No mentors yet. Use Mentor Access above to grant a user the
                 mentor capability.
               </p>
             )}

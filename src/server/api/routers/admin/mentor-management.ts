@@ -4,12 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
 
-/*
- * Mentoring is an admin-only capability. `isMentor` records the grant, but the
- * role is re-checked everywhere the grant is honoured: if someone stops being
- * an ADMIN, a flag left behind on their row must not keep working.
- */
-const MENTOR_WHERE = { isMentor: true, role: Role.ADMIN } as const;
+const MENTOR_WHERE = { isMentor: true } as const;
 
 export const mentorManagementRouter = createTRPCRouter({
   getMentors: adminProcedure.query(async ({ ctx }) => {
@@ -20,8 +15,6 @@ export const mentorManagementRouter = createTRPCRouter({
         name: true,
         email: true,
         _count: {
-          // Surfaced in the UI so an admin can see why a revoke is blocked
-          // before they attempt it.
           select: { mentorAssignments: true },
         },
       },
@@ -31,11 +24,6 @@ export const mentorManagementRouter = createTRPCRouter({
     });
   }),
 
-  /*
-   * Grant or revoke the mentor capability. Granting requires the target to
-   * already be an ADMIN — a contestant can never mentor. Revoking is always
-   * permitted, so a stale grant can be cleared even after a role change.
-   */
   setUserMentor: adminProcedure
     .input(
       z.object({
@@ -57,13 +45,6 @@ export const mentorManagementRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "User not found.",
-        });
-      }
-
-      if (input.isMentor && user.role !== Role.ADMIN) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only admins can be mentors.",
         });
       }
 
@@ -184,7 +165,6 @@ export const mentorManagementRouter = createTRPCRouter({
         );
       }
 
-      // Verify the mentor exists and still holds the grant as an admin.
       const mentor = await ctx.db.user.findFirst({
         where: { id: input.mentorId, ...MENTOR_WHERE },
         select: { id: true },

@@ -24,12 +24,14 @@ declare module "next-auth" {
       id: string;
       role: Role;
       teamId: string | null;
+      isMentor: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: Role;
     teamId: string | null;
+    isMentor: boolean;
   }
 }
 async function resolveTeamId(
@@ -155,6 +157,7 @@ export const authOptions: NextAuthOptions = {
         role: user.role,
         id: user.id,
         teamId: user.teamId,
+        isMentor: user.isMentor,
       },
     }),
   },

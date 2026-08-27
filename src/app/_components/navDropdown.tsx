@@ -56,6 +56,13 @@ export default function NavDropdown({ session }: { session: Session | null }) {
               </Link>
             </SheetClose>
           )}
+          {session?.user.isMentor && (
+            <SheetClose asChild>
+              <Link href="/mentor" className="w-full text-lg">
+                Mentor
+              </Link>
+            </SheetClose>
+          )}
           {session?.user.role === Role.ADMIN && (
             <SheetClose asChild>
               <Link href="/admin" className="w-full text-lg">

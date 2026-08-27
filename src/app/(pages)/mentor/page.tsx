@@ -3,6 +3,7 @@ import Footer from "../../_components/footer";
 import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import { api } from "~/trpc/server";
+import TeamConflictPrompt from "../../_components/mentor/TeamConflictPrompt";
 
 export default async function MentorPage() {
   const session = await getServerAuthSession();
@@ -21,9 +22,13 @@ export default async function MentorPage() {
   const pair = await api.mentor.getMyPair();
   const assignments = await api.mentor.getMyAssignments();
 
-  const partner =
-    pair &&
-    (pair.mentorAId === session.user.id ? pair.mentorB : pair.mentorA);
+  const isMentorA = pair?.mentorAId === session.user.id;
+  const partner = pair && (isMentorA ? pair.mentorB : pair.mentorA);
+
+  const pendingConflictTeam = pair?.teams.find(
+    (t) =>
+      (isMentorA ? t.mentorAKnowsTeam : t.mentorBKnowsTeam) === null,
+  );
 
   return (
     <div className="mt-16 min-h-screen bg-black text-sm text-white md:text-base">
@@ -65,62 +70,95 @@ export default async function MentorPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {pair.teams.map(({ team }) => (
-                <div
-                  key={team.id}
-                  className="overflow-x-auto rounded border border-gray-700"
-                >
-                  <div className="bg-gray-900 px-3 py-2 text-sm font-medium text-white">
-                    {team.name}
-                  </div>
+              {pair.teams.map((assignment) => {
+                const { team } = assignment;
+                const myAnswer = isMentorA
+                  ? assignment.mentorAKnowsTeam
+                  : assignment.mentorBKnowsTeam;
+                const confirmed =
+                  assignment.mentorAKnowsTeam === false &&
+                  assignment.mentorBKnowsTeam === false;
 
-                  <table className="w-full table-auto border-collapse">
-                    <thead>
-                      <tr className="bg-gray-900 text-left text-sm text-gray-300">
-                        <th className="border-l border-t border-gray-700 px-3 py-3 first:border-l-0">
-                          Member
-                        </th>
-                        <th className="border-l border-t border-gray-700 px-3 py-3">
-                          Area
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {team.members.map((member) => (
-                        <tr
-                          key={member.id}
-                          className="border-t border-gray-700 hover:bg-gray-900"
-                        >
-                          <td className="border-l border-gray-700 px-3 py-3 first:border-l-0">
-                            <div className="font-medium">
-                              {member.name ?? member.email}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {member.email}
-                            </div>
-                          </td>
-                          <td className="border-l border-gray-700 px-3 py-3">
-                            {member.interviewArea ?? "-"}
-                          </td>
-                        </tr>
-                      ))}
-                      {team.members.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={2}
-                            className="px-3 py-4 text-sm text-gray-400"
-                          >
-                            No members yet.
-                          </td>
-                        </tr>
+                return (
+                  <div
+                    key={team.id}
+                    className="overflow-x-auto rounded border border-gray-700"
+                  >
+                    <div className="flex items-center justify-between gap-2 bg-gray-900 px-3 py-2 text-sm font-medium text-white">
+                      <span>{team.name}</span>
+                      {confirmed ? (
+                        <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
+                          Confirmed
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
+                          {myAnswer === null
+                            ? "Awaiting your confirmation"
+                            : "Awaiting your partner"}
+                        </span>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
+                    </div>
+
+                    <table className="w-full table-auto border-collapse">
+                      <thead>
+                        <tr className="bg-gray-900 text-left text-sm text-gray-300">
+                          <th className="border-l border-t border-gray-700 px-3 py-3 first:border-l-0">
+                            Member
+                          </th>
+                          <th className="border-l border-t border-gray-700 px-3 py-3">
+                            Area
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {team.members.map((member) => (
+                          <tr
+                            key={member.id}
+                            className="border-t border-gray-700 hover:bg-gray-900"
+                          >
+                            <td className="border-l border-gray-700 px-3 py-3 first:border-l-0">
+                              <div className="font-medium">
+                                {member.name ?? member.email}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {member.email}
+                              </div>
+                            </td>
+                            <td className="border-l border-gray-700 px-3 py-3">
+                              {member.interviewArea ?? "-"}
+                            </td>
+                          </tr>
+                        ))}
+                        {team.members.length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={2}
+                              className="px-3 py-4 text-sm text-gray-400"
+                            >
+                              No members yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+
+        {pendingConflictTeam && (
+          <TeamConflictPrompt
+            teamId={pendingConflictTeam.team.id}
+            teamName={pendingConflictTeam.team.name}
+            myKnowsTeam={
+              isMentorA
+                ? pendingConflictTeam.mentorAKnowsTeam
+                : pendingConflictTeam.mentorBKnowsTeam
+            }
+          />
+        )}
 
 
         <div className="rounded-lg bg-gray-800 p-4">

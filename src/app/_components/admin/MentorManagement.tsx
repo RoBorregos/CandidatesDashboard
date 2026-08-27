@@ -75,44 +75,41 @@ export default function MentorManagement() {
   );
 
   /*
-   * A candidate is considered assigned if their registrationMemberId
-   * already appears in an existing mentor assignment.
+   * A candidate can now stack several distinct mentors, so "already has a
+   * mentor" no longer hides them globally — only hide a candidate from the
+   * picker if the currently selected mentor is already assigned to them.
    */
-  const assignedCandidateIds = useMemo(() => {
+  const candidateIdsAssignedToSelectedMentor = useMemo(() => {
+    if (!selectedMentorId) return new Set<string>();
+
     return new Set(
       (assignments ?? [])
-        .map((assignment) => assignment.registrationMember?.id)
-        .filter((id): id is string => Boolean(id)),
+        .filter((assignment) => assignment.mentor.id === selectedMentorId)
+        .flatMap((assignment) =>
+          [assignment.registrationMember?.id, assignment.user?.id].filter(
+            (id): id is string => Boolean(id),
+          ),
+        ),
     );
-  }, [assignments]);
+  }, [assignments, selectedMentorId]);
 
   /*
-   * The same person can be assigned through their linked User instead of
-   * their RegistrationMember, so match on that identity too — otherwise
-   * they would look unassigned here and the server would reject the assign.
-   */
-  const assignedUserIds = useMemo(() => {
-    return new Set(
-      (assignments ?? [])
-        .map((assignment) => assignment.user?.id)
-        .filter((id): id is string => Boolean(id)),
-    );
-  }, [assignments]);
-
-  /*
-   * Only show contestants who don't already have a mentor.
+   * Candidates not yet assigned to the currently selected mentor.
    *
    * getCandidates currently returns RegistrationMembers for the
    * current edition, so registrationMemberId is the identifier
    * we use when creating the mentor assignment.
    */
-  const unassignedCandidates = useMemo(() => {
+  const availableCandidates = useMemo(() => {
     return (candidates ?? []).filter(
       (candidate) =>
-        !assignedCandidateIds.has(candidate.id) &&
-        !(candidate.userId && assignedUserIds.has(candidate.userId)),
+        !candidateIdsAssignedToSelectedMentor.has(candidate.id) &&
+        !(
+          candidate.userId &&
+          candidateIdsAssignedToSelectedMentor.has(candidate.userId)
+        ),
     );
-  }, [candidates, assignedCandidateIds, assignedUserIds]);
+  }, [candidates, candidateIdsAssignedToSelectedMentor]);
 
   /*
    * Search contestants by name or email.
@@ -121,16 +118,16 @@ export default function MentorManagement() {
     const search = candidateSearch.trim().toLowerCase();
 
     if (!search) {
-      return unassignedCandidates;
+      return availableCandidates;
     }
 
-    return unassignedCandidates.filter((candidate) => {
+    return availableCandidates.filter((candidate) => {
       const name = candidate.name?.toLowerCase() ?? "";
       const email = candidate.email?.toLowerCase() ?? "";
 
       return name.includes(search) || email.includes(search);
     });
-  }, [unassignedCandidates, candidateSearch]);
+  }, [availableCandidates, candidateSearch]);
 
   const selectedMentor = useMemo(
     () => mentors?.find((mentor) => mentor.id === selectedMentorId) ?? null,
@@ -155,8 +152,8 @@ export default function MentorManagement() {
       return;
     }
 
-    if (assignedCandidateIds.has(selectedCandidateId)) {
-      toast.error("This contestant already has a mentor.");
+    if (candidateIdsAssignedToSelectedMentor.has(selectedCandidateId)) {
+      toast.error("This mentor is already assigned to this candidate.");
       return;
     }
 
@@ -335,11 +332,14 @@ export default function MentorManagement() {
 
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-5">
-          <h3 className="text-xl font-semibold text-white">Assign Mentor</h3>
+          <h3 className="text-xl font-semibold text-white">
+            Assign Mentor (Advanced Individuals)
+          </h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Select a mentor and a current-edition contestant to create a mentor
-            assignment.
+            Select a mentor and an advanced-track contestant to create a
+            mentor assignment. A contestant can have several mentors.
+            Beginners are mentored as a team — see Mentor Pairs.
           </p>
         </div>
 
@@ -409,9 +409,11 @@ export default function MentorManagement() {
               ))}
             </select>
 
-            {unassignedCandidates.length === 0 && (
+            {availableCandidates.length === 0 && (
               <p className="mt-2 text-sm text-gray-400">
-                All current contestants already have a mentor.
+                {selectedMentorId
+                  ? "This mentor is already assigned to every advanced contestant."
+                  : "No advanced contestants found."}
               </p>
             )}
           </div>
@@ -440,7 +442,7 @@ export default function MentorManagement() {
               const value = event.target.value.toLowerCase();
 
               if (selectedCandidateId) {
-                const selected = unassignedCandidates.find(
+                const selected = availableCandidates.find(
                   (candidate) => candidate.id === selectedCandidateId,
                 );
 
@@ -461,8 +463,9 @@ export default function MentorManagement() {
           />
 
           <p className="mt-2 text-xs text-gray-500">
-            Showing {filteredCandidates.length} unassigned contestant
-            {filteredCandidates.length === 1 ? "" : "s"}.
+            Showing {filteredCandidates.length} contestant
+            {filteredCandidates.length === 1 ? "" : "s"} available for this
+            mentor.
           </p>
         </div>
 
@@ -534,11 +537,11 @@ export default function MentorManagement() {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h3 className="text-xl font-semibold text-white">
-              Current Assignments
+              Current Assignments (Advanced Individuals)
             </h3>
 
             <p className="mt-1 text-sm text-gray-400">
-              Mentors currently assigned to contestants.
+              Mentors currently assigned to advanced contestants.
             </p>
           </div>
 
@@ -652,12 +655,12 @@ export default function MentorManagement() {
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-5">
           <h3 className="text-xl font-semibold text-white">
-            Contestant Status
+            Contestant Status (Advanced Individuals)
           </h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Overview of contestants from the current edition and their mentor
-            status.
+            Overview of advanced contestants from the current edition and
+            their mentor(s).
           </p>
         </div>
 
@@ -690,12 +693,14 @@ export default function MentorManagement() {
 
               <tbody className="divide-y divide-gray-700 bg-gray-800">
                 {(candidates ?? []).map((candidate) => {
-                  const assignment = assignments?.find(
+                  const candidateAssignments = (assignments ?? []).filter(
                     (item) => item.registrationMember?.id === candidate.id,
                   );
 
-                  const mentorName =
-                    assignment?.mentor.name ?? assignment?.mentor.email ?? null;
+                  const mentorNames = candidateAssignments
+                    .map((a) => a.mentor.name ?? a.mentor.email)
+                    .filter(Boolean)
+                    .join(", ");
 
                   return (
                     <tr key={candidate.id} className="hover:bg-gray-750">
@@ -708,13 +713,13 @@ export default function MentorManagement() {
                       </td>
 
                       <td className="px-4 py-3 text-sm text-gray-300">
-                        {mentorName ?? "—"}
+                        {mentorNames || "—"}
                       </td>
 
                       <td className="px-4 py-3">
-                        {assignment ? (
+                        {candidateAssignments.length > 0 ? (
                           <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
-                            Assigned
+                            Assigned ({candidateAssignments.length})
                           </span>
                         ) : (
                           <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">

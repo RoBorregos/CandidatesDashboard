@@ -137,9 +137,6 @@ model User {
   role                Role                 @default(UNASSIGNED)
   teamId              String?
   isStaff             Boolean              @default(false)
-  // Mentoring is a capability granted on top of `role`, never a replacement for
-  // it, so a mentor stays an ADMIN. This is the only source of truth for "is a
-  // mentor" — there is deliberately no MENTOR value in `Role` to check against.
   isMentor            Boolean              @default(false)
   registrationMembers RegistrationMember[]
   accounts            Account[]

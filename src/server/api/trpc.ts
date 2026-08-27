@@ -185,3 +185,36 @@ export const adminProcedure = protectedProcedure
       },
     });
   });
+
+/**
+ * Gated on `isMentor` alone, independent of `role`. Do not build this on top
+ * of `adminProcedure`/role checks, and do not use it to protect admin-only
+ * data (registrations, admin panel) — a mentor is not necessarily an admin.
+ */
+export const mentorProtectionMiddleware = t.middleware(({ ctx, next }) => {
+  if (!ctx.session || !ctx.session.user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "No session found. Try logging in again.",
+    });
+  }
+
+  if (!ctx.session.user.isMentor) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "You do not have mentor access.",
+    });
+  }
+
+  return next({ ctx });
+});
+
+export const mentorProcedure = protectedProcedure
+  .use(mentorProtectionMiddleware)
+  .use(({ ctx, next }) => {
+    return next({
+      ctx: {
+        session: ctx.session!,
+      },
+    });
+  });

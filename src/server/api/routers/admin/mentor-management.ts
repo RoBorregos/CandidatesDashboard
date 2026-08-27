@@ -77,6 +77,7 @@ export const mentorManagementRouter = createTRPCRouter({
       where: {
         registration: {
           edition: CURRENT_EDITION,
+          track: "ADVANCED",
         },
       },
       select: {
@@ -103,10 +104,9 @@ export const mentorManagementRouter = createTRPCRouter({
     return ctx.db.mentorAssignment.findMany({
       where: {
         OR: [
-          // Anchored to a candidate who registered this edition.
           {
             registrationMember: {
-              registration: { edition: CURRENT_EDITION },
+              registration: { edition: CURRENT_EDITION, track: "ADVANCED" },
             },
           },
           /*
@@ -201,8 +201,14 @@ export const mentorManagementRouter = createTRPCRouter({
 
         const member = await ctx.db.registrationMember.findFirst({
           where: { userId: candidate.id, edition: CURRENT_EDITION },
-          select: { id: true },
+          select: { id: true, registration: { select: { track: true } } },
         });
+
+        if (member?.registration.track === "BEGINNER") {
+          throw new Error(
+            "Beginners are mentored as a team via Mentor Pairs, not individually.",
+          );
+        }
 
         candidateUserId = candidate.id;
         candidateRegistrationMemberId = member?.id ?? null;
@@ -218,6 +224,7 @@ export const mentorManagementRouter = createTRPCRouter({
             registration: {
               select: {
                 edition: true,
+                track: true,
               },
             },
           },
@@ -231,12 +238,20 @@ export const mentorManagementRouter = createTRPCRouter({
           throw new Error("This candidate is not from the current edition.");
         }
 
+        if (candidate.registration.track === "BEGINNER") {
+          throw new Error(
+            "Beginners are mentored as a team via Mentor Pairs, not individually.",
+          );
+        }
+
         candidateUserId = candidate.userId;
         candidateRegistrationMemberId = candidate.id;
       }
 
+      // A candidate can stack several distinct mentors; only reject reassigning the same one.
       const existingAssignment = await ctx.db.mentorAssignment.findFirst({
         where: {
+          mentorId: input.mentorId,
           OR: [
             ...(candidateUserId ? [{ userId: candidateUserId }] : []),
             ...(candidateRegistrationMemberId
@@ -247,7 +262,7 @@ export const mentorManagementRouter = createTRPCRouter({
       });
 
       if (existingAssignment) {
-        throw new Error("This candidate already has a mentor.");
+        throw new Error("This mentor is already assigned to this candidate.");
       }
 
       /*
@@ -287,12 +302,11 @@ export const mentorManagementRouter = createTRPCRouter({
           },
         });
       } catch (error) {
-        // A concurrent assignment won the race against the check above.
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
-          throw new Error("This candidate already has a mentor.");
+          throw new Error("This mentor is already assigned to this candidate.");
         }
 
         throw error;

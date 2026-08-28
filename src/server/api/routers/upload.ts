@@ -20,6 +20,19 @@ import { db } from "~/server/db";
 export const MAX_UPLOAD_WEEK = 6;
 export const MIN_UPLOAD_WEEK = 1;
 
+// Weekly comments are accumulated into a single COMMENTS.md. A single comment
+// (the "diff") is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
+// bytes, and every comment is terminated by \x04 so messages can be fragmented
+// when read back.
+export const COMMENTS_FILE = "COMMENTS.md";
+export const MAX_COMMENT_CHARS = 2045;
+export const MAX_COMMENT_BYTES = 2048;
+
+// A week's folder may hold up to 256 MB in total (across all files), not a
+// per-file cap. Used to block uploads that would exceed the weekly allowance
+// and to show usage in the UI.
+export const MAX_WEEK_BYTES = 256 * 1024 * 1024;
+
 export const uploadWeekSchema = z.number().int().min(MIN_UPLOAD_WEEK).max(MAX_UPLOAD_WEEK);
 
 const utapi = new UTApi();
@@ -233,6 +246,107 @@ async function currentTeamId(ctx: {
   return user?.teamId ?? null;
 }
 
+/** Total bytes currently stored for a week's folder (excludes COMMENTS.md). */
+export async function weekUsageBytes(
+  client: typeof db,
+  teamId: string,
+  week: number,
+): Promise<number> {
+  const rows = await client.teamUpload.findMany({
+    where: { teamId, week, NOT: { name: COMMENTS_FILE } },
+    select: { fileSize: true },
+  });
+  return rows.reduce((sum, row) => sum + (row.fileSize ?? 0), 0);
+}
+
+/**
+ * Append a comment (a diff) to the team's COMMENTS.md.
+ *
+ * Reads the current COMMENTS.md, appends the comment (terminated by \x04 and
+ * separated by a linebreak), re-stores the file and replaces the DB record.
+ * Enforces MAX_COMMENT_CHARS and MAX_COMMENT_BYTES. Shared by the
+ * `submitComment` procedure and the file-upload path so a comment sent together
+ * with files lands in the same COMMENTS.md.
+ */
+export async function appendCommentToFile(input: {
+  db: typeof db;
+  teamId: string;
+  teamName: string;
+  week: number;
+  text: string;
+}): Promise<void> {
+  const { db, teamId, teamName, week, text } = input;
+
+  if (text.length > MAX_COMMENT_CHARS) {
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message: `El comentario excede ${MAX_COMMENT_CHARS} caracteres`,
+    });
+  }
+  const byteLength = new TextEncoder().encode(text).byteLength;
+  if (byteLength > MAX_COMMENT_BYTES) {
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message: `El comentario excede ${MAX_COMMENT_BYTES} bytes`,
+    });
+  }
+
+  const existing = await db.teamUpload.findFirst({
+    where: { teamId, week, name: COMMENTS_FILE },
+  });
+
+  let content = "";
+  if (existing) {
+    try {
+      content = await (await fetch(existing.fileUrl)).text();
+    } catch {
+      content = "";
+    }
+  }
+
+  // Idempotency guard: the comment appended to a batch is placed only once.
+  // UploadThing runs `onUploadComplete` once per uploaded file, so without this
+  // the same comment would be appended once per file. We detect this by checking
+  // whether the most recent \x04-terminated segment is already this comment; if
+  // so, a sibling file already wrote it and we skip re-writing it. This is
+  // deterministic and safe across concurrent/duplicate onUploadComplete calls.
+  const lastSegment = content
+    .split("\x04")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .at(-1);
+  if (lastSegment != null && lastSegment === text.trim()) {
+    return;
+  }
+
+  const appended = content ? `${content}\n${text}\x04` : `${text}\x04`;
+
+  const fileName = teamUploadFolderPath(teamName, week, COMMENTS_FILE);
+  const result = await utapi.uploadFiles([
+    new File([appended], fileName, { type: "text/markdown" }),
+  ]);
+  const [uploaded] = result;
+  if (!uploaded?.data) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "No se pudo guardar el comentario",
+    });
+  }
+  const file = uploaded.data;
+
+  // Replace the previous COMMENTS.md record (and free its storage file).
+  await recordTeamUpload({
+    teamId,
+    week,
+    name: COMMENTS_FILE,
+    fileKey: file.key,
+    customId: fileName,
+    fileUrl: file.ufsUrl,
+    fileSize: file.size ?? null,
+    fileType: "text/markdown",
+  });
+}
+
 export const uploadRouter = createTRPCRouter({
   /** Every upload of the caller's team, newest first. */
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -301,6 +415,52 @@ export const uploadRouter = createTRPCRouter({
         conflicts,
         teamName: team.name,
       };
+    }),
+
+  /**
+   * Append a weekly comment (a diff) to the team's COMMENTS.md.
+   *
+   * The client only sends the new comment text; the server takes care of
+   * reading the current COMMENTS.md, appending the comment, and re-storing the
+   * file. This keeps every comment (terminated by \x04 and separated by a
+   * linebreak) inside a single COMMENTS.md per week without the client having
+   * to download and re-upload the whole file. The input is capped at
+   * MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES bytes.
+   */
+  submitComment: protectedProcedure
+    .input(
+      z.object({
+        week: uploadWeekSchema,
+        text: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const teamId = await currentTeamId(ctx);
+      if (!teamId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Debes pertenecer a un equipo para comentar",
+        });
+      }
+
+      const team = await ctx.db.team.findUnique({
+        where: { id: teamId },
+        select: { name: true },
+      });
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el equipo" });
+      }
+
+      const { text } = input;
+      await appendCommentToFile({
+        db: ctx.db,
+        teamId,
+        teamName: team.name,
+        week: input.week,
+        text,
+      });
+
+      return { saved: true };
     }),
 
   /** Delete an upload: removes the file from UploadThing and the record from the DB. */

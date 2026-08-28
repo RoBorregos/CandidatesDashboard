@@ -146,6 +146,7 @@ model TeamMentorPair {
   mentorPairId String
   mentorPair   MentorPair @relation(fields: [mentorPairId], references: [id], onDelete: Cascade)
   assignedAt   DateTime   @default(now())
+  uploads       TeamUpload[]
 }
 
 model Interviewer {
@@ -219,7 +220,8 @@ model Team {
   rounds         Round[]
   members        User[]
   registrations  Registration[]
-  uploads        TeamUpload[]        // <-- add this back-relation
+  uploads        TeamUpload[]
+  mentorPairs    TeamMentorPair[]
 }
 
 model TeamUpload {
@@ -235,7 +237,8 @@ model TeamUpload {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  mentorPair     TeamMentorPair?
+  mentorPairId String?
+  mentorPair    TeamMentorPair? @relation(fields: [mentorPairId], references: [id])
 }
 
 model Round {

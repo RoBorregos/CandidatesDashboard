@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, mentorProcedure } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
+import { beginnerTeamWhere } from "~/server/teams";
 
 export const mentorRouter = createTRPCRouter({
   getMyPair: mentorProcedure.query(async ({ ctx }) => {
@@ -164,9 +165,7 @@ export const mentorRouter = createTRPCRouter({
             isActive: true,
             mentorPair: null,
             id: { notIn: conflicts.map((conflict) => conflict.teamId) },
-            registrations: {
-              some: { track: "BEGINNER", edition: CURRENT_EDITION },
-            },
+            ...beginnerTeamWhere(CURRENT_EDITION),
           },
           orderBy: { name: "asc" },
         });

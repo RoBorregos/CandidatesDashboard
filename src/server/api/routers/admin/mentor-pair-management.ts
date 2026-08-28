@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
+import { beginnerTeamWhere } from "~/server/teams";
 
 const MENTOR_SELECT = { id: true, name: true, email: true } as const;
 
@@ -140,9 +141,7 @@ export const mentorPairManagementRouter = createTRPCRouter({
       where: {
         isActive: true,
         mentorPair: null,
-        registrations: {
-          some: { track: "BEGINNER", edition: CURRENT_EDITION },
-        },
+        ...beginnerTeamWhere(CURRENT_EDITION),
       },
       select: { id: true, name: true },
       orderBy: { name: "asc" },

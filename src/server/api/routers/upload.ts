@@ -11,14 +11,20 @@ import { db } from "~/server/db";
 /**
  * Upload microservice.
  *
- * Handles team uploads organized in folders on UploadThing with the shape:
- *   {teamName}/{week[1-6]}/{file}
+ * Handles uploads organized in folders on UploadThing with the shape:
+ *   {Semana-[1-5]}/{teamName}/{userName}/{file}  -- individual weeks
+ *   FINAL/{teamName}/{file}                        -- final submission, team-wide
  * and persists every upload (and its folder path) in the database via Prisma.
- * Week 6 is reserved for the final submission ("FINAL" in the UI).
+ *
+ * Weeks 1-5 are private to the user who uploaded them: only the owner sees
+ * their own folder. The FINAL week is shared by the whole team.
  */
 
-export const MAX_UPLOAD_WEEK = 6;
+export const MAX_UPLOAD_WEEK = 7;
 export const MIN_UPLOAD_WEEK = 1;
+export const MAX_INDIVIDUAL_WEEK = 5;
+// The reserved week number for the final submission ("FINAL" in the UI).
+export const FINAL_WEEK = 7;
 
 // Weekly comments are accumulated into a single COMMENTS.md. A single comment
 // (the "diff") is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
@@ -49,17 +55,56 @@ function sanitizeSegment(value: string): string {
     .replace(/[^\w.[\]()+-]/g, "");
 }
 
+/** First path segment for a week: "Semana-1"…"Semana-5" or "FINAL" for the final week. */
+export function weekSegment(week: number): string {
+  return week === FINAL_WEEK ? "FINAL" : `Semana-${week}`;
+}
+
+/** True when a week is the shared team-level FINAL submission. */
+export function isFinalWeek(week: number): boolean {
+  return week === FINAL_WEEK;
+}
+
 /**
- * Build the folder path an upload lives in on UploadThing:
- * `{teamName}/{week[1-7]}/{fileName}`. Used to display and to locate older
- * uploads of the same file.
+ * Build the folder prefix `{Semana-[1-5]|FINAL}/{teamName}` that every object
+ * of a week lives under. The user segment is only included for individual
+ * weeks, where each member gets their own private subfolder.
+ */
+function folderPrefix(
+  teamName: string,
+  week: number,
+  userName?: string | null,
+): string {
+  const team = sanitizeSegment(teamName);
+  const user = userName != null ? `/${sanitizeSegment(userName)}` : "";
+  return `${weekSegment(week)}/${team}${user}`;
+}
+
+/**
+ * Build the folder path for a team-wide week (the FINAL submission):
+ * `FINAL/{teamName}/{fileName}`. Used to display and to locate older uploads
+ * of the same file.
  */
 export function teamUploadFolderPath(
   teamName: string,
   week: number,
   fileName: string,
 ): string {
-  return `${sanitizeSegment(teamName)}/week${week}/${sanitizeSegment(fileName)}`;
+  return `${folderPrefix(teamName, week)}/${sanitizeSegment(fileName)}`;
+}
+
+/**
+ * Build the folder path for a user's private week (weeks 1-5):
+ * `{Semana-[1-5]}/{teamName}/{userName}/{fileName}`. Used to display and to
+ * locate older uploads of the same file.
+ */
+export function userUploadFolderPath(
+  teamName: string,
+  week: number,
+  userName: string,
+  fileName: string,
+): string {
+  return `${folderPrefix(teamName, week, userName)}/${sanitizeSegment(fileName)}`;
 }
 
 /**
@@ -67,24 +112,31 @@ export function teamUploadFolderPath(
  * an existing file regardless of which revision is stored (only legacy files
  * with a customId can match here).
  */
-function folderBase(teamName: string, week: number, fileName: string): string {
+function folderBase(
+  teamName: string,
+  week: number,
+  userName: string | null,
+  fileName: string,
+): string {
   const safe = sanitizeSegment(fileName);
   const dot = safe.lastIndexOf(".");
   const base = dot > 0 ? safe.slice(0, dot) : safe;
-  return `${sanitizeSegment(teamName)}/week${week}/${base}`;
+  return `${folderPrefix(teamName, week, userName)}/${base}`;
 }
 
 /**
- * Strip the folder prefix a renamed object carries (`{team}/week{n}/`) and
- * return the original file name. Kept deterministic so the object name on
- * UploadThing is exactly `{team}/week{n}/{fileName}`.
+ * Strip the folder prefix a renamed object carries
+ * (`{Semana-[1-5]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
+ * file name. Kept deterministic so the object name on UploadThing is exactly
+ * the folder path + file name.
  */
 export function stripFolderPrefix(
   teamName: string,
   week: number,
+  userName: string | null,
   fullName: string,
 ): string {
-  const prefix = `${sanitizeSegment(teamName)}/week${week}/`;
+  const prefix = `${folderPrefix(teamName, week, userName)}/`;
   return fullName.startsWith(prefix) ? fullName.slice(prefix.length) : fullName;
 }
 
@@ -170,10 +222,11 @@ export async function clearFolderConflicts(
   teamName: string,
   week: number,
   fileNames: string[],
+  userName: string | null,
 ): Promise<{ freedKeys: string[]; conflicts: { fileName: string; customId: string }[] }> {
   const bases = fileNames.map((fileName) => ({
     fileName,
-    base: folderBase(teamName, week, fileName),
+    base: folderBase(teamName, week, userName, fileName),
   }));
 
   const all = await listAllFiles();
@@ -204,16 +257,25 @@ export type TeamUploadRecord = {
   fileUrl: string;
   fileSize: number | null;
   fileType: string | null;
+  // Owner for individual weeks; null for the team-wide FINAL week.
+  userId: string | null;
 };
 
 /**
  * Persist an upload record. Because the object name is deterministic
- * (`{team}/week{n}/{filename}`), re-uploading a file replaces the previous
- * record: the older DB row and storage file are freed here.
+ * (`{Semana-[1-5]}/{team}/{user}/{filename}` for individual weeks,
+ * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
+ * previous record: the older DB row and storage file are freed here.
  */
 export async function recordTeamUpload(input: TeamUploadRecord) {
   const older = await db.teamUpload.findMany({
-    where: { teamId: input.teamId, week: input.week, name: input.name },
+    where: {
+      teamId: input.teamId,
+      week: input.week,
+      name: input.name,
+      // For individual weeks only the owner's previous record can be replaced.
+      ...(isFinalWeek(input.week) ? {} : { userId: input.userId }),
+    },
     select: { id: true, fileKey: true },
   });
 
@@ -251,16 +313,36 @@ export async function weekUsageBytes(
   client: typeof db,
   teamId: string,
   week: number,
+  userId: string | null,
 ): Promise<number> {
   const rows = await client.teamUpload.findMany({
-    where: { teamId, week, NOT: { name: COMMENTS_FILE } },
+    where: {
+      teamId,
+      week,
+      NOT: { name: COMMENTS_FILE },
+      // Individual weeks bill only the user's own subfolder; the FINAL week
+      // counts the whole shared folder.
+      ...(isFinalWeek(week) ? {} : { userId }),
+    },
     select: { fileSize: true },
   });
   return rows.reduce((sum, row) => sum + (row.fileSize ?? 0), 0);
 }
 
 /**
- * Append a comment (a diff) to the team's COMMENTS.md.
+ * Resolve the folder segment for a user's private week folder. Falls back to
+ * the user id when the profile has no display name so every user still gets an
+ * isolated, deterministic subfolder.
+ */
+export function folderUserName(
+  userName: string | null | undefined,
+  userId: string,
+): string {
+  return userName != null && userName.trim().length > 0 ? userName : userId;
+}
+
+/**
+ * Append a comment (a diff) to a user's/team's COMMENTS.md.
  *
  * Reads the current COMMENTS.md, appends the comment (terminated by \x04 and
  * separated by a linebreak), re-stores the file and replaces the DB record.
@@ -274,8 +356,13 @@ export async function appendCommentToFile(input: {
   teamName: string;
   week: number;
   text: string;
+  // A user's private week has its own COMMENTS.md inside the user folder;
+  // the team-wide FINAL week shares a single COMMENTS.md (userId null).
+  userId: string | null;
+  // Concrete folder segment used for individual weeks (already resolved).
+  userName: string;
 }): Promise<void> {
-  const { db, teamId, teamName, week, text } = input;
+  const { db, teamId, teamName, week, text, userId, userName } = input;
 
   if (text.length > MAX_COMMENT_CHARS) {
     throw new TRPCError({
@@ -292,7 +379,12 @@ export async function appendCommentToFile(input: {
   }
 
   const existing = await db.teamUpload.findFirst({
-    where: { teamId, week, name: COMMENTS_FILE },
+    where: {
+      teamId,
+      week,
+      name: COMMENTS_FILE,
+      ...(isFinalWeek(week) ? {} : { userId }),
+    },
   });
 
   let content = "";
@@ -321,7 +413,9 @@ export async function appendCommentToFile(input: {
 
   const appended = content ? `${content}\n${text}\x04` : `${text}\x04`;
 
-  const fileName = teamUploadFolderPath(teamName, week, COMMENTS_FILE);
+  const fileName = isFinalWeek(week)
+    ? teamUploadFolderPath(teamName, week, COMMENTS_FILE)
+    : userUploadFolderPath(teamName, week, userName, COMMENTS_FILE);
   const result = await utapi.uploadFiles([
     new File([appended], fileName, { type: "text/markdown" }),
   ]);
@@ -344,29 +438,40 @@ export async function appendCommentToFile(input: {
     fileUrl: file.ufsUrl,
     fileSize: file.size ?? null,
     fileType: "text/markdown",
+    userId: isFinalWeek(week) ? null : userId,
   });
 }
 
 export const uploadRouter = createTRPCRouter({
-  /** Every upload of the caller's team, newest first. */
+  /** Every upload visible to the caller: their own individual weeks + the team-wide FINAL week. */
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const teamId = await currentTeamId(ctx);
     if (!teamId) return [];
     const records = await ctx.db.teamUpload.findMany({
-      where: { teamId },
+      where: {
+        teamId,
+        // Weeks 1-5 are private (only the owner's files), the FINAL week is shared.
+        OR: [{ week: FINAL_WEEK }, { userId: ctx.session.user.id }],
+      },
       orderBy: [{ week: "asc" }, { createdAt: "desc" }],
     });
     return reconcileWithStorage(records);
   }),
 
-  /** Uploads of the caller's team for a single week (1-7). */
+  /** Uploads visible to the caller for a single week (1-7). */
   getByWeek: protectedProcedure
     .input(z.object({ week: uploadWeekSchema }))
     .query(async ({ ctx, input }) => {
       const teamId = await currentTeamId(ctx);
       if (!teamId) return [];
       const records = await ctx.db.teamUpload.findMany({
-        where: { teamId, week: input.week },
+        where: {
+          teamId,
+          week: input.week,
+          // Individual weeks only surface the caller's own folder; the FINAL
+          // week is shared by the whole team.
+          ...(isFinalWeek(input.week) ? {} : { userId: ctx.session.user.id }),
+        },
         orderBy: { createdAt: "desc" },
       });
       return reconcileWithStorage(records);
@@ -375,9 +480,10 @@ export const uploadRouter = createTRPCRouter({
   /**
    * Pre-upload gate: the client calls this BEFORE uploading to verify that the
    * target folder paths on UploadThing are clear. Any file that already lives
-   * at `{teamName}/week{n}/*` for a same-named file is freed so the upload
-   * cannot collide with a 409. Also serves as a manual reconciliation when the
-   * realtime list refresh fails for another account.
+   * in the caller's `{Semana-[1-5]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
+   * with the same name is freed so the upload cannot collide with a 409. Also
+   * serves as a manual reconciliation when the realtime list refresh fails for
+   * another account.
    */
   prepareUpload: protectedProcedure
     .input(
@@ -403,10 +509,14 @@ export const uploadRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el equipo" });
       }
 
+      const userName = isFinalWeek(input.week)
+        ? null
+        : folderUserName(ctx.session.user.name, ctx.session.user.id);
       const { freedKeys, conflicts } = await clearFolderConflicts(
         team.name,
         input.week,
         input.fileNames,
+        userName,
       );
 
       return {
@@ -418,14 +528,15 @@ export const uploadRouter = createTRPCRouter({
     }),
 
   /**
-   * Append a weekly comment (a diff) to the team's COMMENTS.md.
+   * Append a weekly comment (a diff) to the caller's COMMENTS.md.
    *
    * The client only sends the new comment text; the server takes care of
    * reading the current COMMENTS.md, appending the comment, and re-storing the
    * file. This keeps every comment (terminated by \x04 and separated by a
-   * linebreak) inside a single COMMENTS.md per week without the client having
-   * to download and re-upload the whole file. The input is capped at
-   * MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES bytes.
+   * linebreak) inside a single per-user COMMENTS.md for weeks 1-5 (and a
+   * shared one for FINAL) without the client having to download and re-upload
+   * the whole file. The input is capped at MAX_COMMENT_CHARS characters and
+   * MAX_COMMENT_BYTES bytes.
    */
   submitComment: protectedProcedure
     .input(
@@ -458,6 +569,8 @@ export const uploadRouter = createTRPCRouter({
         teamName: team.name,
         week: input.week,
         text,
+        userId: isFinalWeek(input.week) ? null : ctx.session.user.id,
+        userName: folderUserName(ctx.session.user.name, ctx.session.user.id),
       });
 
       return { saved: true };
@@ -482,6 +595,14 @@ export const uploadRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "El archivo no existe",
+        });
+      }
+
+      // Individual weeks are private: only the owner can remove their files.
+      if (!isFinalWeek(upload.week) && upload.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No puedes eliminar archivos de otra persona",
         });
       }
 

@@ -50,7 +50,23 @@ function formatBytes(bytes: number | null): string {
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-export default function WeekUploads({ teamName }: { teamName: string }) {
+// Mirrors the server's sanitizeSegment: spaces become dashes and non-word
+// characters are dropped, so the folder shown matches the UploadThing path.
+function dashedUserName(name: string): string {
+  return name
+    .normalize("NFKD")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w.[\]()+-]/g, "");
+}
+
+export default function WeekUploads({
+  teamName,
+  userName,
+}: {
+  teamName: string;
+  userName: string;
+}) {
   const [week, setWeek] = useState<WeekKey>(1);
 
   return (
@@ -62,8 +78,9 @@ export default function WeekUploads({ teamName }: { teamName: string }) {
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Se guardan en una carpeta por
-        equipo y semana.
+        Sube aquí los archivos de cada semana. Las semanas 1 a 5 son personales
+        (solo tú ves tus archivos); la entrega final es compartida con todo tu
+        equipo.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -83,16 +100,18 @@ export default function WeekUploads({ teamName }: { teamName: string }) {
         ))}
       </div>
 
-      <WeekFiles teamName={teamName} week={week} />
+      <WeekFiles teamName={teamName} userName={userName} week={week} />
     </div>
   );
 }
 
 function WeekFiles({
   teamName,
+  userName,
   week,
 }: {
   teamName: string;
+  userName: string;
   week: WeekKey;
 }) {
   const utils = api.useUtils();
@@ -386,14 +405,19 @@ function WeekFiles({
     uploadedBytes + pendingFiles.reduce((sum, f) => sum + f.size, 0);
   const weeklyPct = Math.min(100, (weeklyUsageBytes / MAX_WEEK_BYTES) * 100);
 
+  // Weeks 1-5 live in the caller's private folder; the FINAL week is shared by
+  // the whole team in a single folder.
+  const folderLabel =
+    week === "FINAL"
+      ? `FINAL/${teamName}/`
+      : `Semana-${weekNumber}/${teamName}/${dashedUserName(userName)}/`;
+
   return (
     <div className="mt-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-neutral-400">
           Carpeta:{" "}
-          <code className="text-roboblue">
-            {teamName}/week{weekNumber}/
-          </code>
+          <code className="text-roboblue">{folderLabel}</code>
         </p>
 
         <p className="shrink-0 text-right text-xs text-neutral-400">
@@ -490,10 +514,7 @@ function WeekFiles({
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-neutral-500">
-            Se guardará en{" "}
-            <code className="text-roboblue">
-              {teamName}/week{weekNumber}/{COMMENTS_FILE}
-            </code>
+            Nota: Los comentarios son individuales.
           </p>
           <button
             type="button"

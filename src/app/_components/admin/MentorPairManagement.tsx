@@ -83,6 +83,16 @@ export default function MentorPairManagement() {
     },
   });
 
+  const clearConflict = api.admin.clearPairTeamConflict.useMutation({
+    onSuccess: async () => {
+      toast.success("Conflict cleared. This pair can take that team again.");
+      await refetchPairData();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleOpenPreview = async () => {
     setShowPreview(true);
     await preview.refetch();
@@ -109,13 +119,21 @@ export default function MentorPairManagement() {
 
   const allTeams = useMemo(() => teams ?? [], [teams]);
 
+  const pairsAwaitingTeam = useMemo(
+    () =>
+      (pairs ?? []).filter(
+        (pair) => pair.teams.length === 0 && pair.conflicts.length > 0,
+      ),
+    [pairs],
+  );
+
   return (
     <div className="space-y-6">
       {/* ========================================================= */}
       {/* Overview */}
       {/* ========================================================= */}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg bg-gray-800 p-5">
           <p className="text-sm uppercase tracking-wide text-gray-400">
             Mentor Pairs
@@ -132,6 +150,28 @@ export default function MentorPairManagement() {
           <p className="mt-1 text-3xl font-bold text-white">
             {unpairedMentors?.length ?? 0}
           </p>
+        </div>
+
+        <div
+          className={`rounded-lg p-5 ${
+            pairsAwaitingTeam.length > 0 ? "bg-yellow-900/40" : "bg-gray-800"
+          }`}
+        >
+          <p className="text-sm uppercase tracking-wide text-gray-400">
+            Pairs Awaiting a Team
+          </p>
+          <p
+            className={`mt-1 text-3xl font-bold ${
+              pairsAwaitingTeam.length > 0 ? "text-yellow-300" : "text-white"
+            }`}
+          >
+            {pairsAwaitingTeam.length}
+          </p>
+          {pairsAwaitingTeam.length > 0 && (
+            <p className="mt-1 text-xs text-yellow-200/80">
+              Released after a conflict — no free team to move them to.
+            </p>
+          )}
         </div>
       </div>
 
@@ -252,6 +292,9 @@ export default function MentorPairManagement() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
                     Teams
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Reported Conflicts
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400">
                     Action
                   </th>
@@ -268,9 +311,47 @@ export default function MentorPairManagement() {
                       {pair.mentorB.name ?? pair.mentorB.email}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-300">
-                      {pair.teams.length > 0
-                        ? pair.teams.map((t) => t.team.name).join(", ")
-                        : "Unassigned"}
+                      {pair.teams.length > 0 ? (
+                        pair.teams.map((t) => t.team.name).join(", ")
+                      ) : pair.conflicts.length > 0 ? (
+                        <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
+                          Awaiting reassignment
+                        </span>
+                      ) : (
+                        "Unassigned"
+                      )}
+                    </td>
+
+                    <td className="px-4 py-4 text-sm text-gray-300">
+                      {pair.conflicts.length === 0 ? (
+                        <span className="text-gray-500">—</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {pair.conflicts.map((conflict) => (
+                            <div
+                              key={conflict.teamId}
+                              className="flex items-center gap-2"
+                            >
+                              <span title={`Reported by ${conflict.reportedBy.name ?? conflict.reportedBy.email ?? "a mentor"}`}>
+                                {conflict.team.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  clearConflict.mutate({
+                                    pairId: pair.id,
+                                    teamId: conflict.teamId,
+                                  })
+                                }
+                                disabled={clearConflict.isPending}
+                                className="rounded bg-gray-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <button
@@ -385,13 +466,13 @@ export default function MentorPairManagement() {
               </p>
             )}
 
-            {preview.data && preview.data.steps.length === 0 && (
-              <p className="py-4 text-center text-gray-400">
-                {preview.data.unassignableTeams.length > 0
-                  ? "No mentor pairs exist yet — create at least one pair first."
-                  : "No beginner teams are waiting for a mentor pair."}
-              </p>
-            )}
+            {preview.data &&
+              preview.data.steps.length === 0 &&
+              preview.data.unassignableTeams.length === 0 && (
+                <p className="py-4 text-center text-gray-400">
+                  No beginner teams are waiting for a mentor pair.
+                </p>
+              )}
 
             {preview.data && preview.data.steps.length > 0 && (
               <>
@@ -414,6 +495,25 @@ export default function MentorPairManagement() {
                   ))}
                 </div>
               </>
+            )}
+
+            {preview.data && preview.data.unassignableTeams.length > 0 && (
+              <div className="mt-4 rounded border border-yellow-700/60 bg-yellow-900/20 p-3">
+                <p className="text-sm font-medium text-yellow-300">
+                  {preview.data.unassignableTeams.length} team(s) can&apos;t be
+                  auto-assigned
+                </p>
+                <p className="mt-1 text-xs text-yellow-200/80">
+                  {(pairs?.length ?? 0) === 0
+                    ? "No mentor pairs exist yet — create at least one pair first."
+                    : "Every remaining pair reported knowing someone on them. Assign manually or clear a conflict."}
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-gray-300">
+                  {preview.data.unassignableTeams.map((team) => (
+                    <li key={team.id}>{team.name}</li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             <div className="mt-6 flex justify-end gap-3">

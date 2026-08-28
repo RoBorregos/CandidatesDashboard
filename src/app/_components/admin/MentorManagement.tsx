@@ -10,13 +10,15 @@ export default function MentorManagement() {
   const [candidateSearch, setCandidateSearch] = useState("");
   // Whose mentor access the "Mentor Access" card is currently editing.
   const [selectedAdminId, setSelectedAdminId] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [hideRegistered, setHideRegistered] = useState(true);
 
   const utils = api.useUtils();
 
   const { data: mentors, isLoading: mentorsLoading } =
     api.admin.getMentors.useQuery();
 
-  const { data: allUsers } = api.admin.getAllUsers.useQuery();
+  const { data: allUsers } = api.admin.getMentorEligibleUsers.useQuery();
 
   const { data: candidates, isLoading: candidatesLoading } =
     api.admin.getCandidates.useQuery();
@@ -57,7 +59,7 @@ export default function MentorManagement() {
         result.isMentor ? "Mentor access granted." : "Mentor access removed.",
       );
 
-      await utils.admin.getAllUsers.invalidate();
+      await utils.admin.getMentorEligibleUsers.invalidate();
       await utils.admin.getMentors.invalidate();
     },
     onError: (error) => {
@@ -67,6 +69,37 @@ export default function MentorManagement() {
 
   // Any user is eligible to be a mentor, independent of their role.
   const eligibleUsers = useMemo(() => allUsers ?? [], [allUsers]);
+
+  /*
+   * Every account that ever logged in lands in this list, so it is mostly
+   * contestants. Hide whoever filled this edition's registration and let a
+   * search narrow the rest — a mentor is never someone who registered.
+   * Already-granted mentors stay visible so access can be revoked.
+   */
+  const visibleUsers = useMemo(() => {
+    const search = userSearch.trim().toLowerCase();
+
+    return eligibleUsers.filter((user) => {
+      if (hideRegistered && user.hasRegistration && !user.isMentor) {
+        return false;
+      }
+
+      if (!search) return true;
+
+      const name = user.name?.toLowerCase() ?? "";
+      const email = user.email?.toLowerCase() ?? "";
+
+      return name.includes(search) || email.includes(search);
+    });
+  }, [eligibleUsers, hideRegistered, userSearch]);
+
+  // Only what the registration filter hides, so the count doesn't move with the search.
+  const hiddenCount = useMemo(
+    () =>
+      eligibleUsers.filter((user) => user.hasRegistration && !user.isMentor)
+        .length,
+    [eligibleUsers],
+  );
 
   // The user currently picked in the Mentor Access card, if any.
   const selectedAdmin = useMemo(
@@ -248,35 +281,81 @@ export default function MentorManagement() {
 
         <div>
           <label
-            htmlFor="mentor-access-select"
+            htmlFor="mentor-access-search"
             className="mb-2 block text-sm font-medium text-gray-300"
           >
             User
           </label>
 
-          <select
-            id="mentor-access-select"
-            value={selectedAdminId}
-            onChange={(event) => setSelectedAdminId(event.target.value)}
-            disabled={eligibleUsers.length === 0 || setUserMentor.isPending}
-            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">Select a user...</option>
+          <input
+            id="mentor-access-search"
+            type="text"
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+            placeholder="Search by name or email..."
+            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500"
+          />
 
-            {eligibleUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name ?? "Unnamed user"}
-                {user.email ? ` — ${user.email}` : ""}
-                {user.isMentor ? " (mentor)" : ""}
-              </option>
-            ))}
-          </select>
+          <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={hideRegistered}
+              onChange={(event) => setHideRegistered(event.target.checked)}
+              className="h-4 w-4 rounded border-gray-600 bg-gray-700"
+            />
+            <span>
+              Hide people who filled this edition&apos;s registration
+              {hideRegistered && hiddenCount > 0 ? ` (${hiddenCount} hidden)` : ""}
+            </span>
+          </label>
 
-          {eligibleUsers.length === 0 && (
-            <p className="mt-2 text-sm text-yellow-400">
-              No users found.
-            </p>
-          )}
+          <div className="mt-3 max-h-72 overflow-y-auto rounded-md border border-gray-700">
+            {visibleUsers.length === 0 ? (
+              <p className="p-4 text-sm text-yellow-400">
+                {eligibleUsers.length === 0
+                  ? "No users found."
+                  : "No user matches this search. Try clearing the filter above."}
+              </p>
+            ) : (
+              visibleUsers.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => setSelectedAdminId(user.id)}
+                  className={`flex w-full items-center justify-between gap-3 border-b border-gray-700 px-3 py-2 text-left last:border-b-0 hover:bg-gray-700 ${
+                    selectedAdminId === user.id ? "bg-gray-700" : ""
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-white">
+                      {user.name ?? "Unnamed user"}
+                    </span>
+                    <span className="block truncate text-xs text-gray-400">
+                      {user.email ?? "—"}
+                    </span>
+                  </span>
+
+                  <span className="flex shrink-0 items-center gap-1">
+                    {user.isMentor && (
+                      <span className="rounded-full bg-green-900/60 px-2 py-0.5 text-xs font-medium text-green-300">
+                        Mentor
+                      </span>
+                    )}
+                    {user.isStaff && (
+                      <span className="rounded-full bg-blue-900/60 px-2 py-0.5 text-xs font-medium text-blue-300">
+                        Staff
+                      </span>
+                    )}
+                    {user.hasRegistration && (
+                      <span className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300">
+                        Registered
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
         {selectedAdmin && (

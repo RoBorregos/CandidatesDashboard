@@ -130,7 +130,8 @@ model MentorPair {
   mentorBId String
   mentorB   User   @relation("MentorPairB", fields: [mentorBId], references: [id], onDelete: Cascade)
 
-  teams TeamMentorPair[]
+  teams     TeamMentorPair[]
+  conflicts MentorPairTeamConflict[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,6 +147,42 @@ model TeamMentorPair {
   mentorPairId String
   mentorPair   MentorPair @relation(fields: [mentorPairId], references: [id], onDelete: Cascade)
   assignedAt   DateTime   @default(now())
+
+  mentorAKnowsTeam Boolean?
+  mentorBKnowsTeam Boolean?
+}
+
+model MentorChallenge {
+  id String @id @default(cuid())
+
+  mentorId String
+  mentor   User   @relation("MentorChallenges", fields: [mentorId], references: [id], onDelete: Cascade)
+
+  challenge String
+  edition   Int    @default(2026)
+
+  createdAt DateTime @default(now())
+
+  @@unique([mentorId, challenge, edition])
+  @@index([challenge, edition])
+}
+
+model MentorPairTeamConflict {
+  id String @id @default(cuid())
+
+  mentorPairId String
+  mentorPair   MentorPair @relation(fields: [mentorPairId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  reportedById String
+  reportedBy   User   @relation("ReportedTeamConflicts", fields: [reportedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([mentorPairId, teamId])
+  @@index([teamId])
 }
 
 model Interviewer {
@@ -182,6 +219,9 @@ model User {
   menteeAssignments   MentorAssignment[]   @relation("UserMentorAssignment")
   mentorPairAs        MentorPair[]         @relation("MentorPairA")
   mentorPairBs        MentorPair[]         @relation("MentorPairB")
+
+  reportedTeamConflicts MentorPairTeamConflict[] @relation("ReportedTeamConflicts")
+  mentorChallenges      MentorChallenge[]        @relation("MentorChallenges")
 }
 
 model VerificationToken {
@@ -220,6 +260,8 @@ model Team {
   members        User[]
   registrations  Registration[]
   mentorPair     TeamMentorPair?
+
+  mentorPairConflicts MentorPairTeamConflict[]
 }
 
 model Round {

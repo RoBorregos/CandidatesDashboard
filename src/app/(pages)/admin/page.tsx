@@ -12,6 +12,7 @@ import StaffManagement from "~/app/_components/admin/StaffManagement";
 import RegistrationManagement from "~/app/_components/admin/RegistrationManagement";
 import MentorManagement from "~/app/_components/admin/MentorManagement";
 import MentorPairManagement from "~/app/_components/admin/MentorPairManagement";
+import ChallengeMentorManagement from "~/app/_components/admin/ChallengeMentorManagement";
 
 type AdminTab =
   | "management"
@@ -22,7 +23,8 @@ type AdminTab =
   | "interviews"
   | "staff"
   | "mentors"
-  | "mentorPairs";
+  | "mentorPairs"
+  | "challengeMentors";
 
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<AdminTab>("management");
@@ -67,6 +69,7 @@ export default function AdminPage() {
             { id: "staff", label: "Staff" },
             { id: "mentors", label: "Mentors" },
             { id: "mentorPairs", label: "Mentor Pairs" },
+            { id: "challengeMentors", label: "Challenge Mentors" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -127,6 +130,8 @@ export default function AdminPage() {
         {selectedTab === "mentors" && <MentorManagement />}
 
         {selectedTab === "mentorPairs" && <MentorPairManagement />}
+
+        {selectedTab === "challengeMentors" && <ChallengeMentorManagement />}
       </div>
     </main>
   );

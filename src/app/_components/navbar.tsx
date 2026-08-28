@@ -27,6 +27,7 @@ export default async function Navbar() {
         <Link href="schedule">Schedule</Link>
         <Link href="team">Team</Link>
         {canJudge && <Link href="judge">Judge</Link>}
+        {session?.user.isMentor && <Link href="mentor">Mentor</Link>}
         {session?.user.role === Role.ADMIN && <Link href="admin">Admin</Link>}
         <Link href="editions">Past Editions</Link>
         <Link href="https://www.roborregos.com">About us</Link>

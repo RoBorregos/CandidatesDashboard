@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
-import { UploadDropzone } from "../uploadthing";
+import { useUploadThing } from "../uploadthing";
 
 const WEEKS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -82,8 +82,49 @@ function WeekFiles({
 
   const prepareUpload = api.uploads.prepareUpload.useMutation();
 
-  const [uploading, setUploading] = useState(false);
   const [uploadSucceeded, setUploadSucceeded] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload, isUploading } = useUploadThing("teamUploader", {
+    onBeforeUploadBegin: async (selectedFiles) => {
+      if (selectedFiles.length > 0) {
+        try {
+          const result = await prepareUpload.mutateAsync({
+            week,
+            fileNames: selectedFiles.map((file) => file.name),
+          });
+          if (result.freed > 0 || result.conflicts.length > 0) {
+            toast.info("Se reemplazará el archivo anterior de la carpeta");
+          }
+        } catch {
+          // The server-side middleware frees conflicts too, so a failed
+          // pre-check doesn't have to block the upload.
+        }
+      }
+      return selectedFiles;
+    },
+    onUploadBegin: () => {
+      setUploadSucceeded(false);
+      setUploadProgress(0);
+    },
+    onUploadProgress: (progress) => setUploadProgress(progress),
+    onClientUploadComplete: async () => {
+      setUploadSucceeded(true);
+      await utils.uploads.getByWeek.invalidate({ week });
+      toast.success("Archivo subido correctamente");
+    },
+    onUploadError: (error) => {
+      setUploadSucceeded(false);
+      toast.error(`Error al subir: ${error.message}`);
+    },
+  });
+
+  const handleFiles = (selectedFiles: File[]) => {
+    if (selectedFiles.length === 0 || isUploading) return;
+    void startUpload(selectedFiles, { week });
+  };
 
   return (
     <div className="mt-5">
@@ -95,62 +136,58 @@ function WeekFiles({
       </p>
 
       <div className="mt-3">
-        <UploadDropzone
-          endpoint="teamUploader"
-          input={{ week }}
-          className="week-uploads-dropzone"
-          appearance={{
-            button: ({ files }) => {
-              if (uploading) return { backgroundColor: "#22c57e" };
-              if (uploadSucceeded || (files ?? []).length > 0)
-                return { backgroundColor: "#22c57e" };
-              return { backgroundColor: "#3b82f6" };
-            },
+        <div
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(event) => event.preventDefault()}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setIsDragActive(true);
           }}
-          onBeforeUploadBegin={async (selectedFiles) => {
-            if (selectedFiles.length > 0) {
-              try {
-                const result = await prepareUpload.mutateAsync({
-                  week,
-                  fileNames: selectedFiles.map((file) => file.name),
-                });
-                if (result.freed > 0 || result.conflicts.length > 0) {
-                  toast.info(
-                    "Se reemplazará el archivo anterior de la carpeta",
-                  );
-                }
-              } catch {
-                // The server-side middleware frees conflicts too, so a failed
-                // pre-check doesn't have to block the upload.
-              }
-            }
-            return selectedFiles;
+          onDragLeave={() => setIsDragActive(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragActive(false);
+            handleFiles(Array.from(event.dataTransfer.files));
           }}
-          onUploadBegin={() => {
-            setUploading(true);
-            setUploadSucceeded(false);
-          }}
-          onClientUploadComplete={async () => {
-            setUploading(false);
-            setUploadSucceeded(true);
-            await utils.uploads.getByWeek.invalidate({ week });
-            toast.success("Archivo subido correctamente");
-          }}
-          onUploadError={(error) => {
-            setUploading(false);
-            setUploadSucceeded(false);
-            toast.error(`Error al subir: ${error.message}`);
-          }}
-          content={{
-            button: ({ files, isUploading }) => {
-              if (isUploading || uploading) return "Uploading...";
-              if (uploadSucceeded || (files ?? []).length > 0) return "Upload file";
-              return "Choose file";
-            },
-            label: `Suelta o selecciona los archivos de la semana ${week}`,
-            allowedContent: "Cualquier archivo (máx. 64MB por archivo)",
-          }}
-        />
+          className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+            isDragActive
+              ? "border-roboblue bg-roboblue/10"
+              : "border-neutral-700 bg-black/40 hover:border-neutral-500"
+          }`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              handleFiles(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }}
+          />
+          <p className="text-sm font-medium text-neutral-200">
+            {isUploading
+              ? "Subiendo…"
+              : `Suelta o selecciona los archivos de la semana ${week}`}
+          </p>
+          <p className="text-xs text-neutral-500">
+            Cualquier archivo (máx. 64MB por archivo)
+          </p>
+        </div>
+
+        {isUploading && (
+          <div className="mt-3">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div
+                className="h-full rounded-full bg-green-500 transition-[width] duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-neutral-400">
+              Subiendo… {uploadProgress}%
+            </p>
+          </div>
+        )}
       </div>
 
       {uploadSucceeded && (

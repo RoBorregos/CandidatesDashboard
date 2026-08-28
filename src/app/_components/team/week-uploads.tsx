@@ -20,7 +20,7 @@ const WEEK_LABELS: Record<WeekKey, string> = {
 
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
-const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
+const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 6 : week);
 
 // Comments for a week are accumulated into a single COMMENTS.md. A single
 // comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES

@@ -8,6 +8,7 @@ import { interviewManagementRouter } from "./admin/interview-management";
 import { testingUtilitiesRouter } from "./admin/testing-utilities";
 import { staffManagementRouter } from "./admin/staff-management";
 import { mentorManagementRouter } from "./admin/mentor-management";
+import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -64,4 +65,14 @@ export const adminRouter = createTRPCRouter({
   getAssignments: mentorManagementRouter.getAssignments,
   assignMentor: mentorManagementRouter.assignMentor,
   removeMentor: mentorManagementRouter.removeMentor,
+
+  // Mentor Pair Management
+  getPairs: mentorPairManagementRouter.getPairs,
+  getUnpairedMentors: mentorPairManagementRouter.getUnpairedMentors,
+  createPair: mentorPairManagementRouter.createPair,
+  dissolvePair: mentorPairManagementRouter.dissolvePair,
+  previewPairAssignment: mentorPairManagementRouter.previewPairAssignment,
+  commitPairAssignment: mentorPairManagementRouter.commitPairAssignment,
+  assignPairToTeam: mentorPairManagementRouter.assignPairToTeam,
+  unassignPairFromTeam: mentorPairManagementRouter.unassignPairFromTeam,
 });

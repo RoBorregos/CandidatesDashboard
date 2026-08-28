@@ -3,10 +3,37 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, mentorProcedure } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
 import { beginnerTeamIds } from "~/server/teams";
+import type { InterviewArea, PrismaClient } from "@prisma/client";
+
+type Contact = { phone: string; interviewArea: InterviewArea | null };
+
+/*
+ * Phone and interview area live on RegistrationMember, but a team's members
+ * are Users. RegistrationMember.userId is never written by the app, so the
+ * two are matched by email, the same way acceptRegistration does it.
+ */
+async function contactsByEmail(
+  db: PrismaClient,
+  emails: string[],
+): Promise<Map<string, Contact>> {
+  if (emails.length === 0) return new Map();
+
+  const members = await db.registrationMember.findMany({
+    where: { edition: CURRENT_EDITION, email: { in: emails } },
+    select: { email: true, phone: true, interviewArea: true },
+  });
+
+  return new Map(
+    members.map((member) => [
+      member.email.toLowerCase(),
+      { phone: member.phone, interviewArea: member.interviewArea },
+    ]),
+  );
+}
 
 export const mentorRouter = createTRPCRouter({
   getMyPair: mentorProcedure.query(async ({ ctx }) => {
-    return ctx.db.mentorPair.findFirst({
+    const pair = await ctx.db.mentorPair.findFirst({
       where: {
         edition: CURRENT_EDITION,
         OR: [
@@ -35,17 +62,99 @@ export const mentorRouter = createTRPCRouter({
         },
       },
     });
+
+    if (!pair) return null;
+
+    // Mentors need the candidates' contact details, which only the
+    // registration has.
+    const contacts = await contactsByEmail(
+      ctx.db,
+      pair.teams.flatMap((assignment) =>
+        assignment.team.members.flatMap((member) =>
+          member.email ? [member.email] : [],
+        ),
+      ),
+    );
+
+    return {
+      ...pair,
+      teams: pair.teams.map((assignment) => ({
+        ...assignment,
+        team: {
+          ...assignment.team,
+          members: assignment.team.members.map((member) => {
+            const contact = member.email
+              ? contacts.get(member.email.toLowerCase())
+              : undefined;
+
+            return {
+              ...member,
+              phone: contact?.phone ?? null,
+              // The User copy is only filled once a registration is accepted.
+              interviewArea: member.interviewArea ?? contact?.interviewArea ?? null,
+            };
+          }),
+        },
+      })),
+    };
   }),
 
   // My individually assigned (advanced) candidates.
   getMyAssignments: mentorProcedure.query(async ({ ctx }) => {
-    return ctx.db.mentorAssignment.findMany({
+    const assignments = await ctx.db.mentorAssignment.findMany({
       where: { mentorId: ctx.session.user.id },
       include: {
-        user: { select: { id: true, name: true, email: true } },
-        registrationMember: { select: { id: true, name: true, email: true } },
+        user: {
+          select: { id: true, name: true, email: true, interviewArea: true },
+        },
+        registrationMember: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            interviewArea: true,
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
+    });
+
+    /*
+     * An assignment made against the user alone carries no phone, so fall
+     * back to the registration that shares its email.
+     */
+    const contacts = await contactsByEmail(
+      ctx.db,
+      assignments.flatMap((assignment) =>
+        !assignment.registrationMember && assignment.user?.email
+          ? [assignment.user.email]
+          : [],
+      ),
+    );
+
+    return assignments.map((assignment) => {
+      const fallback = assignment.user?.email
+        ? contacts.get(assignment.user.email.toLowerCase())
+        : undefined;
+
+      return {
+        ...assignment,
+        name:
+          assignment.registrationMember?.name ??
+          assignment.user?.name ??
+          assignment.registrationMember?.email ??
+          assignment.user?.email ??
+          "Unknown candidate",
+        email:
+          assignment.registrationMember?.email ?? assignment.user?.email ?? null,
+        phone: assignment.registrationMember?.phone ?? fallback?.phone ?? null,
+        interviewArea:
+          assignment.registrationMember?.interviewArea ??
+          assignment.user?.interviewArea ??
+          fallback?.interviewArea ??
+          null,
+      };
     });
   }),
 
@@ -78,6 +187,7 @@ export const mentorRouter = createTRPCRouter({
         id: true,
         name: true,
         email: true,
+        phone: true,
         interviewArea: true,
         registration: { select: { challenge: true } },
       },

@@ -109,6 +109,12 @@ export default async function MentorPage() {
                           <th className="border-l border-t border-gray-700 px-3 py-3">
                             Area
                           </th>
+                          <th className="border-l border-t border-gray-700 px-3 py-3">
+                            Email
+                          </th>
+                          <th className="border-l border-t border-gray-700 px-3 py-3">
+                            Phone
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -117,23 +123,42 @@ export default async function MentorPage() {
                             key={member.id}
                             className="border-t border-gray-700 hover:bg-gray-900"
                           >
-                            <td className="border-l border-gray-700 px-3 py-3 first:border-l-0">
-                              <div className="font-medium">
-                                {member.name ?? member.email}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {member.email}
-                              </div>
+                            <td className="border-l border-gray-700 px-3 py-3 font-medium first:border-l-0">
+                              {member.name ?? member.email ?? "—"}
                             </td>
                             <td className="border-l border-gray-700 px-3 py-3">
                               {member.interviewArea ?? "-"}
+                            </td>
+                            <td className="border-l border-gray-700 px-3 py-3">
+                              {member.email ? (
+                                <a
+                                  href={`mailto:${member.email}`}
+                                  className="text-blue-400 hover:underline"
+                                >
+                                  {member.email}
+                                </a>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td className="border-l border-gray-700 px-3 py-3">
+                              {member.phone ? (
+                                <a
+                                  href={`tel:${member.phone}`}
+                                  className="text-blue-400 hover:underline"
+                                >
+                                  {member.phone}
+                                </a>
+                              ) : (
+                                "-"
+                              )}
                             </td>
                           </tr>
                         ))}
                         {team.members.length === 0 && (
                           <tr>
                             <td
-                              colSpan={2}
+                              colSpan={4}
                               className="px-3 py-4 text-sm text-gray-400"
                             >
                               No members yet.
@@ -187,6 +212,12 @@ export default async function MentorPage() {
                         <th className="border-l border-t border-gray-700 px-3 py-3">
                           Area
                         </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          Email
+                        </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          Phone
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -195,21 +226,34 @@ export default async function MentorPage() {
                           key={candidate.id}
                           className="border-t border-gray-700 hover:bg-gray-900"
                         >
-                          <td className="px-3 py-3">
-                            <div className="font-medium">{candidate.name}</div>
-                            <div className="text-xs text-gray-400">
-                              {candidate.email}
-                            </div>
+                          <td className="px-3 py-3 font-medium">
+                            {candidate.name}
                           </td>
                           <td className="border-l border-gray-700 px-3 py-3">
                             {candidate.interviewArea ?? "-"}
+                          </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            <a
+                              href={`mailto:${candidate.email}`}
+                              className="text-blue-400 hover:underline"
+                            >
+                              {candidate.email}
+                            </a>
+                          </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            <a
+                              href={`tel:${candidate.phone}`}
+                              className="text-blue-400 hover:underline"
+                            >
+                              {candidate.phone}
+                            </a>
                           </td>
                         </tr>
                       ))}
                       {group.candidates.length === 0 && (
                         <tr>
                           <td
-                            colSpan={2}
+                            colSpan={4}
                             className="px-3 py-4 text-sm text-gray-400"
                           >
                             No candidates registered for this challenge yet.
@@ -236,39 +280,52 @@ export default async function MentorPage() {
                   <th className="border-l border-gray-700 px-3 py-3 first:border-l-0">
                     Candidate
                   </th>
+                  <th className="border-l border-gray-700 px-3 py-3">Area</th>
+                  <th className="border-l border-gray-700 px-3 py-3">Email</th>
+                  <th className="border-l border-gray-700 px-3 py-3">Phone</th>
                 </tr>
               </thead>
               <tbody>
-                {assignments.map((assignment) => {
-                  const name =
-                    assignment.registrationMember?.name ??
-                    assignment.user?.name ??
-                    assignment.registrationMember?.email ??
-                    assignment.user?.email ??
-                    "Unknown candidate";
-
-                  const email =
-                    assignment.registrationMember?.email ??
-                    assignment.user?.email ??
-                    null;
-
-                  return (
-                    <tr
-                      key={assignment.id}
-                      className="border-t border-gray-700 hover:bg-gray-900"
-                    >
-                      <td className="border-l border-gray-700 px-3 py-3 first:border-l-0">
-                        <div className="font-medium">{name}</div>
-                        {email && (
-                          <div className="text-xs text-gray-400">{email}</div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {assignments.map((assignment) => (
+                  <tr
+                    key={assignment.id}
+                    className="border-t border-gray-700 hover:bg-gray-900"
+                  >
+                    <td className="border-l border-gray-700 px-3 py-3 font-medium first:border-l-0">
+                      {assignment.name}
+                    </td>
+                    <td className="border-l border-gray-700 px-3 py-3">
+                      {assignment.interviewArea ?? "-"}
+                    </td>
+                    <td className="border-l border-gray-700 px-3 py-3">
+                      {assignment.email ? (
+                        <a
+                          href={`mailto:${assignment.email}`}
+                          className="text-blue-400 hover:underline"
+                        >
+                          {assignment.email}
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="border-l border-gray-700 px-3 py-3">
+                      {assignment.phone ? (
+                        <a
+                          href={`tel:${assignment.phone}`}
+                          className="text-blue-400 hover:underline"
+                        >
+                          {assignment.phone}
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  </tr>
+                ))}
                 {assignments.length === 0 && (
                   <tr>
-                    <td className="px-3 py-4 text-sm text-gray-400">
+                    <td colSpan={4} className="px-3 py-4 text-sm text-gray-400">
                       No individual mentees assigned yet.
                     </td>
                   </tr>

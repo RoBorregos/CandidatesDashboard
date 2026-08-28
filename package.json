@@ -13,7 +13,8 @@
     "dev": "next dev",
     "postinstall": "prisma generate",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "pastEditions": "node --loader ts-node/esm src/lib/exportcsv.ts"
   },
   "prisma": {
     "seed": "node --loader ts-node/esm prisma/seed.ts"

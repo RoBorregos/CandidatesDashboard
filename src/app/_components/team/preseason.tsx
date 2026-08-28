@@ -15,10 +15,12 @@ type TeamMember = {
 
 export default function TeamPreseason({
   teamName,
+  userName,
   members,
   registration,
 }: {
   teamName: string;
+  userName: string;
   members: TeamMember[];
   registration: RegistrationSummaryData | null;
 }) {
@@ -76,7 +78,7 @@ export default function TeamPreseason({
         </ul>
       </div>
 
-      <WeekUploads teamName={teamName} />
+      <WeekUploads teamName={teamName} userName={userName} />
 
       {registration && <RegistrationSummary registration={registration} />}
     </div>

@@ -4,6 +4,7 @@ import { AREA_LABELS } from "~/lib/registration";
 import RegistrationSummary, {
   type RegistrationSummaryData,
 } from "./registration-summary";
+import WeekUploads from "./week-uploads";
 
 type TeamMember = {
   id: string;
@@ -74,6 +75,8 @@ export default function TeamPreseason({
           </li>
         </ul>
       </div>
+
+      <WeekUploads teamName={teamName} />
 
       {registration && <RegistrationSummary registration={registration} />}
     </div>

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, mentorProcedure } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
-import { beginnerTeamWhere } from "~/server/teams";
+import { beginnerTeamIds } from "~/server/teams";
 
 export const mentorRouter = createTRPCRouter({
   getMyPair: mentorProcedure.query(async ({ ctx }) => {
@@ -159,13 +159,15 @@ export const mentorRouter = createTRPCRouter({
           select: { teamId: true },
         });
 
-        // Covers input.teamId too — it was just recorded above.
+        const rejected = new Set(conflicts.map((conflict) => conflict.teamId));
+        const beginnerIds = await beginnerTeamIds(tx, CURRENT_EDITION);
+
+        // `rejected` covers input.teamId too — it was just recorded above.
         const nextTeam = await tx.team.findFirst({
           where: {
             isActive: true,
             mentorPair: null,
-            id: { notIn: conflicts.map((conflict) => conflict.teamId) },
-            ...beginnerTeamWhere(CURRENT_EDITION),
+            id: { in: beginnerIds.filter((id) => !rejected.has(id)) },
           },
           orderBy: { name: "asc" },
         });

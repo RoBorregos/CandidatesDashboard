@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
-import { beginnerTeamWhere } from "~/server/teams";
+import { beginnerTeamIds } from "~/server/teams";
 
 const MENTOR_SELECT = { id: true, name: true, email: true } as const;
 
@@ -137,11 +137,13 @@ export const mentorPairManagementRouter = createTRPCRouter({
   // Pure computation, no writes — teams get the pair at input.steps[i].teamId/pairId
   // in round-robin order so a pair can cover more than one team when pairs are scarce.
   previewPairAssignment: adminProcedure.query(async ({ ctx }) => {
+    const beginnerIds = await beginnerTeamIds(ctx.db, CURRENT_EDITION);
+
     const unassignedTeams = await ctx.db.team.findMany({
       where: {
         isActive: true,
         mentorPair: null,
-        ...beginnerTeamWhere(CURRENT_EDITION),
+        id: { in: beginnerIds },
       },
       select: { id: true, name: true },
       orderBy: { name: "asc" },

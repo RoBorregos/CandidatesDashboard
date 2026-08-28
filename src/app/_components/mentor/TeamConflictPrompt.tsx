@@ -48,7 +48,7 @@ export default function TeamConflictPrompt({
 
         <p className="mb-6 text-sm text-gray-400">
           To keep mentoring fair, let us know if you already know someone on
-          this team. If you do, you'll be reassigned to a different team.
+          this team. If you do, you&apos;ll be reassigned to a different team.
         </p>
 
         <div className="flex justify-end gap-3">
@@ -60,7 +60,7 @@ export default function TeamConflictPrompt({
             disabled={reportConflict.isPending}
             className="rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            No, I don't know anyone
+            No, I don&apos;t know anyone
           </button>
 
           <button

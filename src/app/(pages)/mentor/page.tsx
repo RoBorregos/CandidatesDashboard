@@ -21,6 +21,7 @@ export default async function MentorPage() {
 
   const pair = await api.mentor.getMyPair();
   const assignments = await api.mentor.getMyAssignments();
+  const challengeGroups = await api.mentor.getMyChallengeCandidates();
 
   const isMentorA = pair?.mentorAId === session.user.id;
   const partner = pair && (isMentorA ? pair.mentorB : pair.mentorA);
@@ -45,7 +46,7 @@ export default async function MentorPage() {
 
           {pair ? (
             <p className="text-sm text-gray-300">
-              You're paired with{" "}
+              You&apos;re paired with{" "}
               <span className="font-medium text-white">
                 {partner?.name ?? partner?.email}
               </span>
@@ -53,7 +54,7 @@ export default async function MentorPage() {
             </p>
           ) : (
             <p className="text-sm text-gray-400">
-              You don't have a mentor pair assigned yet.
+              You don&apos;t have a mentor pair assigned yet.
             </p>
           )}
         </div>
@@ -160,6 +161,68 @@ export default async function MentorPage() {
           />
         )}
 
+
+        {challengeGroups.length > 0 && (
+          <div className="rounded-lg bg-gray-800 p-4">
+            <h2 className="mb-3 text-sm font-semibold text-gray-200">
+              My Challenge Candidates
+            </h2>
+
+            <div className="space-y-4">
+              {challengeGroups.map((group) => (
+                <div
+                  key={group.challenge}
+                  className="overflow-x-auto rounded border border-gray-700"
+                >
+                  <div className="bg-gray-900 px-3 py-2 text-sm font-medium text-white">
+                    {group.challenge}
+                  </div>
+
+                  <table className="w-full table-auto border-collapse">
+                    <thead>
+                      <tr className="bg-gray-900 text-left text-sm text-gray-300">
+                        <th className="border-t border-gray-700 px-3 py-3">
+                          Candidate
+                        </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          Area
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.candidates.map((candidate) => (
+                        <tr
+                          key={candidate.id}
+                          className="border-t border-gray-700 hover:bg-gray-900"
+                        >
+                          <td className="px-3 py-3">
+                            <div className="font-medium">{candidate.name}</div>
+                            <div className="text-xs text-gray-400">
+                              {candidate.email}
+                            </div>
+                          </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            {candidate.interviewArea ?? "-"}
+                          </td>
+                        </tr>
+                      ))}
+                      {group.candidates.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={2}
+                            className="px-3 py-4 text-sm text-gray-400"
+                          >
+                            No candidates registered for this challenge yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-lg bg-gray-800 p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-200">

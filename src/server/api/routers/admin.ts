@@ -9,6 +9,7 @@ import { testingUtilitiesRouter } from "./admin/testing-utilities";
 import { staffManagementRouter } from "./admin/staff-management";
 import { mentorManagementRouter } from "./admin/mentor-management";
 import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
+import { challengeMentorManagementRouter } from "./admin/challenge-mentor-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -65,6 +66,7 @@ export const adminRouter = createTRPCRouter({
   getAssignments: mentorManagementRouter.getAssignments,
   assignMentor: mentorManagementRouter.assignMentor,
   removeMentor: mentorManagementRouter.removeMentor,
+  getMentorEligibleUsers: mentorManagementRouter.getMentorEligibleUsers,
 
   // Mentor Pair Management
   getPairs: mentorPairManagementRouter.getPairs,
@@ -75,4 +77,9 @@ export const adminRouter = createTRPCRouter({
   commitPairAssignment: mentorPairManagementRouter.commitPairAssignment,
   assignPairToTeam: mentorPairManagementRouter.assignPairToTeam,
   unassignPairFromTeam: mentorPairManagementRouter.unassignPairFromTeam,
+  clearPairTeamConflict: mentorPairManagementRouter.clearPairTeamConflict,
+
+  // Challenge Mentor Management (advanced track)
+  getChallengeGroups: challengeMentorManagementRouter.getChallengeGroups,
+  setChallengeMentors: challengeMentorManagementRouter.setChallengeMentors,
 });

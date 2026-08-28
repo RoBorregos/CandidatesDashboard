@@ -16,6 +16,15 @@ export const mentorPairManagementRouter = createTRPCRouter({
         teams: {
           include: { team: { select: { id: true, name: true } } },
         },
+        conflicts: {
+          select: {
+            teamId: true,
+            createdAt: true,
+            team: { select: { name: true } },
+            reportedBy: { select: MENTOR_SELECT },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -149,20 +158,49 @@ export const mentorPairManagementRouter = createTRPCRouter({
       orderBy: { createdAt: "asc" },
     });
 
+    const steps: { teamId: string; teamName: string; pairId: string }[] = [];
+    const unassignableTeams: typeof unassignedTeams = [];
+
     if (pairs.length === 0) {
-      return {
-        steps: [] as { teamId: string; teamName: string; pairId: string }[],
-        unassignableTeams: unassignedTeams,
-      };
+      return { steps, unassignableTeams: unassignedTeams };
     }
 
-    const steps = unassignedTeams.map((team, i) => ({
-      teamId: team.id,
-      teamName: team.name,
-      pairId: pairs[i % pairs.length]!.id,
-    }));
+    const conflicts = await ctx.db.mentorPairTeamConflict.findMany({
+      where: { mentorPair: { edition: CURRENT_EDITION } },
+      select: { mentorPairId: true, teamId: true },
+    });
 
-    return { steps, unassignableTeams: [] as typeof unassignedTeams };
+    const blocked = new Set(
+      conflicts.map((conflict) => `${conflict.mentorPairId}:${conflict.teamId}`),
+    );
+
+    let cursor = 0;
+
+    for (const team of unassignedTeams) {
+      let pickedPairId: string | null = null;
+
+      for (let offset = 0; offset < pairs.length; offset++) {
+        const candidate = pairs[(cursor + offset) % pairs.length]!;
+
+        if (!blocked.has(`${candidate.id}:${team.id}`)) {
+          pickedPairId = candidate.id;
+          cursor += offset + 1;
+          break;
+        }
+      }
+
+      if (pickedPairId) {
+        steps.push({
+          teamId: team.id,
+          teamName: team.name,
+          pairId: pickedPairId,
+        });
+      } else {
+        unassignableTeams.push(team);
+      }
+    }
+
+    return { steps, unassignableTeams };
   }),
 
   commitPairAssignment: adminProcedure
@@ -172,6 +210,29 @@ export const mentorPairManagementRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.steps.length === 0) {
+        return { assigned: 0 };
+      }
+
+      const conflicts = await ctx.db.mentorPairTeamConflict.findMany({
+        where: {
+          OR: input.steps.map((step) => ({
+            mentorPairId: step.pairId,
+            teamId: step.teamId,
+          })),
+        },
+        select: { team: { select: { name: true } } },
+      });
+
+      if (conflicts.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `A mentor reported knowing someone on ${conflicts
+            .map((conflict) => conflict.team.name)
+            .join(", ")}. Recompute the assignment plan.`,
+        });
+      }
+
       await ctx.db.$transaction(
         input.steps.map((step) =>
           ctx.db.teamMentorPair.create({
@@ -186,10 +247,38 @@ export const mentorPairManagementRouter = createTRPCRouter({
   assignPairToTeam: adminProcedure
     .input(z.object({ teamId: z.string(), pairId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const conflict = await ctx.db.mentorPairTeamConflict.findUnique({
+        where: {
+          mentorPairId_teamId: {
+            mentorPairId: input.pairId,
+            teamId: input.teamId,
+          },
+        },
+      });
+
+      if (conflict) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "This pair reported knowing someone on this team. Clear the conflict first if you still want to assign them.",
+        });
+      }
+
       await ctx.db.teamMentorPair.upsert({
         where: { teamId: input.teamId },
         create: { teamId: input.teamId, mentorPairId: input.pairId },
         update: { mentorPairId: input.pairId },
+      });
+
+      return { success: true };
+    }),
+
+  // Escape hatch for a conflict reported by mistake.
+  clearPairTeamConflict: adminProcedure
+    .input(z.object({ pairId: z.string(), teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.mentorPairTeamConflict.deleteMany({
+        where: { mentorPairId: input.pairId, teamId: input.teamId },
       });
 
       return { success: true };

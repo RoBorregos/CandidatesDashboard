@@ -48,6 +48,49 @@ export const mentorRouter = createTRPCRouter({
     });
   }),
 
+  /*
+   * Advanced candidates are covered by challenge, not one by one: whoever is
+   * listed for a challenge this edition mentors everyone registered for it.
+   */
+  getMyChallengeCandidates: mentorProcedure.query(async ({ ctx }) => {
+    const myChallenges = await ctx.db.mentorChallenge.findMany({
+      where: { mentorId: ctx.session.user.id, edition: CURRENT_EDITION },
+      select: { challenge: true },
+      orderBy: { challenge: "asc" },
+    });
+
+    if (myChallenges.length === 0) {
+      return [];
+    }
+
+    const challenges = myChallenges.map((row) => row.challenge);
+
+    const members = await ctx.db.registrationMember.findMany({
+      where: {
+        registration: {
+          edition: CURRENT_EDITION,
+          track: "ADVANCED",
+          challenge: { in: challenges },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        interviewArea: true,
+        registration: { select: { challenge: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return challenges.map((challenge) => ({
+      challenge,
+      candidates: members
+        .filter((member) => member.registration.challenge === challenge)
+        .map(({ registration: _registration, ...member }) => member),
+    }));
+  }),
+
   reportTeamConflict: mentorProcedure
     .input(z.object({ teamId: z.string(), knowsSomeone: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
@@ -81,40 +124,60 @@ export const mentorRouter = createTRPCRouter({
 
       const isMentorA = pair.mentorAId === ctx.session.user.id;
 
-      if (input.knowsSomeone) {
-        /*
-         * A conflict releases this team and looks for another beginner team
-         * without a pair. If none is free, the pair is simply left without a
-         * team until one opens up (auto-assign or manual admin action).
-         */
-        await ctx.db.teamMentorPair.delete({ where: { teamId: input.teamId } });
+      if (!input.knowsSomeone) {
+        await ctx.db.teamMentorPair.update({
+          where: { teamId: input.teamId },
+          data: isMentorA
+            ? { mentorAKnowsTeam: false }
+            : { mentorBKnowsTeam: false },
+        });
 
-        const nextTeam = await ctx.db.team.findFirst({
+        return { reassigned: false, newTeamId: null };
+      }
+
+      return ctx.db.$transaction(async (tx) => {
+        await tx.mentorPairTeamConflict.upsert({
+          where: {
+            mentorPairId_teamId: {
+              mentorPairId: pair.id,
+              teamId: input.teamId,
+            },
+          },
+          create: {
+            mentorPairId: pair.id,
+            teamId: input.teamId,
+            reportedById: ctx.session.user.id,
+          },
+          update: {},
+        });
+
+        await tx.teamMentorPair.delete({ where: { teamId: input.teamId } });
+
+        const conflicts = await tx.mentorPairTeamConflict.findMany({
+          where: { mentorPairId: pair.id },
+          select: { teamId: true },
+        });
+
+        // Covers input.teamId too — it was just recorded above.
+        const nextTeam = await tx.team.findFirst({
           where: {
             isActive: true,
             mentorPair: null,
-            id: { not: input.teamId },
-            registrations: { some: { track: "BEGINNER", edition: CURRENT_EDITION } },
+            id: { notIn: conflicts.map((conflict) => conflict.teamId) },
+            registrations: {
+              some: { track: "BEGINNER", edition: CURRENT_EDITION },
+            },
           },
           orderBy: { name: "asc" },
         });
 
         if (nextTeam) {
-          await ctx.db.teamMentorPair.create({
+          await tx.teamMentorPair.create({
             data: { teamId: nextTeam.id, mentorPairId: pair.id },
           });
         }
 
         return { reassigned: true, newTeamId: nextTeam?.id ?? null };
-      }
-
-      await ctx.db.teamMentorPair.update({
-        where: { teamId: input.teamId },
-        data: isMentorA
-          ? { mentorAKnowsTeam: false }
-          : { mentorBKnowsTeam: false },
       });
-
-      return { reassigned: false, newTeamId: null };
     }),
 });

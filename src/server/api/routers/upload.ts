@@ -14,6 +14,7 @@ import { db } from "~/server/db";
  * Handles team uploads organized in folders on UploadThing with the shape:
  *   {teamName}/{week[1-6]}/{file}
  * and persists every upload (and its folder path) in the database via Prisma.
+ * Week 6 is reserved for the final submission ("FINAL" in the UI).
  */
 
 export const MAX_UPLOAD_WEEK = 6;
@@ -37,7 +38,7 @@ function sanitizeSegment(value: string): string {
 
 /**
  * Build the folder path an upload lives in on UploadThing:
- * `{teamName}/{week[1-6]}/{fileName}`. Used to display and to locate older
+ * `{teamName}/{week[1-7]}/{fileName}`. Used to display and to locate older
  * uploads of the same file.
  */
 export function teamUploadFolderPath(
@@ -244,7 +245,7 @@ export const uploadRouter = createTRPCRouter({
     return reconcileWithStorage(records);
   }),
 
-  /** Uploads of the caller's team for a single week (1-6). */
+  /** Uploads of the caller's team for a single week (1-7). */
   getByWeek: protectedProcedure
     .input(z.object({ week: uploadWeekSchema }))
     .query(async ({ ctx, input }) => {

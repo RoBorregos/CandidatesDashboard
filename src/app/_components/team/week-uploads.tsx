@@ -5,10 +5,25 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
 
-const WEEKS = [1, 2, 3, 4, 5, 6] as const;
+// MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
+const WEEKS = [1, 2, 3, 4, 5, "FINAL"] as const;
+type WeekKey = (typeof WEEKS)[number];
+
+const WEEK_LABELS: Record<WeekKey, string> = {
+  1: "Semana 1",
+  2: "Semana 2",
+  3: "Semana 3",
+  4: "Semana 4",
+  5: "Semana 5",
+  FINAL: "Final",
+};
+
+// The server stores weeks as plain integers; "FINAL" is folded into a
+// reserved number so the rest of the pipeline stays numeric.
+const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
 
 export default function WeekUploads({ teamName }: { teamName: string }) {
-  const [week, setWeek] = useState<(typeof WEEKS)[number]>(1);
+  const [week, setWeek] = useState<WeekKey>(1);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
@@ -35,7 +50,7 @@ export default function WeekUploads({ teamName }: { teamName: string }) {
                 : "border border-neutral-700 text-neutral-300 hover:border-neutral-500"
             }`}
           >
-            Semana {w}
+            {WEEK_LABELS[w]}
           </button>
         ))}
       </div>
@@ -50,29 +65,24 @@ function WeekFiles({
   week,
 }: {
   teamName: string;
-  week: number;
+  week: WeekKey;
 }) {
   const utils = api.useUtils();
+  const weekNumber = toWeekNumber(week);
   const { data: files, isLoading } = api.uploads.getByWeek.useQuery(
-    { week },
+    { week: weekNumber },
     {
       // Always fetch fresh on load: the global query client keeps a 30s
       // staleTime, which would let a reload show cached/stale files instead
       // of the current team folder.
-      refetchOnMount: "always",
-      staleTime: 0,
-      // "Webhook-like" realtime sync: every session (any account) re-checks the
-      // week's folder periodically, so an upload or delete made elsewhere shows
-      // up without the user having to reload. Background mode keeps polling even
-      // when the tab loses focus (e.g. while deleting in Prisma Studio).
-      refetchInterval: 5000,
-      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
     },
   );
 
   const remove = api.uploads.remove.useMutation({
     onSuccess: async () => {
-      await utils.uploads.getByWeek.invalidate({ week });
+      await utils.uploads.getByWeek.invalidate({ week: weekNumber });
       toast.success("Archivo eliminado");
     },
     onError: (error) => {
@@ -92,7 +102,7 @@ function WeekFiles({
       if (selectedFiles.length > 0) {
         try {
           const result = await prepareUpload.mutateAsync({
-            week,
+            week: weekNumber,
             fileNames: selectedFiles.map((file) => file.name),
           });
           if (result.freed > 0 || result.conflicts.length > 0) {
@@ -112,7 +122,7 @@ function WeekFiles({
     onUploadProgress: (progress) => setUploadProgress(progress),
     onClientUploadComplete: async () => {
       setUploadSucceeded(true);
-      await utils.uploads.getByWeek.invalidate({ week });
+      await utils.uploads.getByWeek.invalidate({ week: weekNumber });
       toast.success("Archivo subido correctamente");
     },
     onUploadError: (error) => {
@@ -123,7 +133,7 @@ function WeekFiles({
 
   const handleFiles = (selectedFiles: File[]) => {
     if (selectedFiles.length === 0 || isUploading) return;
-    void startUpload(selectedFiles, { week });
+    void startUpload(selectedFiles, { week: weekNumber });
   };
 
   return (
@@ -131,7 +141,7 @@ function WeekFiles({
       <p className="text-sm text-neutral-400">
         Carpeta:{" "}
         <code className="text-roboblue">
-          {teamName}/week{week}/
+          {teamName}/week{weekNumber}/
         </code>
       </p>
 
@@ -168,7 +178,7 @@ function WeekFiles({
           <p className="text-sm font-medium text-neutral-200">
             {isUploading
               ? "Subiendo…"
-              : `Suelta o selecciona los archivos de la semana ${week}`}
+              : `Suelta o selecciona los archivos de ${WEEK_LABELS[week]}`}
           </p>
           <p className="text-xs text-neutral-500">
             Cualquier archivo (máx. 64MB por archivo)

@@ -274,6 +274,35 @@ export const mentorPairManagementRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  /*
+   * The week mentors are currently filling in. Kept on Config next to
+   * currentRound so the whole staff sees the same number.
+   */
+  getMentorWeek: adminProcedure.query(async ({ ctx }) => {
+    const config = await ctx.db.config.findFirst({
+      select: { currentWeek: true },
+    });
+
+    return { week: config?.currentWeek ?? 1 };
+  }),
+
+  setMentorWeek: adminProcedure
+    .input(z.object({ week: z.number().int().min(1).max(52) }))
+    .mutation(async ({ ctx, input }) => {
+      const config = await ctx.db.config.findFirst({ select: { id: true } });
+
+      if (config) {
+        await ctx.db.config.update({
+          where: { id: config.id },
+          data: { currentWeek: input.week },
+        });
+      } else {
+        await ctx.db.config.create({ data: { currentWeek: input.week } });
+      }
+
+      return { week: input.week };
+    }),
+
   // Escape hatch for a conflict reported by mistake.
   clearPairTeamConflict: adminProcedure
     .input(z.object({ pairId: z.string(), teamId: z.string() }))

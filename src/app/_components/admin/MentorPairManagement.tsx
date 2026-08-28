@@ -93,6 +93,18 @@ export default function MentorPairManagement() {
     },
   });
 
+  const { data: mentorWeek } = api.admin.getMentorWeek.useQuery();
+
+  const setMentorWeek = api.admin.setMentorWeek.useMutation({
+    onSuccess: async (result) => {
+      toast.success(`Weekly tracking moved to week ${result.week}.`);
+      await utils.admin.getMentorWeek.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleOpenPreview = async () => {
     setShowPreview(true);
     await preview.refetch();
@@ -172,6 +184,50 @@ export default function MentorPairManagement() {
               Released after a conflict — no free team to move them to.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* Weekly tracking week */}
+      {/* ========================================================= */}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gray-800 p-6">
+        <div>
+          <h3 className="text-xl font-semibold text-white">Tracking Week</h3>
+          <p className="mt-1 text-sm text-gray-400">
+            The week mentors fill in on their weekly sheet. They can still look
+            back at earlier weeks.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setMentorWeek.mutate({
+                week: Math.max(1, (mentorWeek?.week ?? 1) - 1),
+              })
+            }
+            disabled={(mentorWeek?.week ?? 1) <= 1 || setMentorWeek.isPending}
+            className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            −
+          </button>
+
+          <span className="min-w-28 text-center text-lg font-bold text-white">
+            Week {mentorWeek?.week ?? 1}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setMentorWeek.mutate({ week: (mentorWeek?.week ?? 1) + 1 })
+            }
+            disabled={setMentorWeek.isPending}
+            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            +
+          </button>
         </div>
       </div>
 

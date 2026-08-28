@@ -152,6 +152,84 @@ model TeamMentorPair {
   mentorBKnowsTeam Boolean?
 }
 
+enum RubricLevel {
+  LOW
+  DEVELOPING
+  ADEQUATE
+  OUTSTANDING
+}
+
+// Block 1 of the mentors' sheet: one objective per team, per week, per area.
+model WeeklyObjective {
+  id      String @id @default(cuid())
+  edition Int    @default(2026)
+  week    Int
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  area InterviewArea
+
+  objective String
+  status    String?
+  notes     String?
+
+  updatedById String?
+  updatedBy   User?   @relation("WeeklyObjectiveAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, edition, week, area])
+  @@index([teamId, edition, week])
+}
+
+// Block 2: the weekly follow-up a mentor writes for each candidate.
+model WeeklyCandidateReview {
+  id      String @id @default(cuid())
+  edition Int    @default(2026)
+  week    Int
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  candidateId String
+  candidate   User   @relation("WeeklyReviewCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  evidence        String?
+  mentorQuestions String?
+  justification   String?
+  strengths       String?
+  opportunities   String?
+  recommendations String?
+
+  // Block 3: the objective rubric, one row per criterion.
+  scores WeeklyRubricScore[]
+
+  updatedById String?
+  updatedBy   User?   @relation("WeeklyReviewAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([candidateId, edition, week])
+  @@index([teamId, edition, week])
+}
+
+model WeeklyRubricScore {
+  id String @id @default(cuid())
+
+  reviewId String
+  review   WeeklyCandidateReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  // Key from OBJECTIVE_RUBRIC in ~/lib/rubric.
+  criterion     String
+  level         RubricLevel
+  justification String?
+
+  @@unique([reviewId, criterion])
+}
+
 model MentorChallenge {
   id String @id @default(cuid())
 
@@ -222,6 +300,10 @@ model User {
 
   reportedTeamConflicts MentorPairTeamConflict[] @relation("ReportedTeamConflicts")
   mentorChallenges      MentorChallenge[]        @relation("MentorChallenges")
+
+  weeklyReviews        WeeklyCandidateReview[] @relation("WeeklyReviewCandidate")
+  authoredWeeklyReviews WeeklyCandidateReview[] @relation("WeeklyReviewAuthor")
+  authoredObjectives   WeeklyObjective[]       @relation("WeeklyObjectiveAuthor")
 }
 
 model VerificationToken {
@@ -262,6 +344,8 @@ model Team {
   mentorPair     TeamMentorPair?
 
   mentorPairConflicts MentorPairTeamConflict[]
+  weeklyObjectives    WeeklyObjective[]
+  weeklyReviews       WeeklyCandidateReview[]
 }
 
 model Round {
@@ -339,6 +423,7 @@ model Config {
   competitionStarted Boolean @default(false)
   currentRound       Int     @default(1)
   roundsRevealed     Int     @default(0)
+  currentWeek        Int     @default(1)
 
   @@map("config")
 }

@@ -7,19 +7,27 @@ import {
 import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 import {
+  appendCommentToFile,
+  MAX_WEEK_BYTES,
   recordTeamUpload,
   stripFolderPrefix,
   teamUploadFolderPath,
   uploadWeekSchema,
+  weekUsageBytes,
 } from "~/server/api/routers/upload";
 
 const f = createUploadthing();
 
 export const ourFileRouter = {
   teamUploader: f({
-    blob: { maxFileSize: "64MB", maxFileCount: 10 },
+    blob: { maxFileSize: "256MB", maxFileCount: 30 },
   })
-    .input(z.object({ week: uploadWeekSchema }))
+    .input(
+      z.object({
+        week: uploadWeekSchema,
+        comment: z.string().min(1).max(2045).optional(),
+      }),
+    )
     .middleware(async ({ files, input }) => {
       const session = await getServerAuthSession();
       if (!session?.user?.id) {
@@ -42,6 +50,14 @@ export const ourFileRouter = {
         throw new Error("Team not found");
       }
 
+      // The week's folder is capped at 256 MB total (not per file): reject the
+      // upload up front if adding these files would exceed the allowance.
+      const existingUsage = await weekUsageBytes(db, user.teamId, input.week);
+      const incomingBytes = files.reduce((sum, f) => sum + (f.size ?? 0), 0);
+      if (existingUsage + incomingBytes > MAX_WEEK_BYTES) {
+        throw new Error("La semana excedería el límite de 256 MB");
+      }
+
       // Rename each object to {teamName}/week{n}/{fileName} so UploadThing
       // shows the file inside its team/week folder. We deliberately do NOT set
       // a customId: a repeated customId is what makes UploadThing reject the
@@ -50,6 +66,7 @@ export const ourFileRouter = {
         teamId: user.teamId,
         teamName: team.name,
         week: input.week,
+        comment: input.comment,
         [UTFiles]: files.map((file) => ({
           ...file,
           name: teamUploadFolderPath(team.name, input.week, file.name),
@@ -69,6 +86,19 @@ export const ourFileRouter = {
         fileSize: file.size,
         fileType: file.type,
       });
+
+      // A comment submitted together with files is accumulated into the same
+      // COMMENTS.md so it doesn't require a second request.
+      if (metadata.comment) {
+        await appendCommentToFile({
+          db,
+          teamId: metadata.teamId,
+          teamName: metadata.teamName,
+          week: metadata.week,
+          text: metadata.comment,
+        });
+      }
+
       return {
         id: record.id,
         name: record.name,

@@ -183,6 +183,7 @@ model User {
   menteeAssignments   MentorAssignment[]   @relation("UserMentorAssignment")
   mentorPairAs        MentorPair[]         @relation("MentorPairA")
   mentorPairBs        MentorPair[]         @relation("MentorPairB")
+  teamUploads         TeamUpload[]         @relation("UserTeamUploads")
 }
 
 model VerificationToken {
@@ -234,11 +235,17 @@ model TeamUpload {
   fileUrl   String
   fileSize  Int?
   fileType  String?
+  // Owning user. Null for team-wide weeks (the FINAL submission), where the
+  // whole team shares the same folder and can see every file.
+  userId      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User?     @relation("UserTeamUploads", fields: [userId], references: [id], onDelete: Cascade)
   mentorPairId String?
   mentorPair    TeamMentorPair? @relation(fields: [mentorPairId], references: [id])
+
+  @@index([teamId, week, userId])
 }
 
 model Round {

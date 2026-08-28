@@ -130,7 +130,7 @@ export const mentorPairManagementRouter = createTRPCRouter({
     const unassignedTeams = await ctx.db.team.findMany({
       where: {
         isActive: true,
-        mentorPair: null,
+        mentorPairs: { none: {} },
         registrations: {
           some: { track: "BEGINNER", edition: CURRENT_EDITION },
         },

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { MAX_TRACKING_WEEK } from "~/lib/rubric";
 
 export default function MentorPairManagement() {
   const [mentorAId, setMentorAId] = useState("");
@@ -221,9 +222,14 @@ export default function MentorPairManagement() {
           <button
             type="button"
             onClick={() =>
-              setMentorWeek.mutate({ week: (mentorWeek?.week ?? 1) + 1 })
+              setMentorWeek.mutate({
+                week: Math.min(MAX_TRACKING_WEEK, (mentorWeek?.week ?? 1) + 1),
+              })
             }
-            disabled={setMentorWeek.isPending}
+            disabled={
+              (mentorWeek?.week ?? 1) >= MAX_TRACKING_WEEK ||
+              setMentorWeek.isPending
+            }
             className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             +

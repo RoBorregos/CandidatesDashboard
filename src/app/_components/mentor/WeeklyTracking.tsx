@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { AREA_LABELS, INTERVIEW_AREAS } from "~/lib/registration";
 import {
+  MAX_TRACKING_WEEK,
   OBJECTIVE_RUBRIC,
   RUBRIC_LEVELS,
   type RubricCriterionKey,
@@ -193,8 +194,11 @@ export default function WeeklyTracking({
 
           <button
             type="button"
-            onClick={() => setWeek((current) => current + 1)}
-            className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600"
+            onClick={() =>
+              setWeek((current) => Math.min(MAX_TRACKING_WEEK, current + 1))
+            }
+            disabled={week >= MAX_TRACKING_WEEK}
+            className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             →
           </button>

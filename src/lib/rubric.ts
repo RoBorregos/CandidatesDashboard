@@ -7,6 +7,10 @@
  * deleted underneath it.
  */
 
+/** Upper bound for a tracking week, shared by the admin setter, the mentor
+ * endpoints and both week pickers so they can't disagree. */
+export const MAX_TRACKING_WEEK = 52;
+
 export const RUBRIC_LEVELS = [
   { value: "LOW", label: "Deficiente/Bajo" },
   { value: "DEVELOPING", label: "En desarrollo" },

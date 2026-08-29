@@ -5,7 +5,7 @@ import { CURRENT_EDITION } from "~/lib/registration";
 import { beginnerTeamIds } from "~/server/teams";
 import type { InterviewArea, PrismaClient } from "@prisma/client";
 import { InterviewArea as InterviewAreaEnum, RubricLevel } from "@prisma/client";
-import { RUBRIC_CRITERION_KEYS } from "~/lib/rubric";
+import { MAX_TRACKING_WEEK, RUBRIC_CRITERION_KEYS } from "~/lib/rubric";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
 
@@ -307,9 +307,9 @@ export const mentorRouter = createTRPCRouter({
     .input(
       z.object({
         teamId: z.string(),
-        week: z.number().int().min(1),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
         area: z.nativeEnum(InterviewAreaEnum),
-        objective: z.string().trim().max(1000),
+        objective: z.string().trim().min(1).max(1000),
         status: z.string().trim().max(200).optional(),
         notes: z.string().trim().max(2000).optional(),
       }),
@@ -350,7 +350,7 @@ export const mentorRouter = createTRPCRouter({
     .input(
       z.object({
         teamId: z.string(),
-        week: z.number().int().min(1),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
         candidateId: z.string(),
         evidence: z.string().trim().max(2000).optional(),
         mentorQuestions: z.string().trim().max(2000).optional(),
@@ -408,7 +408,12 @@ export const mentorRouter = createTRPCRouter({
             week: input.week,
             ...data,
           },
-          update: data,
+          /*
+           * teamId is refreshed too: the row is keyed by candidate and week,
+           * so a candidate who changed teams would otherwise keep a review
+           * pointing at the old team and disappear from this team's sheet.
+           */
+          update: { ...data, teamId: input.teamId },
         });
 
         /*

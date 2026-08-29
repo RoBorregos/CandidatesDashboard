@@ -8,13 +8,35 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { CURRENT_EDITION, registrationSchema } from "~/lib/registration";
+import {
+  CURRENT_EDITION,
+  REGISTRATION_CLOSED_MESSAGE,
+  registrationSchema,
+  resolveRegistrationWindow,
+} from "~/lib/registration";
 
 export const registrationRouter = createTRPCRouter({
   // Public form: anyone can register without signing in.
   create: publicProcedure
     .input(registrationSchema)
     .mutation(async ({ ctx, input }) => {
+      // Checked here and not only in the UI: the form may have been open when
+      // the page loaded and closed before this submit landed.
+      const config = await ctx.db.config.findFirst({
+        select: {
+          registrationClosesAt: true,
+          registrationOverride: true,
+          registrationOverrideUntil: true,
+        },
+      });
+
+      if (!resolveRegistrationWindow(config).isOpen) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: REGISTRATION_CLOSED_MESSAGE,
+        });
+      }
+
       const emails = input.members.map((member) => member.email);
 
       // No email may appear in two registrations of the same edition.
@@ -154,7 +176,6 @@ export const registrationRouter = createTRPCRouter({
       return ctx.db.$transaction(async (tx) => {
         const team =
           existingTeam ?? (await tx.team.create({ data: { name: teamName } }));
-
 
         await tx.user.updateMany({
           where: { email: { in: emails }, teamId: null },

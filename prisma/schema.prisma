@@ -340,7 +340,16 @@ model Config {
   currentRound       Int     @default(1)
   roundsRevealed     Int     @default(0)
 
+  registrationClosesAt      DateTime?
+  registrationOverride      RegistrationOverride?
+  registrationOverrideUntil DateTime?
+
   @@map("config")
+}
+
+enum RegistrationOverride {
+  OPEN
+  CLOSED
 }
 
 model Unavailability {

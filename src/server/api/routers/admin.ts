@@ -81,6 +81,7 @@ export const adminRouter = createTRPCRouter({
   // Mentor Pair Management
   getPairs: mentorPairManagementRouter.getPairs,
   getUnpairedMentors: mentorPairManagementRouter.getUnpairedMentors,
+  getTeamsWithPairs: mentorPairManagementRouter.getTeamsWithPairs,
   createPair: mentorPairManagementRouter.createPair,
   dissolvePair: mentorPairManagementRouter.dissolvePair,
   previewPairAssignment: mentorPairManagementRouter.previewPairAssignment,

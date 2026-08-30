@@ -42,6 +42,7 @@ type TeamSlot = {
   areas: Set<InterviewArea>;
   taken: number;
   additions: Candidate[];
+  open: boolean;
 };
 
 function shuffle<T>(arr: T[]): T[] {
@@ -83,17 +84,16 @@ function computeAutoAssignPlan(
       areas: new Set(),
       taken: 0,
       additions: [],
+      open: true,
     };
 
     plan.push(slot);
     return slot;
   };
 
-  // Fullest-first, so incomplete teams get finished instead of everyone
-  // being spread thin across many half-empty ones.
   const openSlot = (needed: number) =>
     plan
-      .filter((slot) => roomIn(slot) >= needed)
+      .filter((slot) => slot.open && roomIn(slot) >= needed)
       .sort((a, b) => roomIn(a) - roomIn(b))[0];
 
   // Groups that registered together need contiguous room, so they go first.
@@ -299,13 +299,25 @@ export const userManagementRouter = createTRPCRouter({
         add(member.email?.toLowerCase() ?? member.id, member.interviewArea);
       }
 
-      for (const registration of registrations) {
-        if (registration.teamId !== team.id) continue;
+      const own = registrations.filter(
+        (registration) => registration.teamId === team.id,
+      );
 
+      for (const registration of own) {
         for (const member of registration.members) {
           add(member.email.toLowerCase(), member.interviewArea);
         }
       }
+
+      /*
+       * A team that registered as a group already answered whether it wants an
+       * extra member, so honour that instead of stuffing strangers into it. A
+       * "yes" from any of its registrations wins; `null` (solo registrations,
+       * or teams built by hand) is not an objection.
+       */
+      const open =
+        own.some((registration) => registration.wantsExtraMember === true) ||
+        !own.some((registration) => registration.wantsExtraMember === false);
 
       return {
         teamId: team.id,
@@ -313,6 +325,7 @@ export const userManagementRouter = createTRPCRouter({
         areas,
         taken,
         additions: [],
+        open,
       };
     });
 

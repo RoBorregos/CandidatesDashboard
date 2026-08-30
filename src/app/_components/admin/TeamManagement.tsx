@@ -29,19 +29,6 @@ type TeamDisplay = {
   members: UserDisplay[];
 };
 
-type PreviewStep =
-  | {
-      kind: "fill";
-      teamName: string;
-      user: { name: string | null; email: string | null; interviewArea: string | null };
-      afterCount: number;
-    }
-  | {
-      kind: "create";
-      teamName: string;
-      members: { name: string | null; email: string | null; interviewArea: string | null }[];
-    };
-
 interface TeamManagementProps {
   users?: UserDisplay[];
   teams?: TeamDisplay[];
@@ -188,40 +175,13 @@ export default function TeamManagement({
     );
   };
 
-  // Group preview steps by team for the modal
-  const previewByTeam = (() => {
-    const data = preview.data;
-    if (!data) return [];
-    const map = new Map<
-      string,
-      {
-        teamName: string;
-        isNew: boolean;
-        additions: {
-          name: string | null;
-          email: string | null;
-          interviewArea: string | null;
-        }[];
-      }
-    >();
-    for (const step of data.steps) {
-      if (step.kind === "fill") {
-        let entry = map.get(step.teamName);
-        if (!entry) {
-          entry = { teamName: step.teamName, isNew: false, additions: [] };
-          map.set(step.teamName, entry);
-        }
-        entry.additions.push(step.user);
-      } else {
-        map.set(step.teamName, {
-          teamName: step.teamName,
-          isNew: true,
-          additions: step.members,
-        });
-      }
-    }
-    return Array.from(map.values());
-  })();
+  // The plan already comes as one step per team.
+  const previewByTeam = preview.data?.steps ?? [];
+
+  const previewCount = previewByTeam.reduce(
+    (total, step) => total + step.candidates.length,
+    0,
+  );
 
   return (
     <>
@@ -432,11 +392,11 @@ export default function TeamManagement({
             {preview.data && preview.data.steps.length > 0 && (
               <>
                 <p className="mb-4 text-sm text-gray-400">
-                  {preview.data.steps.length} user(s) will be assigned.{" "}
-                  {previewByTeam.filter((t) => t.isNew).length} new team(s)
+                  {previewCount} candidate(s) will be assigned.{" "}
+                  {previewByTeam.filter((t) => !t.teamId).length} new team(s)
                   will be created.
                   {preview.data.remaining.length > 0 &&
-                    ` ${preview.data.remaining.length} user(s) could not be placed (no room left).`}
+                    ` ${preview.data.remaining.length} could not be placed (no room left).`}
                 </p>
 
                 <div className="space-y-3">
@@ -447,7 +407,7 @@ export default function TeamManagement({
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <span className="font-medium">{group.teamName}</span>
-                        {group.isNew ? (
+                        {!group.teamId ? (
                           <span className="rounded bg-green-800 px-1.5 py-0.5 text-xs">
                             NEW TEAM
                           </span>
@@ -458,7 +418,7 @@ export default function TeamManagement({
                         )}
                       </div>
                       <div className="space-y-1">
-                        {group.additions.map((u, i) => (
+                        {group.candidates.map((u, i) => (
                           <div
                             key={i}
                             className="flex items-center gap-2 text-sm text-gray-300"
@@ -466,6 +426,14 @@ export default function TeamManagement({
                             <span className="text-gray-500">+&nbsp;</span>
                             <span>{u.name ?? u.email}</span>
                             {areaBadge(u.interviewArea)}
+                            {!u.userId && (
+                              <span
+                                className="rounded bg-gray-600 px-1.5 py-0.5 text-xs text-gray-300"
+                                title="Todavía no inicia sesión: entra a su equipo la primera vez que entre"
+                              >
+                                sin cuenta
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>

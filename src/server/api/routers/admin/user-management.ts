@@ -310,14 +310,29 @@ export const userManagementRouter = createTRPCRouter({
       }
 
       /*
-       * A team that registered as a group already answered whether it wants an
-       * extra member, so honour that instead of stuffing strangers into it. A
-       * "yes" from any of its registrations wins; `null` (solo registrations,
-       * or teams built by hand) is not an objection.
+       * The registration form already asked this. Only "quiero un miembro
+       * extra" + "no lo conozco" is an invitation for a stranger — that option
+       * reads "No (asignaremos a alguien en tu equipo)". Answering that they
+       * do know the person means they added them in the form themselves, so
+       * the seat is spoken for even if it looks empty here.
+       *
+       * `null` means the question was never asked (solo registrations, or
+       * teams built by hand), which is not an objection.
        */
-      const open =
-        own.some((registration) => registration.wantsExtraMember === true) ||
-        !own.some((registration) => registration.wantsExtraMember === false);
+      const invited = own.some(
+        (registration) =>
+          registration.wantsExtraMember === true &&
+          registration.knowsExtraMember === false,
+      );
+
+      const objects = own.some(
+        (registration) =>
+          registration.wantsExtraMember === false ||
+          (registration.wantsExtraMember === true &&
+            registration.knowsExtraMember === true),
+      );
+
+      const open = invited || !objects;
 
       return {
         teamId: team.id,

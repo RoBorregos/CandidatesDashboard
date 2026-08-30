@@ -21,7 +21,6 @@ export default async function MentorPage() {
   }
 
   const pair = await api.mentor.getMyPair();
-  const assignments = await api.mentor.getMyAssignments();
   const challengeGroups = await api.mentor.getMyChallengeCandidates();
 
   const isMentorA = pair?.mentorAId === session.user.id;
@@ -198,12 +197,16 @@ export default async function MentorPage() {
         )}
 
 
-        {challengeGroups.length > 0 && (
-          <div className="rounded-lg bg-gray-800 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-200">
-              My Challenge Candidates
-            </h2>
+        <div className="rounded-lg bg-gray-800 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-200">
+            My Challenge Candidates
+          </h2>
 
+          {challengeGroups.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              You don&apos;t cover any advanced challenge yet.
+            </p>
+          ) : (
             <div className="space-y-4">
               {challengeGroups.map((group) => (
                 <div
@@ -276,74 +279,7 @@ export default async function MentorPage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        <div className="rounded-lg bg-gray-800 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-200">
-            My Individual Mentees
-          </h2>
-
-          <div className="overflow-x-auto rounded border border-gray-700">
-            <table className="w-full table-auto border-collapse">
-              <thead>
-                <tr className="bg-gray-900 text-left text-sm text-gray-300">
-                  <th className="border-l border-gray-700 px-3 py-3 first:border-l-0">
-                    Candidate
-                  </th>
-                  <th className="border-l border-gray-700 px-3 py-3">Area</th>
-                  <th className="border-l border-gray-700 px-3 py-3">Email</th>
-                  <th className="border-l border-gray-700 px-3 py-3">Phone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assignments.map((assignment) => (
-                  <tr
-                    key={assignment.id}
-                    className="border-t border-gray-700 hover:bg-gray-900"
-                  >
-                    <td className="border-l border-gray-700 px-3 py-3 font-medium first:border-l-0">
-                      {assignment.name}
-                    </td>
-                    <td className="border-l border-gray-700 px-3 py-3">
-                      {assignment.interviewArea ?? "-"}
-                    </td>
-                    <td className="border-l border-gray-700 px-3 py-3">
-                      {assignment.email ? (
-                        <a
-                          href={`mailto:${assignment.email}`}
-                          className="text-blue-400 hover:underline"
-                        >
-                          {assignment.email}
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="border-l border-gray-700 px-3 py-3">
-                      {assignment.phone ? (
-                        <a
-                          href={`tel:${assignment.phone}`}
-                          className="text-blue-400 hover:underline"
-                        >
-                          {assignment.phone}
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {assignments.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-sm text-gray-400">
-                      No individual mentees assigned yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          )}
         </div>
       </main>
 

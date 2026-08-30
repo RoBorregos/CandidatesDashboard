@@ -48,6 +48,50 @@ export const mentorPairManagementRouter = createTRPCRouter({
     });
   }),
 
+  /*
+   * Active teams with the pair mentoring them, if any. A team holds at most one
+   * pair (TeamMentorPair.teamId is unique), so this is what the admin reads to
+   * tell covered teams from the ones still waiting.
+   */
+  getTeamsWithPairs: adminProcedure.query(async ({ ctx }) => {
+    const beginnerIds = new Set(await beginnerTeamIds(ctx.db, CURRENT_EDITION));
+
+    const teams = await ctx.db.team.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        mentorPair: {
+          select: {
+            assignedAt: true,
+            mentorPair: {
+              select: {
+                id: true,
+                mentorA: { select: MENTOR_SELECT },
+                mentorB: { select: MENTOR_SELECT },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      isBeginner: beginnerIds.has(team.id),
+      assignment: team.mentorPair
+        ? {
+            assignedAt: team.mentorPair.assignedAt,
+            pairId: team.mentorPair.mentorPair.id,
+            mentorA: team.mentorPair.mentorPair.mentorA,
+            mentorB: team.mentorPair.mentorPair.mentorB,
+          }
+        : null,
+    }));
+  }),
+
   createPair: adminProcedure
     .input(
       z.object({
@@ -160,7 +204,12 @@ export const mentorPairManagementRouter = createTRPCRouter({
       orderBy: { createdAt: "asc" },
     });
 
-    const steps: { teamId: string; teamName: string; pairId: string }[] = [];
+    const steps: {
+      teamId: string;
+      teamName: string;
+      pairId: string;
+      pairName: string;
+    }[] = [];
     const unassignableTeams: typeof unassignedTeams = [];
 
     if (pairs.length === 0) {
@@ -179,23 +228,27 @@ export const mentorPairManagementRouter = createTRPCRouter({
     let cursor = 0;
 
     for (const team of unassignedTeams) {
-      let pickedPairId: string | null = null;
+      let picked: (typeof pairs)[number] | null = null;
 
       for (let offset = 0; offset < pairs.length; offset++) {
         const candidate = pairs[(cursor + offset) % pairs.length]!;
 
         if (!blocked.has(`${candidate.id}:${team.id}`)) {
-          pickedPairId = candidate.id;
+          picked = candidate;
           cursor += offset + 1;
           break;
         }
       }
 
-      if (pickedPairId) {
+      if (picked) {
+        const nameOf = (mentor: { name: string | null; email: string | null }) =>
+          mentor.name ?? mentor.email ?? "Unnamed mentor";
+
         steps.push({
           teamId: team.id,
           teamName: team.name,
-          pairId: pickedPairId,
+          pairId: picked.id,
+          pairName: `${nameOf(picked.mentorA)} + ${nameOf(picked.mentorB)}`,
         });
       } else {
         unassignableTeams.push(team);

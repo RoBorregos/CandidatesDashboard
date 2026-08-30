@@ -23,7 +23,6 @@ const zCandidate = z.object({
   role: z.nativeEnum(Role).nullable(),
 });
 
-// One step per team. `teamId: null` means the team still has to be created.
 const zAssignmentStep = z.object({
   teamId: z.string().nullable(),
   teamName: z.string(),

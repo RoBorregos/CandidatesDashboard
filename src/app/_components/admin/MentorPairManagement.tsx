@@ -5,6 +5,14 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { MAX_TRACKING_WEEK } from "~/lib/rubric";
 
+type Mentor = { name: string | null; email: string | null };
+
+const mentorLabel = (mentor: Mentor) =>
+  mentor.name ?? mentor.email ?? "Unnamed mentor";
+
+const pairLabel = (pair: { mentorA: Mentor; mentorB: Mentor }) =>
+  `${mentorLabel(pair.mentorA)} + ${mentorLabel(pair.mentorB)}`;
+
 export default function MentorPairManagement() {
   const [mentorAId, setMentorAId] = useState("");
   const [mentorBId, setMentorBId] = useState("");
@@ -12,6 +20,9 @@ export default function MentorPairManagement() {
   const [manualPairByTeam, setManualPairByTeam] = useState<
     Record<string, string>
   >({});
+  const [teamFilter, setTeamFilter] = useState<"all" | "assigned" | "unassigned">(
+    "all",
+  );
 
   const utils = api.useUtils();
 
@@ -20,7 +31,8 @@ export default function MentorPairManagement() {
 
   const { data: unpairedMentors } = api.admin.getUnpairedMentors.useQuery();
 
-  const { data: teams } = api.admin.getAllTeams.useQuery();
+  const { data: teams, isLoading: teamsLoading } =
+    api.admin.getTeamsWithPairs.useQuery();
 
   const preview = api.admin.previewPairAssignment.useQuery(undefined, {
     enabled: false,
@@ -29,6 +41,7 @@ export default function MentorPairManagement() {
   const refetchPairData = async () => {
     await utils.admin.getPairs.invalidate();
     await utils.admin.getUnpairedMentors.invalidate();
+    await utils.admin.getTeamsWithPairs.invalidate();
   };
 
   const createPair = api.admin.createPair.useMutation({
@@ -132,6 +145,22 @@ export default function MentorPairManagement() {
 
   const allTeams = useMemo(() => teams ?? [], [teams]);
 
+  const assignedTeams = useMemo(
+    () => allTeams.filter((team) => team.assignment !== null),
+    [allTeams],
+  );
+
+  const unassignedTeams = useMemo(
+    () => allTeams.filter((team) => team.assignment === null),
+    [allTeams],
+  );
+
+  const visibleTeams = useMemo(() => {
+    if (teamFilter === "assigned") return assignedTeams;
+    if (teamFilter === "unassigned") return unassignedTeams;
+    return allTeams;
+  }, [teamFilter, allTeams, assignedTeams, unassignedTeams]);
+
   const pairsAwaitingTeam = useMemo(
     () =>
       (pairs ?? []).filter(
@@ -146,7 +175,7 @@ export default function MentorPairManagement() {
       {/* Overview */}
       {/* ========================================================= */}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg bg-gray-800 p-5">
           <p className="text-sm uppercase tracking-wide text-gray-400">
             Mentor Pairs
@@ -163,6 +192,23 @@ export default function MentorPairManagement() {
           <p className="mt-1 text-3xl font-bold text-white">
             {unpairedMentors?.length ?? 0}
           </p>
+        </div>
+
+        <div className="rounded-lg bg-gray-800 p-5">
+          <p className="text-sm uppercase tracking-wide text-gray-400">
+            Teams With a Pair
+          </p>
+          <p className="mt-1 text-3xl font-bold text-white">
+            {assignedTeams.length}
+            <span className="ml-1 text-base font-normal text-gray-400">
+              / {allTeams.length}
+            </span>
+          </p>
+          {unassignedTeams.length > 0 && (
+            <p className="mt-1 text-xs text-gray-400">
+              {unassignedTeams.length} team(s) still without mentors.
+            </p>
+          )}
         </div>
 
         <div
@@ -438,71 +484,171 @@ export default function MentorPairManagement() {
       {/* ========================================================= */}
 
       <div className="rounded-lg bg-gray-800 p-6">
-        <div className="mb-5">
-          <h3 className="text-xl font-semibold text-white">
-            Manual Team Assignment
-          </h3>
-          <p className="mt-1 text-sm text-gray-400">
-            Assign or change the mentor pair for a specific beginner team.
-          </p>
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-semibold text-white">
+              Teams &amp; Their Mentors
+            </h3>
+            <p className="mt-1 text-sm text-gray-400">
+              A team takes one mentor pair at a time — assigning a new pair
+              replaces the current one.
+            </p>
+          </div>
+
+          <div className="flex gap-1 rounded-md bg-gray-900/70 p-1">
+            {(
+              [
+                { id: "all", label: `All (${allTeams.length})` },
+                {
+                  id: "assigned",
+                  label: `With mentors (${assignedTeams.length})`,
+                },
+                {
+                  id: "unassigned",
+                  label: `Without mentors (${unassignedTeams.length})`,
+                },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setTeamFilter(option.id)}
+                className={`rounded px-3 py-1.5 text-xs font-medium ${
+                  teamFilter === option.id
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {allTeams.map((team) => (
-            <div
-              key={team.id}
-              className="flex items-center justify-between gap-3 rounded bg-gray-700 p-3"
-            >
-              <span className="font-medium text-white">{team.name}</span>
+        {teamsLoading ? (
+          <div className="rounded-md border border-gray-700 p-6 text-center text-gray-400">
+            Loading teams...
+          </div>
+        ) : visibleTeams.length === 0 ? (
+          <div className="rounded-md border border-dashed border-gray-700 p-8 text-center text-gray-400">
+            {teamFilter === "unassigned"
+              ? "Every active team has a mentor pair."
+              : teamFilter === "assigned"
+                ? "No team has a mentor pair yet."
+                : "No active teams."}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleTeams.map((team) => (
+              <div
+                key={team.id}
+                className={`flex flex-wrap items-center justify-between gap-3 rounded border-l-4 bg-gray-700 p-3 ${
+                  team.assignment ? "border-green-500" : "border-gray-500"
+                }`}
+              >
+                <div className="min-w-56">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-white">{team.name}</span>
+                    {!team.isBeginner && (
+                      <span className="rounded-full bg-gray-600 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-300">
+                        Advanced
+                      </span>
+                    )}
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <select
-                  value={manualPairByTeam[team.id] ?? ""}
-                  onChange={(event) =>
-                    setManualPairByTeam((prev) => ({
-                      ...prev,
-                      [team.id]: event.target.value,
-                    }))
-                  }
-                  className="rounded-md border border-gray-600 bg-gray-800 p-2 text-sm text-white"
-                >
-                  <option value="">Select a pair...</option>
-                  {pairs?.map((pair) => (
-                    <option key={pair.id} value={pair.id}>
-                      {pair.mentorA.name ?? pair.mentorA.email} +{" "}
-                      {pair.mentorB.name ?? pair.mentorB.email}
-                    </option>
-                  ))}
-                </select>
+                  {team.assignment ? (
+                    <p className="mt-1 text-sm text-green-300">
+                      {pairLabel(team.assignment)}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-gray-400">
+                      No mentor pair assigned
+                    </p>
+                  )}
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const pairId = manualPairByTeam[team.id];
-                    if (!pairId) {
-                      toast.error("Select a pair first.");
-                      return;
+                <div className="flex items-center gap-2">
+                  <select
+                    value={
+                      manualPairByTeam[team.id] ??
+                      team.assignment?.pairId ??
+                      ""
                     }
-                    assignPairToTeam.mutate({ teamId: team.id, pairId });
-                  }}
-                  disabled={assignPairToTeam.isPending}
-                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Assign
-                </button>
+                    onChange={(event) =>
+                      setManualPairByTeam((prev) => ({
+                        ...prev,
+                        [team.id]: event.target.value,
+                      }))
+                    }
+                    className="rounded-md border border-gray-600 bg-gray-800 p-2 text-sm text-white"
+                  >
+                    <option value="">Select a pair...</option>
+                    {pairs?.map((pair) => (
+                      <option key={pair.id} value={pair.id}>
+                        {pairLabel(pair)}
+                        {pair.teams.some((t) => t.teamId !== team.id)
+                          ? ` — also on ${pair.teams
+                              .filter((t) => t.teamId !== team.id)
+                              .map((t) => t.team.name)
+                              .join(", ")}`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
 
-                <button
-                  type="button"
-                  onClick={() => unassignPairFromTeam.mutate({ teamId: team.id })}
-                  disabled={unassignPairFromTeam.isPending}
-                  className="rounded-md bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Remove
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pairId =
+                        manualPairByTeam[team.id] ?? team.assignment?.pairId;
+
+                      if (!pairId) {
+                        toast.error("Select a pair first.");
+                        return;
+                      }
+
+                      if (pairId === team.assignment?.pairId) {
+                        toast.error("That pair already mentors this team.");
+                        return;
+                      }
+
+                      assignPairToTeam.mutate({ teamId: team.id, pairId });
+                    }}
+                    disabled={assignPairToTeam.isPending}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {team.assignment ? "Replace" : "Assign"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!team.assignment) return;
+
+                      if (
+                        !window.confirm(
+                          `Remove ${pairLabel(team.assignment)} from ${team.name}?`,
+                        )
+                      ) {
+                        return;
+                      }
+
+                      setManualPairByTeam((prev) => ({
+                        ...prev,
+                        [team.id]: "",
+                      }));
+                      unassignPairFromTeam.mutate({ teamId: team.id });
+                    }}
+                    disabled={!team.assignment || unassignPairFromTeam.isPending}
+                    className="rounded-md bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ========================================================= */}
@@ -550,9 +696,7 @@ export default function MentorPairManagement() {
                       className="flex items-center justify-between rounded bg-gray-700 p-3 text-sm"
                     >
                       <span className="font-medium">{step.teamName}</span>
-                      <span className="text-gray-400">
-                        pair #{step.pairId.slice(-6)}
-                      </span>
+                      <span className="text-gray-400">{step.pairName}</span>
                     </div>
                   ))}
                 </div>

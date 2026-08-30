@@ -187,11 +187,12 @@ export default function WeeklyTracking({
     await utils.mentor.getWeeklyTracking.invalidate({ teamId, week });
   };
 
+  /*
+   * Success is handled per call, not here: the new row's id has to be stamped
+   * on the draft before the refetch lands, or the re-seed carries the draft
+   * over as an unsaved duplicate of the row it just created.
+   */
   const saveObjective = api.mentor.saveWeeklyObjective.useMutation({
-    onSuccess: async () => {
-      toast.success("Objetivo guardado.");
-      await refresh();
-    },
     onError: (mutationError) => toast.error(mutationError.message),
     onSettled: () => setSavingKey(null),
   });
@@ -311,12 +312,11 @@ export default function WeeklyTracking({
         }),
       },
       {
-        /*
-         * Stamping the new id on before the refetch is what keeps a freshly
-         * created row from being carried over as an unsaved duplicate.
-         */
-        onSuccess: (result) =>
-          patchObjective(area, draft.key, { id: result.id }),
+        onSuccess: async (result) => {
+          patchObjective(area, draft.key, { id: result.id });
+          toast.success("Objetivo guardado.");
+          await refresh();
+        },
       },
     );
   };

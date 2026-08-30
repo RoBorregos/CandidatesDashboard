@@ -4,51 +4,45 @@ import { z } from "zod";
 import { db } from "rbrgs/server/db";
 import { CURRENT_EDITION } from "~/lib/registration";
 import { roleAfterJoiningTeam, roleAfterLeavingTeam } from "~/lib/roles";
-import { InterviewArea, Role } from "@prisma/client";
+import { InterviewArea, RegistrationStatus, Role } from "@prisma/client";
 
 const MAX_TEAM_SIZE = 4;
 
-const zUserStub = z.object({
-  id: z.string(),
+const AREAS = [
+  InterviewArea.MECHANICS,
+  InterviewArea.ELECTRONICS,
+  InterviewArea.PROGRAMMING,
+] as const;
+
+const zCandidate = z.object({
+  userId: z.string().nullable(),
+  registrationId: z.string(),
   name: z.string().nullable(),
   email: z.string().nullable(),
   interviewArea: z.nativeEnum(InterviewArea).nullable(),
-  role: z.nativeEnum(Role),
+  role: z.nativeEnum(Role).nullable(),
 });
 
-const zAssignmentStep = z.union([
-  z.object({
-    kind: z.literal("fill"),
-    teamId: z.string(),
-    teamName: z.string(),
-    user: zUserStub,
-    afterCount: z.number(),
-  }),
-  z.object({
-    kind: z.literal("create"),
-    teamName: z.string(),
-    members: z.array(zUserStub),
-  }),
-]);
+// One step per team. `teamId: null` means the team still has to be created.
+const zAssignmentStep = z.object({
+  teamId: z.string().nullable(),
+  teamName: z.string(),
+  candidates: z.array(zCandidate).min(1),
+});
 
-type UserStub = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  interviewArea: InterviewArea | null;
-  role: Role;
+type Candidate = z.infer<typeof zCandidate>;
+
+// People who registered together are placed together, so the unit that moves
+// is the registration, not the person.
+type Unit = { registrationId: string; candidates: Candidate[] };
+
+type TeamSlot = {
+  teamId: string | null;
+  teamName: string;
+  areas: Set<InterviewArea>;
+  taken: number;
+  additions: Candidate[];
 };
-
-type TeamStub = {
-  id: string;
-  name: string;
-  members: UserStub[];
-  count: number;
-};
-
-type AssignmentStep =
-  | { kind: "fill"; teamId: string; teamName: string; user: UserStub; afterCount: number }
-  | { kind: "create"; teamName: string; members: UserStub[] };
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -59,106 +53,88 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function teamMissingAreas(members: UserStub[]): Set<InterviewArea> {
-  const present = new Set(
-    members.map((m) => m.interviewArea).filter(Boolean) as InterviewArea[],
-  );
-  return new Set(
-    ([InterviewArea.MECHANICS, InterviewArea.ELECTRONICS, InterviewArea.PROGRAMMING] as const).filter(
-      (a) => !present.has(a),
-    ),
-  );
-}
-
 function computeAutoAssignPlan(
-  unassignedUsers: UserStub[],
-  existingTeams: TeamStub[],
-): { steps: AssignmentStep[]; remaining: UserStub[] } {
-  const pool = shuffle(unassignedUsers);
-  const steps: AssignmentStep[] = [];
+  units: Unit[],
+  slots: TeamSlot[],
+  takenNames: Set<string>,
+) {
+  const plan = [...slots];
+  const remaining: Candidate[] = [];
 
-  // Phase 1: fill existing incomplete teams, closest-to-full first
-  const incompleteTeams = existingTeams
-    .filter((t) => t.count < MAX_TEAM_SIZE)
-    .sort((a, b) => a.count - b.count);
+  const roomIn = (slot: TeamSlot) => MAX_TEAM_SIZE - slot.taken;
 
-  for (const team of incompleteTeams) {
-    while (team.count < MAX_TEAM_SIZE && pool.length > 0) {
-      const missing = teamMissingAreas(team.members);
-      const idx =
-        missing.size > 0
-          ? pool.findIndex((u) => u.interviewArea && missing.has(u.interviewArea))
-          : 0;
-      const user = idx >= 0 ? pool.splice(idx, 1)[0] : pool.shift();
-      if (!user) break;
-
-      team.members.push(user);
-      team.count++;
-      steps.push({
-        kind: "fill",
-        teamId: team.id,
-        teamName: team.name,
-        user,
-        afterCount: team.count,
-      });
+  const place = (slot: TeamSlot, unit: Unit) => {
+    for (const candidate of unit.candidates) {
+      slot.additions.push(candidate);
+      slot.taken++;
+      if (candidate.interviewArea) slot.areas.add(candidate.interviewArea);
     }
-  }
+  };
 
-  // Phase 2: create new teams from remaining pool
-  let nextTeamNum =
-    existingTeams.length +
-    (steps.filter((s) => s.kind === "create").length);
+  const newSlot = (): TeamSlot => {
+    let n = plan.length + 1;
+    let teamName = `Auto-Team ${n}`;
+    while (takenNames.has(teamName)) teamName = `Auto-Team ${++n}`;
+    takenNames.add(teamName);
 
-  while (pool.length >= MAX_TEAM_SIZE) {
-    const byArea = {
-      [InterviewArea.MECHANICS]: pool.filter((u) => u.interviewArea === InterviewArea.MECHANICS),
-      [InterviewArea.ELECTRONICS]: pool.filter((u) => u.interviewArea === InterviewArea.ELECTRONICS),
-      [InterviewArea.PROGRAMMING]: pool.filter((u) => u.interviewArea === InterviewArea.PROGRAMMING),
+    const slot: TeamSlot = {
+      teamId: null,
+      teamName,
+      areas: new Set(),
+      taken: 0,
+      additions: [],
     };
 
-    const hasAllRoles =
-      byArea[InterviewArea.MECHANICS].length > 0 &&
-      byArea[InterviewArea.ELECTRONICS].length > 0 &&
-      byArea[InterviewArea.PROGRAMMING].length >= 2;
+    plan.push(slot);
+    return slot;
+  };
 
-    if (!hasAllRoles) break;
+  // Fullest-first, so incomplete teams get finished instead of everyone
+  // being spread thin across many half-empty ones.
+  const openSlot = (needed: number) =>
+    plan
+      .filter((slot) => roomIn(slot) >= needed)
+      .sort((a, b) => roomIn(a) - roomIn(b))[0];
 
-    nextTeamNum++;
-    const teamName = `Auto-Team ${nextTeamNum}`;
-    const picks: UserStub[] = [];
-    picks.push(byArea[InterviewArea.MECHANICS].shift()!);
-    picks.push(byArea[InterviewArea.ELECTRONICS].shift()!);
-    picks.push(byArea[InterviewArea.PROGRAMMING].shift()!);
-    picks.push(byArea[InterviewArea.PROGRAMMING].shift()!);
+  // Groups that registered together need contiguous room, so they go first.
+  const grouped = units
+    .filter((unit) => unit.candidates.length > 1)
+    .sort((a, b) => b.candidates.length - a.candidates.length);
 
-    for (const user of picks) {
-      const idx = pool.indexOf(user);
-      if (idx >= 0) pool.splice(idx, 1);
+  for (const unit of grouped) {
+    if (unit.candidates.length > MAX_TEAM_SIZE) {
+      remaining.push(...unit.candidates);
+      continue;
     }
 
-    steps.push({ kind: "create", teamName, members: picks });
+    place(openSlot(unit.candidates.length) ?? newSlot(), unit);
   }
 
-  // Phase 3: spread remaining users to any non-full team
-  const fillable = existingTeams
-    .filter((t) => t.count < MAX_TEAM_SIZE)
-    .sort((a, b) => a.count - b.count);
+  const pool = shuffle(units.filter((unit) => unit.candidates.length === 1));
 
-  for (const user of pool) {
-    const team = fillable.find((t) => t.count < MAX_TEAM_SIZE);
-    if (!team) break;
+  while (pool.length > 0) {
+    const slot = openSlot(1) ?? newSlot();
+    const missing = AREAS.filter((area) => !slot.areas.has(area));
 
-    team.count++;
-    steps.push({
-      kind: "fill",
-      teamId: team.id,
-      teamName: team.name,
-      user,
-      afterCount: team.count,
+    let idx = pool.findIndex((unit) => {
+      const area = unit.candidates[0]!.interviewArea;
+      return area !== null && missing.includes(area);
     });
+
+    if (idx < 0) idx = 0;
+
+    place(slot, pool.splice(idx, 1)[0]!);
   }
 
-  return { steps, remaining: pool };
+  const steps = plan
+    .filter((slot) => slot.additions.length > 0)
+    .map((slot) => ({
+      teamId: slot.teamId,
+      teamName: slot.teamName,
+      candidates: slot.additions,
+    }));
+
+  return { steps, remaining };
 }
 
 export const userManagementRouter = createTRPCRouter({
@@ -266,47 +242,35 @@ export const userManagementRouter = createTRPCRouter({
     }),
 
   previewAutoAssign: adminProcedure.query(async () => {
-    const beginners = await db.registrationMember.findMany({
+    /*
+     * The plan is built from registrations rather than accounts, so people who
+     * have not signed in yet can be placed as well. Only accepted beginner
+     * registrations of this edition take part: mentors, staff and anyone who
+     * merely logged in are never treated as candidates.
+     */
+    const registrations = await db.registration.findMany({
       where: {
         edition: CURRENT_EDITION,
-        registration: { track: "BEGINNER" },
+        track: "BEGINNER",
+        status: RegistrationStatus.ACCEPTED,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        interviewArea: true,
-        registration: { select: { teamId: true } },
-      },
+      include: { members: { orderBy: { order: "asc" } } },
     });
 
-    const destinationByEmail = new Map(
-      beginners.map((member) => [
-        member.email.toLowerCase(),
-        member.registration.teamId,
-      ]),
+    const accounts = await db.user.findMany({
+      where: {
+        email: {
+          in: registrations.flatMap((r) => r.members.map((m) => m.email)),
+        },
+      },
+      select: { id: true, email: true, teamId: true, role: true },
+    });
+
+    const accountByEmail = new Map(
+      accounts.flatMap((user) =>
+        user.email ? [[user.email.toLowerCase(), user] as const] : [],
+      ),
     );
-
-    const unassigned = await db.user.findMany({
-      where: { role: Role.UNASSIGNED, teamId: null },
-      orderBy: { email: "asc" },
-    });
-
-    const userStubs: UserStub[] = unassigned
-      .filter((user) => {
-        if (!user.email) return false;
-
-        const email = user.email.toLowerCase();
-
-        return destinationByEmail.has(email) && !destinationByEmail.get(email);
-      })
-      .map((u) => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        interviewArea: u.interviewArea,
-        role: u.role,
-      }));
 
     const teams = await db.team.findMany({
       where: { isActive: true },
@@ -314,127 +278,159 @@ export const userManagementRouter = createTRPCRouter({
       orderBy: { name: "asc" },
     });
 
-    const teamStubs: TeamStub[] = teams.map((t) => {
+    /*
+     * A team's occupancy is the people it already holds plus the people its
+     * registrations name, signed in or not. Counting only User rows makes a
+     * full team look empty and invites strangers into seats already taken.
+     */
+    const slots: TeamSlot[] = teams.map((team) => {
       const seen = new Set<string>();
-      const members: UserStub[] = [];
+      const areas = new Set<InterviewArea>();
+      let taken = 0;
 
-      for (const member of t.members) {
-        const key = member.email?.toLowerCase() ?? member.id;
-        if (seen.has(key)) continue;
+      const add = (key: string, area: InterviewArea | null) => {
+        if (seen.has(key)) return;
         seen.add(key);
+        taken++;
+        if (area) areas.add(area);
+      };
 
-        members.push({
-          id: member.id,
-          name: member.name,
-          email: member.email,
-          interviewArea: member.interviewArea,
-          role: member.role,
-        });
+      for (const member of team.members) {
+        add(member.email?.toLowerCase() ?? member.id, member.interviewArea);
       }
 
-      for (const member of beginners) {
-        if (member.registration.teamId !== t.id) continue;
+      for (const registration of registrations) {
+        if (registration.teamId !== team.id) continue;
 
-        const key = member.email.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        members.push({
-          id: `pending:${member.id}`,
-          name: member.name,
-          email: member.email,
-          interviewArea: member.interviewArea,
-          role: Role.UNASSIGNED,
-        });
+        for (const member of registration.members) {
+          add(member.email.toLowerCase(), member.interviewArea);
+        }
       }
 
-      return { id: t.id, name: t.name, members, count: members.length };
+      return {
+        teamId: team.id,
+        teamName: team.name,
+        areas,
+        taken,
+        additions: [],
+      };
     });
 
-    return computeAutoAssignPlan(userStubs, teamStubs);
+    const units: Unit[] = [];
+
+    for (const registration of registrations) {
+      // Already pointed at a team, or emptied out by hand — nothing to place.
+      if (registration.teamId || registration.members.length === 0) continue;
+
+      // Someone in the group already sits on a team; leave it to the admin.
+      const anyPlaced = registration.members.some(
+        (member) => accountByEmail.get(member.email.toLowerCase())?.teamId,
+      );
+
+      if (anyPlaced) continue;
+
+      units.push({
+        registrationId: registration.id,
+        candidates: registration.members.map((member) => {
+          const account = accountByEmail.get(member.email.toLowerCase());
+
+          return {
+            userId: account?.id ?? null,
+            registrationId: registration.id,
+            name: member.name,
+            email: member.email,
+            interviewArea: member.interviewArea,
+            role: account?.role ?? null,
+          };
+        }),
+      });
+    }
+
+    const takenNames = new Set(
+      (await db.team.findMany({ select: { name: true } })).map((t) => t.name),
+    );
+
+    return computeAutoAssignPlan(units, slots, takenNames);
   }),
 
   autoAssignUsers: adminProcedure
     .input(z.object({ steps: z.array(zAssignmentStep) }))
     .mutation(async ({ input }) => {
-      const targetIds = input.steps.flatMap((step) =>
-        step.kind === "fill"
-          ? [step.user.id]
-          : step.members.map((member) => member.id),
+      const candidates = input.steps.flatMap((step) => step.candidates);
+
+      /*
+       * The plan was computed client-side and may be minutes old. Re-check it
+       * before writing: someone may have signed in and landed in a team, or
+       * had their registration accepted into one, since the preview ran.
+       */
+      const registrationIds = [
+        ...new Set(candidates.map((candidate) => candidate.registrationId)),
+      ];
+
+      const stale = await db.registration.count({
+        where: { id: { in: registrationIds }, NOT: { teamId: null } },
+      });
+
+      if (stale > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `${stale} registration(s) already belong to a team. Recompute the assignment.`,
+        });
+      }
+
+      const userIds = candidates.flatMap((candidate) =>
+        candidate.userId ? [candidate.userId] : [],
       );
 
-      if (targetIds.length > 0) {
-        const targets = await db.user.findMany({
-          where: { id: { in: targetIds } },
-          select: { id: true, email: true, teamId: true },
+      if (userIds.length > 0) {
+        const placed = await db.user.count({
+          where: { id: { in: userIds }, NOT: { teamId: null } },
         });
 
-        const alreadyPlaced = targets.filter((user) => user.teamId);
-
-        if (alreadyPlaced.length > 0) {
+        if (placed > 0) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: `${alreadyPlaced.length} user(s) already joined a team since this plan was computed. Recompute the assignment.`,
-          });
-        }
-
-        const beginnerEmails = await db.registrationMember
-          .findMany({
-            where: {
-              edition: CURRENT_EDITION,
-              registration: { track: "BEGINNER" },
-              email: {
-                in: targets.flatMap((user) => (user.email ? [user.email] : [])),
-              },
-            },
-            select: { email: true },
-          })
-          .then(
-            (rows) => new Set(rows.map((row) => row.email.toLowerCase())),
-          );
-
-        const notCandidates = targets.filter(
-          (user) =>
-            !user.email || !beginnerEmails.has(user.email.toLowerCase()),
-        );
-
-        if (notCandidates.length > 0) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: `${notCandidates.length} user(s) in this plan have no beginner registration. Recompute the assignment.`,
+            message: `${placed} user(s) already joined a team since this plan was computed. Recompute the assignment.`,
           });
         }
       }
 
       let created = 0;
+
       await db.$transaction(async (tx) => {
         for (const step of input.steps) {
-          if (step.kind === "fill") {
-            await tx.user.update({
-              where: { id: step.user.id },
-              data: {
-                teamId: step.teamId,
-                role: roleAfterJoiningTeam(step.user.role),
-              },
-            });
-          } else {
-            const team = await tx.team.create({
-              data: { name: step.teamName },
-            });
+          let teamId = step.teamId;
+
+          if (!teamId) {
+            const team = await tx.team.create({ data: { name: step.teamName } });
+            teamId = team.id;
             created++;
-            for (const user of step.members) {
-              await tx.user.update({
-                where: { id: user.id },
-                data: { teamId: team.id, role: roleAfterJoiningTeam(user.role) },
-              });
-            }
+          }
+
+          const stepRegistrations = [
+            ...new Set(step.candidates.map((c) => c.registrationId)),
+          ];
+
+          // Placing the registration is what carries people who have never
+          // signed in; their User row is created and linked at first login.
+          for (const registrationId of stepRegistrations) {
+            await tx.registration.update({
+              where: { id: registrationId },
+              data: { teamId },
+            });
+          }
+
+          for (const candidate of step.candidates) {
+            if (!candidate.userId) continue;
+
+            await tx.user.update({
+              where: { id: candidate.userId },
+              data: { teamId, role: roleAfterJoiningTeam(candidate.role) },
+            });
           }
         }
       });
 
-      return {
-        assigned: input.steps.length,
-        created,
-      };
+      return { assigned: candidates.length, created };
     }),
 });

@@ -1,4 +1,5 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { db } from "rbrgs/server/db";
 import { CURRENT_EDITION } from "~/lib/registration";
@@ -265,37 +266,90 @@ export const userManagementRouter = createTRPCRouter({
     }),
 
   previewAutoAssign: adminProcedure.query(async () => {
+    const beginners = await db.registrationMember.findMany({
+      where: {
+        edition: CURRENT_EDITION,
+        registration: { track: "BEGINNER" },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        interviewArea: true,
+        registration: { select: { teamId: true } },
+      },
+    });
+
+    const destinationByEmail = new Map(
+      beginners.map((member) => [
+        member.email.toLowerCase(),
+        member.registration.teamId,
+      ]),
+    );
+
     const unassigned = await db.user.findMany({
       where: { role: Role.UNASSIGNED, teamId: null },
       orderBy: { email: "asc" },
     });
 
+    const userStubs: UserStub[] = unassigned
+      .filter((user) => {
+        if (!user.email) return false;
+
+        const email = user.email.toLowerCase();
+
+        return destinationByEmail.has(email) && !destinationByEmail.get(email);
+      })
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        interviewArea: u.interviewArea,
+        role: u.role,
+      }));
+
     const teams = await db.team.findMany({
       where: { isActive: true },
-      include: { members: true, _count: { select: { members: true } } },
+      include: { members: true },
       orderBy: { name: "asc" },
     });
 
-    const teamStubs: TeamStub[] = teams.map((t) => ({
-      id: t.id,
-      name: t.name,
-      members: t.members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        interviewArea: m.interviewArea,
-        role: m.role,
-      })),
-      count: t._count.members,
-    }));
+    const teamStubs: TeamStub[] = teams.map((t) => {
+      const seen = new Set<string>();
+      const members: UserStub[] = [];
 
-    const userStubs: UserStub[] = unassigned.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      interviewArea: u.interviewArea,
-      role: u.role,
-    }));
+      for (const member of t.members) {
+        const key = member.email?.toLowerCase() ?? member.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        members.push({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          interviewArea: member.interviewArea,
+          role: member.role,
+        });
+      }
+
+      for (const member of beginners) {
+        if (member.registration.teamId !== t.id) continue;
+
+        const key = member.email.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        members.push({
+          id: `pending:${member.id}`,
+          name: member.name,
+          email: member.email,
+          interviewArea: member.interviewArea,
+          role: Role.UNASSIGNED,
+        });
+      }
+
+      return { id: t.id, name: t.name, members, count: members.length };
+    });
 
     return computeAutoAssignPlan(userStubs, teamStubs);
   }),
@@ -303,6 +357,55 @@ export const userManagementRouter = createTRPCRouter({
   autoAssignUsers: adminProcedure
     .input(z.object({ steps: z.array(zAssignmentStep) }))
     .mutation(async ({ input }) => {
+      const targetIds = input.steps.flatMap((step) =>
+        step.kind === "fill"
+          ? [step.user.id]
+          : step.members.map((member) => member.id),
+      );
+
+      if (targetIds.length > 0) {
+        const targets = await db.user.findMany({
+          where: { id: { in: targetIds } },
+          select: { id: true, email: true, teamId: true },
+        });
+
+        const alreadyPlaced = targets.filter((user) => user.teamId);
+
+        if (alreadyPlaced.length > 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `${alreadyPlaced.length} user(s) already joined a team since this plan was computed. Recompute the assignment.`,
+          });
+        }
+
+        const beginnerEmails = await db.registrationMember
+          .findMany({
+            where: {
+              edition: CURRENT_EDITION,
+              registration: { track: "BEGINNER" },
+              email: {
+                in: targets.flatMap((user) => (user.email ? [user.email] : [])),
+              },
+            },
+            select: { email: true },
+          })
+          .then(
+            (rows) => new Set(rows.map((row) => row.email.toLowerCase())),
+          );
+
+        const notCandidates = targets.filter(
+          (user) =>
+            !user.email || !beginnerEmails.has(user.email.toLowerCase()),
+        );
+
+        if (notCandidates.length > 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `${notCandidates.length} user(s) in this plan have no beginner registration. Recompute the assignment.`,
+          });
+        }
+      }
+
       let created = 0;
       await db.$transaction(async (tx) => {
         for (const step of input.steps) {

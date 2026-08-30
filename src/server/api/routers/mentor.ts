@@ -141,65 +141,6 @@ export const mentorRouter = createTRPCRouter({
     };
   }),
 
-  // My individually assigned (advanced) candidates.
-  getMyAssignments: mentorProcedure.query(async ({ ctx }) => {
-    const assignments = await ctx.db.mentorAssignment.findMany({
-      where: { mentorId: ctx.session.user.id },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, interviewArea: true },
-        },
-        registrationMember: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            interviewArea: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    /*
-     * An assignment made against the user alone carries no phone, so fall
-     * back to the registration that shares its email.
-     */
-    const contacts = await contactsByEmail(
-      ctx.db,
-      assignments.flatMap((assignment) =>
-        !assignment.registrationMember && assignment.user?.email
-          ? [assignment.user.email]
-          : [],
-      ),
-    );
-
-    return assignments.map((assignment) => {
-      const fallback = assignment.user?.email
-        ? contacts.get(assignment.user.email.toLowerCase())
-        : undefined;
-
-      return {
-        ...assignment,
-        name:
-          assignment.registrationMember?.name ??
-          assignment.user?.name ??
-          assignment.registrationMember?.email ??
-          assignment.user?.email ??
-          "Unknown candidate",
-        email:
-          assignment.registrationMember?.email ?? assignment.user?.email ?? null,
-        phone: assignment.registrationMember?.phone ?? fallback?.phone ?? null,
-        interviewArea:
-          assignment.registrationMember?.interviewArea ??
-          assignment.user?.interviewArea ??
-          fallback?.interviewArea ??
-          null,
-      };
-    });
-  }),
-
   /*
    * Advanced candidates are covered by challenge, not one by one: whoever is
    * listed for a challenge this edition mentors everyone registered for it.

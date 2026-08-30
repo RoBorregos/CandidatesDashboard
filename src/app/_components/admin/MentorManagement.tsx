@@ -5,9 +5,6 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 
 export default function MentorManagement() {
-  const [selectedMentorId, setSelectedMentorId] = useState("");
-  const [selectedCandidateId, setSelectedCandidateId] = useState("");
-  const [candidateSearch, setCandidateSearch] = useState("");
   // Whose mentor access the "Mentor Access" card is currently editing.
   const [selectedAdminId, setSelectedAdminId] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -20,38 +17,12 @@ export default function MentorManagement() {
 
   const { data: allUsers } = api.admin.getMentorEligibleUsers.useQuery();
 
-  const { data: candidates, isLoading: candidatesLoading } =
-    api.admin.getCandidates.useQuery();
-
-  const {
-    data: assignments = [],
-    isLoading: assignmentsLoading,
-    refetch: refetchAssignments,
-  } = api.admin.getAssignments.useQuery();
-
-  const assignMentor = api.admin.assignMentor.useMutation({
-    onSuccess: async () => {
-      toast.success("Mentor assigned successfully.");
-
-      setSelectedCandidateId("");
-
-      await refetchAssignments();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const removeMentor = api.admin.removeMentor.useMutation({
-    onSuccess: async () => {
-      toast.success("Mentor assignment removed.");
-
-      await refetchAssignments();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+  /*
+   * Advanced contestants are mentored by challenge, so this one query carries
+   * both the contestant list and who covers each of them.
+   */
+  const { data: challengeGroups, isLoading: challengeGroupsLoading } =
+    api.admin.getChallengeGroups.useQuery();
 
   const setUserMentor = api.admin.setUserMentor.useMutation({
     onSuccess: async (result) => {
@@ -61,6 +32,8 @@ export default function MentorManagement() {
 
       await utils.admin.getMentorEligibleUsers.invalidate();
       await utils.admin.getMentors.invalidate();
+      // Revoking mentor access drops that person's challenge groups.
+      await utils.admin.getChallengeGroups.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -108,121 +81,42 @@ export default function MentorManagement() {
   );
 
   /*
-   * A candidate can now stack several distinct mentors, so "already has a
-   * mentor" no longer hides them globally — only hide a candidate from the
-   * picker if the currently selected mentor is already assigned to them.
+   * One flat, alphabetical row per advanced contestant. `ungrouped` holds the
+   * ones whose challenge is missing or no longer offered — nobody covers those,
+   * so they have to stay visible instead of dropping out of the list.
    */
-  const candidateIdsAssignedToSelectedMentor = useMemo(() => {
-    if (!selectedMentorId) return new Set<string>();
-
-    return new Set(
-      (assignments ?? [])
-        .filter((assignment) => assignment.mentor.id === selectedMentorId)
-        .flatMap((assignment) =>
-          [assignment.registrationMember?.id, assignment.user?.id].filter(
-            (id): id is string => Boolean(id),
-          ),
-        ),
+  const contestants = useMemo(() => {
+    const fromGroups = (challengeGroups?.groups ?? []).flatMap((group) =>
+      group.candidates.map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        challenge: group.challenge as string | null,
+        mentors: group.mentors,
+      })),
     );
-  }, [assignments, selectedMentorId]);
 
-  /*
-   * Candidates not yet assigned to the currently selected mentor.
-   *
-   * getCandidates currently returns RegistrationMembers for the
-   * current edition, so registrationMemberId is the identifier
-   * we use when creating the mentor assignment.
-   */
-  const availableCandidates = useMemo(() => {
-    return (candidates ?? []).filter(
-      (candidate) =>
-        !candidateIdsAssignedToSelectedMentor.has(candidate.id) &&
-        !(
-          candidate.userId &&
-          candidateIdsAssignedToSelectedMentor.has(candidate.userId)
-        ),
+    const fromUngrouped = (challengeGroups?.ungrouped ?? []).map(
+      (candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        challenge: candidate.challenge,
+        mentors: [] as (typeof fromGroups)[number]["mentors"],
+      }),
     );
-  }, [candidates, candidateIdsAssignedToSelectedMentor]);
 
-  /*
-   * Search contestants by name or email.
-   */
-  const filteredCandidates = useMemo(() => {
-    const search = candidateSearch.trim().toLowerCase();
+    return [...fromGroups, ...fromUngrouped].sort((a, b) =>
+      (a.name ?? "").localeCompare(b.name ?? ""),
+    );
+  }, [challengeGroups]);
 
-    if (!search) {
-      return availableCandidates;
-    }
-
-    return availableCandidates.filter((candidate) => {
-      const name = candidate.name?.toLowerCase() ?? "";
-      const email = candidate.email?.toLowerCase() ?? "";
-
-      return name.includes(search) || email.includes(search);
-    });
-  }, [availableCandidates, candidateSearch]);
-
-  const selectedMentor = useMemo(
-    () => mentors?.find((mentor) => mentor.id === selectedMentorId) ?? null,
-    [mentors, selectedMentorId],
+  const uncoveredCount = useMemo(
+    () => contestants.filter((c) => c.mentors.length === 0).length,
+    [contestants],
   );
 
-  const selectedCandidate = useMemo(
-    () =>
-      candidates?.find((candidate) => candidate.id === selectedCandidateId) ??
-      null,
-    [candidates, selectedCandidateId],
-  );
-
-  const handleAssign = () => {
-    if (!selectedMentorId) {
-      toast.error("Please select a mentor.");
-      return;
-    }
-
-    if (!selectedCandidateId) {
-      toast.error("Please select a contestant.");
-      return;
-    }
-
-    if (candidateIdsAssignedToSelectedMentor.has(selectedCandidateId)) {
-      toast.error("This mentor is already assigned to this candidate.");
-      return;
-    }
-
-    assignMentor.mutate({
-      mentorId: selectedMentorId,
-      registrationMemberId: selectedCandidateId,
-    });
-  };
-
-  const handleRemove = (assignmentId: string) => {
-    const assignment = assignments?.find((item) => item.id === assignmentId);
-
-    const candidateName =
-      assignment?.registrationMember?.name ??
-      assignment?.registrationMember?.email ??
-      assignment?.user?.name ??
-      assignment?.user?.email ??
-      "this contestant";
-
-    const mentorName =
-      assignment?.mentor?.name ?? assignment?.mentor?.email ?? "this mentor";
-
-    const confirmed = window.confirm(
-      `Remove ${mentorName} as mentor for ${candidateName}?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    removeMentor.mutate({
-      assignmentId,
-    });
-  };
-
-  if (mentorsLoading || candidatesLoading) {
+  if (mentorsLoading || challengeGroupsLoading) {
     return (
       <div className="rounded-lg bg-gray-800 p-6">
         <p className="text-gray-300">Loading mentor management...</p>
@@ -248,21 +142,57 @@ export default function MentorManagement() {
 
         <div className="rounded-lg bg-gray-800 p-5">
           <p className="text-sm uppercase tracking-wide text-gray-400">
-            Current Contestants
+            Advanced Contestants
           </p>
           <p className="mt-1 text-3xl font-bold text-white">
-            {candidates?.length ?? 0}
+            {contestants.length}
           </p>
         </div>
 
-        <div className="rounded-lg bg-gray-800 p-5">
+        <div
+          className={`rounded-lg p-5 ${
+            uncoveredCount > 0 ? "bg-yellow-900/40" : "bg-gray-800"
+          }`}
+        >
           <p className="text-sm uppercase tracking-wide text-gray-400">
-            Assigned
+            Contestants With No Mentor
           </p>
-          <p className="mt-1 text-3xl font-bold text-white">
-            {assignments?.length ?? 0}
+          <p
+            className={`mt-1 text-3xl font-bold ${
+              uncoveredCount > 0 ? "text-yellow-300" : "text-white"
+            }`}
+          >
+            {uncoveredCount}
           </p>
         </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* How mentoring is assigned */}
+      {/* ========================================================= */}
+
+      <div className="rounded-lg border border-blue-800/60 bg-blue-900/20 p-5">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-300">
+          Where mentors are assigned
+        </h3>
+
+        <ul className="mt-2 space-y-1 text-sm text-blue-100/80">
+          <li>
+            <strong className="text-blue-100">Advanced</strong> — mentors are
+            picked per challenge in the{" "}
+            <strong className="text-blue-100">Challenge Mentors</strong> tab and
+            cover everyone registered for that challenge.
+          </li>
+          <li>
+            <strong className="text-blue-100">Beginners</strong> — mentored as a
+            team by a pair, in the{" "}
+            <strong className="text-blue-100">Mentor Pairs</strong> tab.
+          </li>
+        </ul>
+
+        <p className="mt-2 text-sm text-blue-100/80">
+          This tab only grants and revokes the mentor capability itself.
+        </p>
       </div>
 
       {/* ========================================================= */}
@@ -406,346 +336,24 @@ export default function MentorManagement() {
       </div>
 
       {/* ========================================================= */}
-      {/* Assign Mentor */}
-      {/* ========================================================= */}
-
-      <div className="rounded-lg bg-gray-800 p-6">
-        <div className="mb-5">
-          <h3 className="text-xl font-semibold text-white">
-            Assign Mentor (Advanced Individuals)
-          </h3>
-
-          <p className="mt-1 text-sm text-gray-400">
-            Select a mentor and an advanced-track contestant to create a
-            mentor assignment. A contestant can have several mentors.
-            Beginners are mentored as a team — see Mentor Pairs.
-          </p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-2">
-          {/* Mentor */}
-          <div>
-            <label
-              htmlFor="mentor-select"
-              className="mb-2 block text-sm font-medium text-gray-300"
-            >
-              Mentor
-            </label>
-
-            <select
-              id="mentor-select"
-              value={selectedMentorId}
-              onChange={(event) => setSelectedMentorId(event.target.value)}
-              disabled={mentors?.length === 0 || assignMentor.isPending}
-              className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Select a mentor...</option>
-
-              {mentors?.map((mentor) => (
-                <option key={mentor.id} value={mentor.id}>
-                  {mentor.name ?? "Unnamed mentor"}
-                  {mentor.email ? ` — ${mentor.email}` : ""}
-                  {mentor._count.mentorAssignments > 0
-                    ? ` (${mentor._count.mentorAssignments} assigned)`
-                    : ""}
-                </option>
-              ))}
-            </select>
-
-            {mentors?.length === 0 && (
-              <p className="mt-2 text-sm text-yellow-400">
-                No mentors yet. Use Mentor Access above to grant a user the
-                mentor capability.
-              </p>
-            )}
-          </div>
-
-          {/* Contestant */}
-          <div>
-            <label
-              htmlFor="candidate-select"
-              className="mb-2 block text-sm font-medium text-gray-300"
-            >
-              Contestant
-            </label>
-
-            <select
-              id="candidate-select"
-              value={selectedCandidateId}
-              onChange={(event) => setSelectedCandidateId(event.target.value)}
-              disabled={
-                filteredCandidates.length === 0 || assignMentor.isPending
-              }
-              className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Select a contestant...</option>
-
-              {filteredCandidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.name ?? "Unnamed contestant"}
-                  {candidate.email ? ` — ${candidate.email}` : ""}
-                </option>
-              ))}
-            </select>
-
-            {availableCandidates.length === 0 && (
-              <p className="mt-2 text-sm text-gray-400">
-                {selectedMentorId
-                  ? "This mentor is already assigned to every advanced contestant."
-                  : "No advanced contestants found."}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Contestant search */}
-        <div className="mt-5">
-          <label
-            htmlFor="contestant-search"
-            className="mb-2 block text-sm font-medium text-gray-300"
-          >
-            Search contestants
-          </label>
-
-          <input
-            id="contestant-search"
-            type="text"
-            value={candidateSearch}
-            onChange={(event) => {
-              setCandidateSearch(event.target.value);
-
-              /*
-               * Clear the current selection if it no longer appears
-               * in the filtered contestant list.
-               */
-              const value = event.target.value.toLowerCase();
-
-              if (selectedCandidateId) {
-                const selected = availableCandidates.find(
-                  (candidate) => candidate.id === selectedCandidateId,
-                );
-
-                const name = selected?.name?.toLowerCase() ?? "";
-                const email = selected?.email?.toLowerCase() ?? "";
-
-                if (
-                  !selected ||
-                  (!name.includes(value) && !email.includes(value))
-                ) {
-                  setSelectedCandidateId("");
-                }
-              }
-            }}
-            placeholder="Search by name or email..."
-            disabled={assignMentor.isPending}
-            className="w-full rounded-md border border-gray-600 bg-gray-700 p-3 text-white outline-none placeholder:text-gray-500 focus:border-blue-500 disabled:opacity-50"
-          />
-
-          <p className="mt-2 text-xs text-gray-500">
-            Showing {filteredCandidates.length} contestant
-            {filteredCandidates.length === 1 ? "" : "s"} available for this
-            mentor.
-          </p>
-        </div>
-
-        {/* Selected summary */}
-        {Boolean(selectedMentor ?? selectedCandidate) && (
-          <div className="mt-5 rounded-md border border-gray-700 bg-gray-900/50 p-4">
-            <p className="mb-3 text-sm font-medium uppercase tracking-wide text-gray-400">
-              Assignment Preview
-            </p>
-
-            <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center">
-              <span className="font-medium text-white">
-                {selectedMentor?.name ??
-                  selectedMentor?.email ??
-                  "No mentor selected"}
-              </span>
-
-              <span className="hidden text-gray-500 md:block">→</span>
-
-              <span className="text-gray-300">
-                {selectedCandidate?.name ??
-                  selectedCandidate?.email ??
-                  "No contestant selected"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Assign button */}
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedMentorId("");
-              setSelectedCandidateId("");
-              setCandidateSearch("");
-            }}
-            disabled={
-              assignMentor.isPending ||
-              (!selectedMentorId && !selectedCandidateId && !candidateSearch)
-            }
-            className="rounded-md bg-gray-700 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAssign}
-            disabled={
-              !selectedMentorId ||
-              !selectedCandidateId ||
-              assignMentor.isPending ||
-              // Duplicate prevention reads `assignments`; don't act without it.
-              assignmentsLoading
-            }
-            className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {assignMentor.isPending ? "Assigning..." : "Assign Mentor"}
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================= */}
-      {/* Current Assignments */}
-      {/* ========================================================= */}
-
-      <div className="rounded-lg bg-gray-800 p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-semibold text-white">
-              Current Assignments (Advanced Individuals)
-            </h3>
-
-            <p className="mt-1 text-sm text-gray-400">
-              Mentors currently assigned to advanced contestants.
-            </p>
-          </div>
-
-          <span className="rounded-full bg-gray-700 px-3 py-1 text-sm text-gray-300">
-            {assignments?.length ?? 0} assigned
-          </span>
-        </div>
-
-        {assignmentsLoading ? (
-          <div className="rounded-md border border-gray-700 p-6 text-center text-gray-400">
-            Loading assignments...
-          </div>
-        ) : assignments?.length === 0 ? (
-          <div className="rounded-md border border-dashed border-gray-700 p-8 text-center">
-            <p className="font-medium text-gray-300">
-              No mentor assignments yet.
-            </p>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Use the form above to assign a mentor to a contestant.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-md border border-gray-700">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-900/70">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Mentor
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Contestant
-                  </th>
-
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-700 bg-gray-800">
-                {(assignments ?? []).map((assignment) => {
-                  const mentorName =
-                    assignment.mentor.name ??
-                    assignment.mentor.email ??
-                    "Unnamed mentor";
-
-                  const contestantName =
-                    assignment.registrationMember?.name ??
-                    assignment.registrationMember?.email ??
-                    assignment.user?.name ??
-                    assignment.user?.email ??
-                    "Unknown contestant";
-
-                  const contestantEmail =
-                    assignment.registrationMember?.email ??
-                    assignment.user?.email ??
-                    null;
-
-                  return (
-                    <tr key={assignment.id} className="hover:bg-gray-750">
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-white">
-                          {mentorName}
-                        </div>
-
-                        {assignment.mentor.email && assignment.mentor.name && (
-                          <div className="text-sm text-gray-500">
-                            {assignment.mentor.email}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-gray-200">
-                          {contestantName}
-                        </div>
-
-                        {contestantEmail &&
-                          contestantEmail !== contestantName && (
-                            <div className="text-sm text-gray-500">
-                              {contestantEmail}
-                            </div>
-                          )}
-                      </td>
-
-                      <td className="px-4 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(assignment.id)}
-                          disabled={removeMentor.isPending}
-                          className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {removeMentor.isPending ? "Removing..." : "Remove"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================= */}
       {/* Contestant Status */}
       {/* ========================================================= */}
 
       <div className="rounded-lg bg-gray-800 p-6">
         <div className="mb-5">
           <h3 className="text-xl font-semibold text-white">
-            Contestant Status (Advanced Individuals)
+            Contestant Status (Advanced)
           </h3>
 
           <p className="mt-1 text-sm text-gray-400">
-            Overview of advanced contestants from the current edition and
-            their mentor(s).
+            Every advanced contestant of the current edition and the mentors
+            covering their challenge. Change these in the Challenge Mentors tab.
           </p>
         </div>
 
-        {candidates?.length === 0 ? (
+        {contestants.length === 0 ? (
           <div className="rounded-md border border-dashed border-gray-700 p-6 text-center text-gray-400">
-            No contestants found for the current edition.
+            No advanced contestants found for the current edition.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border border-gray-700">
@@ -761,7 +369,11 @@ export default function MentorManagement() {
                   </th>
 
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Mentor
+                    Challenge
+                  </th>
+
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Mentors
                   </th>
 
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -771,44 +383,46 @@ export default function MentorManagement() {
               </thead>
 
               <tbody className="divide-y divide-gray-700 bg-gray-800">
-                {(candidates ?? []).map((candidate) => {
-                  const candidateAssignments = (assignments ?? []).filter(
-                    (item) => item.registrationMember?.id === candidate.id,
-                  );
+                {contestants.map((contestant) => (
+                  <tr key={contestant.id} className="hover:bg-gray-750">
+                    <td className="px-4 py-3 text-sm font-medium text-white">
+                      {contestant.name ?? "Unnamed contestant"}
+                    </td>
 
-                  const mentorNames = candidateAssignments
-                    .map((a) => a.mentor.name ?? a.mentor.email)
-                    .filter(Boolean)
-                    .join(", ");
+                    <td className="px-4 py-3 text-sm text-gray-400">
+                      {contestant.email ?? "—"}
+                    </td>
 
-                  return (
-                    <tr key={candidate.id} className="hover:bg-gray-750">
-                      <td className="px-4 py-3 text-sm font-medium text-white">
-                        {candidate.name ?? "Unnamed contestant"}
-                      </td>
+                    <td className="px-4 py-3 text-sm text-gray-300">
+                      {contestant.challenge ?? (
+                        <span className="text-yellow-400">No challenge</span>
+                      )}
+                    </td>
 
-                      <td className="px-4 py-3 text-sm text-gray-400">
-                        {candidate.email ?? "—"}
-                      </td>
+                    <td className="px-4 py-3 text-sm text-gray-300">
+                      {contestant.mentors.length === 0
+                        ? "—"
+                        : contestant.mentors
+                            .map(
+                              (mentor) =>
+                                mentor.name ?? mentor.email ?? "Unnamed mentor",
+                            )
+                            .join(", ")}
+                    </td>
 
-                      <td className="px-4 py-3 text-sm text-gray-300">
-                        {mentorNames || "—"}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {candidateAssignments.length > 0 ? (
-                          <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
-                            Assigned ({candidateAssignments.length})
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
-                            Unassigned
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                    <td className="px-4 py-3">
+                      {contestant.mentors.length > 0 ? (
+                        <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
+                          Covered ({contestant.mentors.length})
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
+                          No mentor
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

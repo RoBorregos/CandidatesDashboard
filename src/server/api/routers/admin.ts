@@ -72,10 +72,6 @@ export const adminRouter = createTRPCRouter({
   // Mentor Management
   setUserMentor: mentorManagementRouter.setUserMentor,
   getMentors: mentorManagementRouter.getMentors,
-  getCandidates: mentorManagementRouter.getCandidates,
-  getAssignments: mentorManagementRouter.getAssignments,
-  assignMentor: mentorManagementRouter.assignMentor,
-  removeMentor: mentorManagementRouter.removeMentor,
   getMentorEligibleUsers: mentorManagementRouter.getMentorEligibleUsers,
 
   // Mentor Pair Management

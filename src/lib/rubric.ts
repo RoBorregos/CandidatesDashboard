@@ -20,6 +20,20 @@ export const RUBRIC_LEVELS = [
 
 export type RubricLevelValue = (typeof RUBRIC_LEVELS)[number]["value"];
 
+/** The only four states an objective can be in, mirroring ObjectiveStatus. */
+export const OBJECTIVE_STATUSES = [
+  { value: "NOT_STARTED", label: "Sin iniciar" },
+  { value: "BLOCKED", label: "Bloqueado" },
+  { value: "IN_PROGRESS", label: "En curso" },
+  { value: "DONE", label: "Finalizado" },
+] as const;
+
+export type ObjectiveStatusValue = (typeof OBJECTIVE_STATUSES)[number]["value"];
+
+export const OBJECTIVE_STATUS_LABELS = Object.fromEntries(
+  OBJECTIVE_STATUSES.map((status) => [status.value, status.label]),
+) as Record<ObjectiveStatusValue, string>;
+
 export const OBJECTIVE_RUBRIC = [
   {
     key: "CLARITY",
@@ -41,7 +55,7 @@ export const OBJECTIVE_RUBRIC = [
       DEVELOPING: "Aporta al proyecto, pero su impacto es limitado.",
       ADEQUATE: "Es necesario o importante para el avance del área/equipo.",
       OUTSTANDING:
-        "El objetivo es específico, verificable y tiene criterios para determinar si se cumplió o no. El Candidate entiende cuál es el reto que tiene que resolver y tiene metas claras para resolverlo.",
+        "Es indispensable para el avance del área y del equipo: desbloquea o habilita el trabajo de los demás y atiende directamente el reto del proyecto.",
     },
   },
   {

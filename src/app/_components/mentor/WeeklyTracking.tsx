@@ -4,36 +4,31 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
-import { AREA_LABELS, INTERVIEW_AREAS } from "~/lib/registration";
+import { INTERVIEW_AREAS } from "~/lib/registration";
 import {
   MAX_TRACKING_WEEK,
   OBJECTIVE_RUBRIC,
-  RUBRIC_LEVELS,
   type RubricCriterionKey,
-  type RubricLevelValue,
 } from "~/lib/rubric";
-
-type ObjectiveDraft = { objective: string; status: string; notes: string };
-
-type ScoreDraft = { level: RubricLevelValue | null; justification: string };
-
-type ReviewDraft = {
-  evidence: string;
-  mentorQuestions: string;
-  justification: string;
-  strengths: string;
-  opportunities: string;
-  recommendations: string;
-  scores: Record<RubricCriterionKey, ScoreDraft>;
-};
-
-const EMPTY_SCORES = () =>
-  Object.fromEntries(
-    OBJECTIVE_RUBRIC.map((criterion) => [
-      criterion.key,
-      { level: null, justification: "" },
-    ]),
-  ) as Record<RubricCriterionKey, ScoreDraft>;
+import {
+  INTRO_CANDIDATE_QUESTIONS,
+  INTRO_TEAM_QUESTIONS,
+  type IntroCandidateQuestionKey,
+  type IntroTeamQuestionKey,
+  weekLayout,
+} from "~/lib/intro-meeting";
+import AreaObjectives, {
+  type AreaKey,
+} from "./weekly/AreaObjectives";
+import CandidateReview, { type ReviewDraft } from "./weekly/CandidateReview";
+import IntroMeetingBlock, { type TeamNoteDraft } from "./weekly/IntroMeetingBlock";
+import PreviousObjectives from "./weekly/PreviousObjectives";
+import {
+  emptyObjective,
+  emptyScores,
+  type ObjectiveDraft,
+  type ScoreDraft,
+} from "./weekly/types";
 
 const EMPTY_REVIEW = (): ReviewDraft => ({
   evidence: "",
@@ -42,11 +37,22 @@ const EMPTY_REVIEW = (): ReviewDraft => ({
   strengths: "",
   opportunities: "",
   recommendations: "",
-  scores: EMPTY_SCORES(),
+  answers: Object.fromEntries(
+    INTRO_CANDIDATE_QUESTIONS.map((question) => [question.key, ""]),
+  ) as Record<IntroCandidateQuestionKey, string>,
 });
 
-const inputClass =
-  "w-full rounded-md border border-gray-600 bg-gray-700 p-2 text-sm text-white outline-none focus:border-blue-500";
+const EMPTY_TEAM_NOTE = (): TeamNoteDraft => ({
+  generalNotes: "",
+  answers: Object.fromEntries(
+    INTRO_TEAM_QUESTIONS.map((question) => [question.key, ""]),
+  ) as Record<IntroTeamQuestionKey, string>,
+});
+
+type ObjectivesByArea = Record<AreaKey, ObjectiveDraft[]>;
+
+const EMPTY_OBJECTIVES = () =>
+  Object.fromEntries(INTERVIEW_AREAS.map((area) => [area, []])) as ObjectivesByArea;
 
 export default function WeeklyTracking({
   teamId,
@@ -56,6 +62,7 @@ export default function WeeklyTracking({
   initialWeek: number;
 }) {
   const [week, setWeek] = useState(initialWeek);
+  const layout = weekLayout(week);
 
   const utils = api.useUtils();
 
@@ -63,34 +70,65 @@ export default function WeeklyTracking({
     { teamId, week },
   );
 
-  const [objectives, setObjectives] = useState<Record<string, ObjectiveDraft>>(
-    {},
+  const [objectives, setObjectives] = useState<ObjectivesByArea>(
+    EMPTY_OBJECTIVES,
   );
   const [reviews, setReviews] = useState<Record<string, ReviewDraft>>({});
+  const [teamNote, setTeamNote] = useState<TeamNoteDraft>(EMPTY_TEAM_NOTE);
+
+  // Which row a mutation is currently working on, so only its button spins.
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [removingKey, setRemovingKey] = useState<string | null>(null);
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
 
   /*
    * Drafts are re-seeded whenever the server data changes — switching weeks
    * has to pull that week's answers in, not keep the previous week's on screen.
+   * Rows the mentor added but hasn't saved yet (id === null) are carried over,
+   * so a refetch can't wipe out what they're in the middle of typing.
    */
   useEffect(() => {
     if (!data) return;
 
-    setObjectives(
-      Object.fromEntries(
-        INTERVIEW_AREAS.map((area) => {
-          const saved = data.objectives.find((row) => row.area === area);
+    setObjectives((previous) => {
+      const next = EMPTY_OBJECTIVES();
 
-          return [
-            area,
-            {
-              objective: saved?.objective ?? "",
-              status: saved?.status ?? "",
-              notes: saved?.notes ?? "",
-            },
-          ];
-        }),
-      ),
-    );
+      for (const row of data.objectives) {
+        const area = row.area as AreaKey;
+        if (!next[area]) continue;
+
+        const scores = emptyScores();
+
+        for (const score of row.scores) {
+          const key = score.criterion as RubricCriterionKey;
+          if (scores[key]) {
+            scores[key] = {
+              level: score.level,
+              justification: score.justification ?? "",
+            };
+          }
+        }
+
+        next[area].push({
+          key: row.id,
+          id: row.id,
+          candidateId: row.candidateId,
+          objective: row.objective,
+          status: row.status,
+          notes: row.notes ?? "",
+          scores,
+        });
+      }
+
+      for (const area of INTERVIEW_AREAS) {
+        const unsaved = (previous[area] ?? []).filter(
+          (draft) => draft.id === null,
+        );
+        next[area].push(...unsaved);
+      }
+
+      return next;
+    });
 
     setReviews(
       Object.fromEntries(
@@ -101,33 +139,45 @@ export default function WeeklyTracking({
 
           if (!saved) return [member.id, EMPTY_REVIEW()];
 
-          const scores = EMPTY_SCORES();
+          const draft = EMPTY_REVIEW();
 
-          for (const score of saved.scores) {
-            const key = score.criterion as RubricCriterionKey;
-            if (scores[key]) {
-              scores[key] = {
-                level: score.level,
-                justification: score.justification ?? "",
-              };
+          for (const answer of saved.answers) {
+            const key = answer.questionKey as IntroCandidateQuestionKey;
+            if (key in draft.answers) {
+              draft.answers[key] = answer.answer;
             }
           }
 
           return [
             member.id,
             {
+              ...draft,
               evidence: saved.evidence ?? "",
               mentorQuestions: saved.mentorQuestions ?? "",
               justification: saved.justification ?? "",
               strengths: saved.strengths ?? "",
               opportunities: saved.opportunities ?? "",
               recommendations: saved.recommendations ?? "",
-              scores,
             },
           ];
         }),
       ),
     );
+
+    const note = EMPTY_TEAM_NOTE();
+
+    if (data.teamNote) {
+      note.generalNotes = data.teamNote.generalNotes ?? "";
+
+      for (const answer of data.teamNote.answers) {
+        const key = answer.questionKey as IntroTeamQuestionKey;
+        if (key in note.answers) {
+          note.answers[key] = answer.answer;
+        }
+      }
+    }
+
+    setTeamNote(note);
   }, [data]);
 
   const refresh = async () => {
@@ -140,6 +190,16 @@ export default function WeeklyTracking({
       await refresh();
     },
     onError: (mutationError) => toast.error(mutationError.message),
+    onSettled: () => setSavingKey(null),
+  });
+
+  const deleteObjective = api.mentor.deleteWeeklyObjective.useMutation({
+    onSuccess: async () => {
+      toast.success("Objetivo eliminado.");
+      await refresh();
+    },
+    onError: (mutationError) => toast.error(mutationError.message),
+    onSettled: () => setRemovingKey(null),
   });
 
   const saveReview = api.mentor.saveWeeklyReview.useMutation({
@@ -148,7 +208,145 @@ export default function WeeklyTracking({
       await refresh();
     },
     onError: (mutationError) => toast.error(mutationError.message),
+    onSettled: () => setSavingMemberId(null),
   });
+
+  const saveTeamNote = api.mentor.saveTeamNote.useMutation({
+    onSuccess: async () => {
+      toast.success("Junta inicial guardada.");
+      await refresh();
+    },
+    onError: (mutationError) => toast.error(mutationError.message),
+  });
+
+  const patchObjective = (
+    area: AreaKey,
+    key: string,
+    patch: Partial<ObjectiveDraft>,
+  ) =>
+    setObjectives((previous) => ({
+      ...previous,
+      [area]: (previous[area] ?? []).map((draft) =>
+        draft.key === key ? { ...draft, ...patch } : draft,
+      ),
+    }));
+
+  const patchScore = (
+    area: AreaKey,
+    key: string,
+    criterion: RubricCriterionKey,
+    patch: Partial<ScoreDraft>,
+  ) =>
+    setObjectives((previous) => ({
+      ...previous,
+      [area]: (previous[area] ?? []).map((draft) =>
+        draft.key === key
+          ? {
+              ...draft,
+              scores: {
+                ...draft.scores,
+                [criterion]: { ...draft.scores[criterion], ...patch },
+              },
+            }
+          : draft,
+      ),
+    }));
+
+  const addObjective = (area: AreaKey) =>
+    setObjectives((previous) => ({
+      ...previous,
+      [area]: [...(previous[area] ?? []), emptyObjective()],
+    }));
+
+  const removeObjective = (area: AreaKey, draft: ObjectiveDraft) => {
+    // An unsaved row never reached the server, so it just goes away.
+    if (draft.id === null) {
+      setObjectives((previous) => ({
+        ...previous,
+        [area]: (previous[area] ?? []).filter((row) => row.key !== draft.key),
+      }));
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "¿Eliminar este objetivo? También se borra su rúbrica.",
+      )
+    ) {
+      return;
+    }
+
+    setRemovingKey(draft.key);
+    deleteObjective.mutate({ objectiveId: draft.id });
+  };
+
+  const submitObjective = (area: AreaKey, draft: ObjectiveDraft) => {
+    setSavingKey(draft.key);
+
+    saveObjective.mutate(
+      {
+        teamId,
+        week,
+        id: draft.id ?? undefined,
+        area,
+        candidateId: draft.candidateId,
+        objective: draft.objective,
+        status: draft.status,
+        notes: draft.notes || undefined,
+        scores: OBJECTIVE_RUBRIC.flatMap((criterion) => {
+          const score = draft.scores[criterion.key];
+
+          return score.level
+            ? [
+                {
+                  criterion: criterion.key,
+                  level: score.level,
+                  justification: score.justification || undefined,
+                },
+              ]
+            : [];
+        }),
+      },
+      {
+        /*
+         * Stamping the new id on before the refetch is what keeps a freshly
+         * created row from being carried over as an unsaved duplicate.
+         */
+        onSuccess: (result) =>
+          patchObjective(area, draft.key, { id: result.id }),
+      },
+    );
+  };
+
+  const submitReview = (memberId: string, draft: ReviewDraft) => {
+    setSavingMemberId(memberId);
+
+    saveReview.mutate({
+      teamId,
+      week,
+      candidateId: memberId,
+      evidence: layout.showEvidence ? draft.evidence || undefined : undefined,
+      mentorQuestions: layout.showMentorQuestions
+        ? draft.mentorQuestions || undefined
+        : undefined,
+      justification: layout.showAssessment
+        ? draft.justification || undefined
+        : undefined,
+      strengths: layout.showAssessment ? draft.strengths || undefined : undefined,
+      opportunities: layout.showAssessment
+        ? draft.opportunities || undefined
+        : undefined,
+      recommendations: layout.showAssessment
+        ? draft.recommendations || undefined
+        : undefined,
+      answers: layout.isIntro
+        ? INTRO_CANDIDATE_QUESTIONS.flatMap((question) => {
+            const answer = draft.answers[question.key].trim();
+            return answer ? [{ questionKey: question.key, answer }] : [];
+          })
+        : [],
+    });
+  };
 
   if (isLoading) {
     return (
@@ -166,6 +364,13 @@ export default function WeeklyTracking({
     );
   }
 
+  const memberNames = new Map(
+    data.team.members.map((member) => [
+      member.id,
+      member.name ?? member.email ?? "Sin nombre",
+    ]),
+  );
+
   return (
     <div className="space-y-6">
       {/* ========================================================= */}
@@ -175,7 +380,9 @@ export default function WeeklyTracking({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gray-800 p-4">
         <div>
           <h2 className="text-lg font-semibold text-white">{data.team.name}</h2>
-          <p className="text-sm text-gray-400">Seguimiento semanal</p>
+          <p className="text-sm text-gray-400">
+            {layout.isIntro ? "Junta de introducción" : "Seguimiento semanal"}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -213,62 +420,44 @@ export default function WeeklyTracking({
       </div>
 
       {/* ========================================================= */}
-      {/* Last week's objectives, the ones being evaluated now */}
+      {/* Week 1 only — the intro meeting's team-wide half */}
       {/* ========================================================= */}
 
-      {week > 1 && (
-        <div className="rounded-lg bg-gray-800 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-gray-200">
-            Objetivos de la semana {week - 1}
-          </h3>
-
-          {data.previousObjectives.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No se registraron objetivos esa semana.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded border border-gray-700">
-              <table className="w-full table-auto border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-900 text-left text-gray-300">
-                    <th className="px-3 py-2">Área</th>
-                    <th className="border-l border-gray-700 px-3 py-2">
-                      Objetivo
-                    </th>
-                    <th className="border-l border-gray-700 px-3 py-2">
-                      Status
-                    </th>
-                    <th className="border-l border-gray-700 px-3 py-2">
-                      Anotaciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.previousObjectives.map((row) => (
-                    <tr key={row.id} className="border-t border-gray-700">
-                      <td className="px-3 py-2 font-medium text-white">
-                        {AREA_LABELS[row.area]}
-                      </td>
-                      <td className="border-l border-gray-700 px-3 py-2 text-gray-300">
-                        {row.objective}
-                      </td>
-                      <td className="border-l border-gray-700 px-3 py-2 text-gray-300">
-                        {row.status ?? "-"}
-                      </td>
-                      <td className="border-l border-gray-700 px-3 py-2 text-gray-300">
-                        {row.notes ?? "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {layout.showIntroMeeting && (
+        <IntroMeetingBlock
+          draft={teamNote}
+          onChange={(patch) =>
+            setTeamNote((previous) => ({ ...previous, ...patch }))
+          }
+          onSave={() =>
+            saveTeamNote.mutate({
+              teamId,
+              week,
+              generalNotes: teamNote.generalNotes || undefined,
+              answers: INTRO_TEAM_QUESTIONS.flatMap((question) => {
+                const answer = teamNote.answers[question.key].trim();
+                return answer ? [{ questionKey: question.key, answer }] : [];
+              }),
+            })
+          }
+          isSaving={saveTeamNote.isPending}
+        />
       )}
 
       {/* ========================================================= */}
-      {/* Block 1 — objectives per area */}
+      {/* Last week's objectives, the ones being evaluated now */}
+      {/* ========================================================= */}
+
+      {layout.showPreviousObjectives && (
+        <PreviousObjectives
+          week={week - 1}
+          rows={data.previousObjectives}
+          memberNames={memberNames}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* Block 1 — objectives per area, each with its own rubric */}
       {/* ========================================================= */}
 
       <div className="rounded-lg bg-gray-800 p-4">
@@ -277,90 +466,32 @@ export default function WeeklyTracking({
         </h3>
 
         <div className="space-y-4">
-          {INTERVIEW_AREAS.map((area) => {
-            const draft = objectives[area] ?? {
-              objective: "",
-              status: "",
-              notes: "",
-            };
-
-            const update = (patch: Partial<ObjectiveDraft>) =>
-              setObjectives((prev) => ({
-                ...prev,
-                [area]: { ...draft, ...patch },
-              }));
-
-            return (
-              <div key={area} className="rounded border border-gray-700 p-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <span className="font-medium text-white">
-                    {AREA_LABELS[area]}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      saveObjective.mutate({
-                        teamId,
-                        week,
-                        area,
-                        objective: draft.objective,
-                        status: draft.status || undefined,
-                        notes: draft.notes || undefined,
-                      })
-                    }
-                    disabled={
-                      !draft.objective.trim() || saveObjective.isPending
-                    }
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Guardar
-                  </button>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  <label className="text-xs text-gray-400">
-                    Objetivo
-                    <textarea
-                      value={draft.objective}
-                      onChange={(event) =>
-                        update({ objective: event.target.value })
-                      }
-                      rows={3}
-                      className={`mt-1 ${inputClass}`}
-                    />
-                  </label>
-
-                  <label className="text-xs text-gray-400">
-                    Status
-                    <textarea
-                      value={draft.status}
-                      onChange={(event) =>
-                        update({ status: event.target.value })
-                      }
-                      rows={3}
-                      className={`mt-1 ${inputClass}`}
-                    />
-                  </label>
-
-                  <label className="text-xs text-gray-400">
-                    Anotaciones
-                    <textarea
-                      value={draft.notes}
-                      onChange={(event) => update({ notes: event.target.value })}
-                      rows={3}
-                      className={`mt-1 ${inputClass}`}
-                    />
-                  </label>
-                </div>
-              </div>
-            );
-          })}
+          {INTERVIEW_AREAS.map((area) => (
+            <AreaObjectives
+              key={area}
+              area={area}
+              drafts={objectives[area] ?? []}
+              members={data.team.members}
+              onChange={(key, patch) => patchObjective(area, key, patch)}
+              onScoreChange={(key, criterion, patch) =>
+                patchScore(area, key, criterion, patch)
+              }
+              onAdd={() => addObjective(area)}
+              onRemove={(draft) => removeObjective(area, draft)}
+              onSave={(draft) => submitObjective(area, draft)}
+              savingKey={savingKey}
+              removingKey={removingKey}
+            />
+          ))}
         </div>
+
+        <p className="mt-3 text-xs text-gray-500">
+          Cada objetivo se guarda por separado, junto con su rúbrica.
+        </p>
       </div>
 
       {/* ========================================================= */}
-      {/* Blocks 2 and 3 — per candidate */}
+      {/* Block 2 — per candidate */}
       {/* ========================================================= */}
 
       {data.team.members.length === 0 ? (
@@ -368,206 +499,27 @@ export default function WeeklyTracking({
           Este equipo todavía no tiene integrantes.
         </p>
       ) : (
-        data.team.members.map((member) => {
-          const draft = reviews[member.id] ?? EMPTY_REVIEW();
-
-          const update = (patch: Partial<ReviewDraft>) =>
-            setReviews((prev) => ({
-              ...prev,
-              [member.id]: { ...draft, ...patch },
-            }));
-
-          const setScore = (
-            criterion: RubricCriterionKey,
-            patch: Partial<ScoreDraft>,
-          ) =>
-            update({
-              scores: {
-                ...draft.scores,
-                [criterion]: { ...draft.scores[criterion], ...patch },
-              },
-            });
-
-          const textFields = [
-            ["evidence", "Evidencia presentada"],
-            ["mentorQuestions", "Preguntas de mentor"],
-            ["justification", "Justificación"],
-            ["strengths", "Fortalezas"],
-            ["opportunities", "Áreas de oportunidad"],
-            ["recommendations", "Recomendaciones de mentor"],
-          ] as const;
-
-          return (
-            <div key={member.id} className="rounded-lg bg-gray-800 p-4">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-white">
-                    {member.name ?? member.email ?? "Sin nombre"}
-                  </h3>
-                  <p className="text-xs text-gray-400">
-                    {member.interviewArea
-                      ? AREA_LABELS[member.interviewArea]
-                      : "Sin área"}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    saveReview.mutate({
-                      teamId,
-                      week,
-                      candidateId: member.id,
-                      evidence: draft.evidence || undefined,
-                      mentorQuestions: draft.mentorQuestions || undefined,
-                      justification: draft.justification || undefined,
-                      strengths: draft.strengths || undefined,
-                      opportunities: draft.opportunities || undefined,
-                      recommendations: draft.recommendations || undefined,
-                      scores: OBJECTIVE_RUBRIC.flatMap((criterion) => {
-                        const score = draft.scores[criterion.key];
-
-                        return score.level
-                          ? [
-                              {
-                                criterion: criterion.key,
-                                level: score.level,
-                                justification:
-                                  score.justification || undefined,
-                              },
-                            ]
-                          : [];
-                      }),
-                    })
-                  }
-                  disabled={saveReview.isPending}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {saveReview.isPending ? "Guardando..." : "Guardar"}
-                </button>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                {textFields.map(([field, label]) => (
-                  <label key={field} className="text-xs text-gray-400">
-                    {label}
-                    <textarea
-                      value={draft[field]}
-                      onChange={(event) =>
-                        update({ [field]: event.target.value })
-                      }
-                      rows={3}
-                      className={`mt-1 ${inputClass}`}
-                    />
-                  </label>
-                ))}
-              </div>
-
-              {/* Rubric: pick one level per criterion, justify the pick. */}
-              <div className="mt-5">
-                <h4 className="mb-2 text-sm font-semibold text-gray-200">
-                  Evaluación objetivos semanal
-                </h4>
-
-                <div className="overflow-x-auto rounded border border-gray-700">
-                  <table className="w-full table-auto border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-gray-900 text-left text-gray-300">
-                        <th className="px-3 py-2">Criterio</th>
-                        {RUBRIC_LEVELS.map((level) => (
-                          <th
-                            key={level.value}
-                            className="border-l border-gray-700 px-3 py-2"
-                          >
-                            {level.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {OBJECTIVE_RUBRIC.map((criterion) => {
-                        const score = draft.scores[criterion.key];
-
-                        return (
-                          <tr
-                            key={criterion.key}
-                            className="border-t border-gray-700 align-top"
-                          >
-                            <td className="px-3 py-3 font-medium text-white">
-                              {criterion.label}
-                            </td>
-
-                            {RUBRIC_LEVELS.map((level) => {
-                              const selected = score.level === level.value;
-
-                              return (
-                                <td
-                                  key={level.value}
-                                  className={`border-l border-gray-700 p-0 ${
-                                    selected ? "bg-blue-900/40" : ""
-                                  }`}
-                                >
-                                  <label className="flex h-full cursor-pointer gap-2 p-3">
-                                    <input
-                                      type="radio"
-                                      name={`${member.id}-${criterion.key}`}
-                                      checked={selected}
-                                      onChange={() =>
-                                        setScore(criterion.key, {
-                                          level: level.value,
-                                        })
-                                      }
-                                      className="mt-0.5 h-4 w-4 shrink-0"
-                                    />
-                                    <span
-                                      className={
-                                        selected
-                                          ? "text-white"
-                                          : "text-gray-400"
-                                      }
-                                    >
-                                      {criterion.levels[level.value]}
-                                    </span>
-                                  </label>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-3 space-y-3">
-                  {OBJECTIVE_RUBRIC.map((criterion) => (
-                    <label
-                      key={criterion.key}
-                      className="block text-xs text-gray-400"
-                    >
-                      Justificación — {criterion.label}
-                      <textarea
-                        value={draft.scores[criterion.key].justification}
-                        onChange={(event) =>
-                          setScore(criterion.key, {
-                            justification: event.target.value,
-                          })
-                        }
-                        rows={2}
-                        placeholder="¿Por qué esa calificación?"
-                        className={`mt-1 ${inputClass}`}
-                      />
-                    </label>
-                  ))}
-                </div>
-
-                <p className="mt-2 text-xs text-gray-500">
-                  Un criterio sin casilla marcada no se guarda.
-                </p>
-              </div>
-            </div>
-          );
-        })
+        data.team.members.map((member) => (
+          <CandidateReview
+            key={member.id}
+            member={member}
+            draft={reviews[member.id] ?? EMPTY_REVIEW()}
+            layout={layout}
+            onChange={(patch) =>
+              setReviews((previous) => ({
+                ...previous,
+                [member.id]: {
+                  ...(previous[member.id] ?? EMPTY_REVIEW()),
+                  ...patch,
+                },
+              }))
+            }
+            onSave={() =>
+              submitReview(member.id, reviews[member.id] ?? EMPTY_REVIEW())
+            }
+            isSaving={savingMemberId === member.id}
+          />
+        ))
       )}
     </div>
   );

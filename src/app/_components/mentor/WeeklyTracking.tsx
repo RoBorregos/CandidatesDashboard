@@ -312,10 +312,10 @@ export default function WeeklyTracking({
         }),
       },
       {
-        onSuccess: async (result) => {
+        onSuccess: (result) => {
           patchObjective(area, draft.key, { id: result.id });
           toast.success("Objetivo guardado.");
-          await refresh();
+          void refresh();
         },
       },
     );

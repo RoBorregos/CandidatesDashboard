@@ -250,7 +250,7 @@ export const mentorRouter = createTRPCRouter({
    * evaluate, so they have to be on screen while filling this week in.
    */
   getWeeklyTracking: mentorProcedure
-    .input(z.object({ teamId: z.string(), week: z.number().int().min(1) }))
+    .input(z.object({ teamId: z.string(), week: z.number().int().min(1).max(52) }))
     .query(async ({ ctx, input }) => {
       await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
 

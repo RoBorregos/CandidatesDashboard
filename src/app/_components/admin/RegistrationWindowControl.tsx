@@ -15,6 +15,9 @@ const CLOSING_MINUTE = 59;
 /** Presets offered for a temporary reopen, in minutes. */
 const REOPEN_PRESETS = [10, 30, 60];
 
+/** Must match the cap `openRegistrationTemporarily` enforces server-side. */
+const MAX_REOPEN_MINUTES = 24 * 60;
+
 /**
  * The upcoming Saturday at the given time — today, if it is Saturday and the
  * time has not passed yet. Keeps the "close on Saturday" preset correct for
@@ -255,16 +258,25 @@ export default function RegistrationWindowControl() {
               <input
                 type="number"
                 min={1}
-                max={1440}
+                max={MAX_REOPEN_MINUTES}
                 value={reopenMinutes}
-                onChange={(e) => setReopenMinutes(Number(e.target.value))}
+                // Clearing the field yields NaN, and `NaN < 1` is false — which
+                // would leave the button enabled and send NaN to the server.
+                onChange={(e) => {
+                  const parsed = Number.parseInt(e.target.value, 10);
+                  setReopenMinutes(Number.isNaN(parsed) ? 0 : parsed);
+                }}
                 className="w-24 rounded border border-gray-600 bg-gray-700 p-2 text-sm"
               />
               <button
                 onClick={() =>
                   openTemporarily.mutate({ minutes: reopenMinutes })
                 }
-                disabled={isBusy || reopenMinutes < 1}
+                disabled={
+                  isBusy ||
+                  reopenMinutes < 1 ||
+                  reopenMinutes > MAX_REOPEN_MINUTES
+                }
                 className="rounded bg-green-600 px-3 py-2 text-sm hover:bg-green-700 disabled:opacity-50"
               >
                 Abrir {reopenMinutes} min

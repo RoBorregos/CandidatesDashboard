@@ -19,19 +19,34 @@ const WINDOW_SELECT = {
 
 const CONFIG_SELECT = { id: true, ...WINDOW_SELECT } as const;
 
+/** Arbitrary but fixed: the lock two concurrent creators contend on. */
+const CONFIG_LOCK_KEY = 4820_1126;
+
 /** The Config row is a singleton that older installs may not have yet. */
 async function getOrCreateConfig(db: typeof Db) {
   const existing = await db.config.findFirst({ select: CONFIG_SELECT });
   if (existing) return existing;
 
-  return db.config.create({
-    data: {
-      freeze: true,
-      competitionStarted: false,
-      currentRound: 1,
-      roundsRevealed: 0,
-    },
-    select: CONFIG_SELECT,
+  // Nothing in the schema makes Config a singleton, so a bare find-then-create
+  // lets two admins acting at once on a fresh install each insert a row. Reads
+  // elsewhere use an unordered `findFirst`, so the duplicates would then be
+  // written to and read from inconsistently — the panel would report the form
+  // closed while the public page kept it open. Serialize the create instead.
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CONFIG_LOCK_KEY})`;
+
+    const raced = await tx.config.findFirst({ select: CONFIG_SELECT });
+    if (raced) return raced;
+
+    return tx.config.create({
+      data: {
+        freeze: true,
+        competitionStarted: false,
+        currentRound: 1,
+        roundsRevealed: 0,
+      },
+      select: CONFIG_SELECT,
+    });
   });
 }
 

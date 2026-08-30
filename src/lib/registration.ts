@@ -3,6 +3,13 @@ import { z } from "zod";
 /** Edition that new registrations belong to. */
 export const CURRENT_EDITION = 2026;
 
+/**
+ * Where the competition happens. Dates shown to candidates are rendered on the
+ * server, so without this they would come out in the host's timezone (UTC on
+ * Vercel) and tell a student in Monterrey the wrong day and hour.
+ */
+export const EVENT_TIME_ZONE = "America/Monterrey";
+
 export type RegistrationOverrideValue = "OPEN" | "CLOSED";
 
 export type RegistrationWindowConfig = {

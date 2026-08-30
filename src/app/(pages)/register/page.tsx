@@ -6,6 +6,7 @@ import Footer from "~/app/_components/footer";
 import { api } from "~/trpc/server";
 import {
   CURRENT_EDITION,
+  EVENT_TIME_ZONE,
   MAX_TEAM_MEMBERS,
   MIN_TEAM_MEMBERS,
   TRACKS,
@@ -20,21 +21,27 @@ export const metadata: Metadata = {
 // The deadline must be read per request, never baked into a static page.
 export const dynamic = "force-dynamic";
 
-function ClosedNotice({ closesAt }: { closesAt: Date | null }) {
+/**
+ * `closedAt` is only the scheduled deadline when the schedule is what closed
+ * the form. An admin closing it early leaves a future deadline on the config,
+ * and announcing that date in the past tense would be wrong.
+ */
+function ClosedNotice({ closedAt }: { closedAt: Date | null }) {
   return (
     <div className="rounded-xl border border-neutral-700 bg-gradient-to-tr from-neutral-950 to-neutral-800 p-8 text-center">
       <h3 className="font-jersey_25 text-5xl leading-none text-roboblue">
         Registro cerrado
       </h3>
       <p className="mt-4 font-archivo text-neutral-300">
-        {closesAt
-          ? `El registro para Candidates ${CURRENT_EDITION} cerró el ${closesAt.toLocaleString(
+        {closedAt
+          ? `El registro para Candidates ${CURRENT_EDITION} cerró el ${closedAt.toLocaleString(
               "es-MX",
               {
                 day: "numeric",
                 month: "long",
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: EVENT_TIME_ZONE,
               },
             )}.`
           : "El registro para Candidates está cerrado por ahora."}
@@ -117,21 +124,22 @@ export default async function RegisterPage() {
                     {
                       hour: "2-digit",
                       minute: "2-digit",
+                      timeZone: EVENT_TIME_ZONE,
                     },
                   )}
-                  .
+                  {/* es-MX renders "09:52 p.m." — it ends the sentence itself. */}
                 </p>
               )}
             <RegistrationForm />
           </>
         ) : (
-<ClosedNotice
-  closesAt={
-    registrationWindow.state === "CLOSED_BY_SCHEDULE"
-      ? registrationWindow.closesAt
-      : null
-  }
-/>
+          <ClosedNotice
+            closedAt={
+              registrationWindow.state === "CLOSED_BY_SCHEDULE"
+                ? registrationWindow.closesAt
+                : null
+            }
+          />
         )}
       </div>
 

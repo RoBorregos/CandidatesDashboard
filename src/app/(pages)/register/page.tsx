@@ -125,7 +125,13 @@ export default async function RegisterPage() {
             <RegistrationForm />
           </>
         ) : (
-          <ClosedNotice closesAt={registrationWindow.closesAt} />
+<ClosedNotice
+  closesAt={
+    registrationWindow.state === "CLOSED_BY_SCHEDULE"
+      ? registrationWindow.closesAt
+      : null
+  }
+/>
         )}
       </div>
 

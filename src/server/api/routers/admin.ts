@@ -9,6 +9,7 @@ import { testingUtilitiesRouter } from "./admin/testing-utilities";
 import { staffManagementRouter } from "./admin/staff-management";
 import { mentorManagementRouter } from "./admin/mentor-management";
 import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
+import { registrationWindowRouter } from "./admin/registration-window";
 import { challengeMentorManagementRouter } from "./admin/challenge-mentor-management";
 
 export const adminRouter = createTRPCRouter({
@@ -37,6 +38,15 @@ export const adminRouter = createTRPCRouter({
   toggleRoundVisibility: roundControlRouter.toggleRoundVisibility,
   getRoundVisibilityStatus: roundControlRouter.getRoundVisibilityStatus,
   revealNextRound: roundControlRouter.revealNextRound,
+
+  // Registration Window
+  getRegistrationWindow: registrationWindowRouter.getRegistrationWindow,
+  scheduleRegistrationClose: registrationWindowRouter.scheduleRegistrationClose,
+  openRegistrationTemporarily:
+    registrationWindowRouter.openRegistrationTemporarily,
+  closeRegistrationNow: registrationWindowRouter.closeRegistrationNow,
+  followRegistrationSchedule:
+    registrationWindowRouter.followRegistrationSchedule,
 
   // Interview Management
   getInterviewers: interviewManagementRouter.getInterviewers,

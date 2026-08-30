@@ -3,6 +3,82 @@ import { z } from "zod";
 /** Edition that new registrations belong to. */
 export const CURRENT_EDITION = 2026;
 
+/**
+ * Where the competition happens. Dates shown to candidates are rendered on the
+ * server, so without this they would come out in the host's timezone (UTC on
+ * Vercel) and tell a student in Monterrey the wrong day and hour.
+ */
+export const EVENT_TIME_ZONE = "America/Monterrey";
+
+export type RegistrationOverrideValue = "OPEN" | "CLOSED";
+
+export type RegistrationWindowConfig = {
+  registrationClosesAt: Date | null;
+  registrationOverride: RegistrationOverrideValue | null;
+  registrationOverrideUntil: Date | null;
+};
+
+export type RegistrationWindowState =
+  | "OPEN"
+  | "CLOSED_BY_SCHEDULE"
+  | "OPEN_TEMPORARILY"
+  | "CLOSED_BY_ADMIN";
+
+export type RegistrationWindow = {
+  isOpen: boolean;
+  state: RegistrationWindowState;
+  /** Scheduled deadline, even when an override is currently ignoring it. */
+  closesAt: Date | null;
+  /** When the active override expires; null means it lasts until revoked. */
+  overrideUntil: Date | null;
+};
+
+/** No config row yet: registration is open, as it was before the window existed. */
+export const DEFAULT_REGISTRATION_WINDOW: RegistrationWindowConfig = {
+  registrationClosesAt: null,
+  registrationOverride: null,
+  registrationOverrideUntil: null,
+};
+
+export const REGISTRATION_CLOSED_MESSAGE =
+  "El registro para Candidates está cerrado. Si tuviste un problema al enviarlo, escríbenos y lo reabrimos para ti.";
+
+/**
+ * Single source of truth for "is the form open?", shared by the public page,
+ * the create mutation and the admin panel so they cannot disagree.
+ */
+export function resolveRegistrationWindow(
+  config: RegistrationWindowConfig | null | undefined,
+  now: Date = new Date(),
+): RegistrationWindow {
+  const {
+    registrationClosesAt: closesAt,
+    registrationOverride: override,
+    registrationOverrideUntil: overrideUntil,
+  } = config ?? DEFAULT_REGISTRATION_WINDOW;
+
+  const overrideActive =
+    override !== null && (overrideUntil === null || overrideUntil > now);
+
+  if (overrideActive) {
+    const isOpen = override === "OPEN";
+    return {
+      isOpen,
+      state: isOpen ? "OPEN_TEMPORARILY" : "CLOSED_BY_ADMIN",
+      closesAt,
+      overrideUntil,
+    };
+  }
+
+  const isOpen = closesAt === null || now < closesAt;
+  return {
+    isOpen,
+    state: isOpen ? "OPEN" : "CLOSED_BY_SCHEDULE",
+    closesAt,
+    overrideUntil: null,
+  };
+}
+
 export const TRACKS = [
   {
     value: "BEGINNER",
@@ -17,7 +93,6 @@ export const TRACKS = [
       "Reto individual del @Home Challenge, para quienes ya tienen experiencia",
   },
 ] as const;
-
 
 export const ADVANCED_CHALLENGES = [
   "@Home Challenge Human Robot Interaction (HRI) / Visión",
@@ -71,11 +146,7 @@ export function semesterOptionsFor(track: "BEGINNER" | "ADVANCED" | "") {
     : SEMESTER_OPTIONS;
 }
 
-export const CAREER_SUGGESTIONS = [
-  "IRS",
-  "ITC",
-  "IMT",
-] as const;
+export const CAREER_SUGGESTIONS = ["IRS", "ITC", "IMT"] as const;
 
 export const memberSchema = z.object({
   name: z
@@ -204,7 +275,6 @@ export const registrationSchema = z
           message: "Selecciona de dónde eres",
         });
       }
-
 
       if (!data.funFacts) {
         ctx.addIssue({

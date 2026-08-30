@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { type RegistrationStatus } from "@prisma/client";
 
 import { api } from "~/trpc/react";
+import RegistrationWindowControl from "./RegistrationWindowControl";
 import {
   AREA_LABELS,
   CURRENT_EDITION,
@@ -71,7 +72,6 @@ export default function RegistrationManagement() {
       return;
     }
 
-
     const DELIMITER = ";";
 
     const escape = (value: string) =>
@@ -135,6 +135,8 @@ export default function RegistrationManagement() {
 
   return (
     <div className="space-y-6">
+      <RegistrationWindowControl />
+
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-gray-900 p-4">
         <div>
           <h3 className="text-lg font-semibold">

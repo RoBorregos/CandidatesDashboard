@@ -88,6 +88,8 @@ export const adminRouter = createTRPCRouter({
   assignPairToTeam: mentorPairManagementRouter.assignPairToTeam,
   unassignPairFromTeam: mentorPairManagementRouter.unassignPairFromTeam,
   clearPairTeamConflict: mentorPairManagementRouter.clearPairTeamConflict,
+  getMentorWeek: mentorPairManagementRouter.getMentorWeek,
+  setMentorWeek: mentorPairManagementRouter.setMentorWeek,
 
   // Challenge Mentor Management (advanced track)
   getChallengeGroups: challengeMentorManagementRouter.getChallengeGroups,

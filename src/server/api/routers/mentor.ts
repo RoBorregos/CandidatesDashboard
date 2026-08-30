@@ -4,6 +4,8 @@ import { createTRPCRouter, mentorProcedure } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
 import { beginnerTeamIds } from "~/server/teams";
 import type { InterviewArea, PrismaClient } from "@prisma/client";
+import { InterviewArea as InterviewAreaEnum, RubricLevel } from "@prisma/client";
+import { MAX_TRACKING_WEEK, RUBRIC_CRITERION_KEYS } from "~/lib/rubric";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
 
@@ -31,7 +33,47 @@ async function contactsByEmail(
   );
 }
 
+/*
+ * Weekly tracking is only writable by the pair the team belongs to. Anything
+ * that reads or writes it goes through here first.
+ */
+async function assertMentorsTeam(
+  db: PrismaClient,
+  mentorId: string,
+  teamId: string,
+) {
+  const assignment = await db.teamMentorPair.findUnique({
+    where: { teamId },
+    select: {
+      mentorPair: {
+        select: { mentorAId: true, mentorBId: true, edition: true },
+      },
+    },
+  });
+
+  const pair = assignment?.mentorPair;
+
+  if (
+    !pair ||
+    pair.edition !== CURRENT_EDITION ||
+    (pair.mentorAId !== mentorId && pair.mentorBId !== mentorId)
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This team isn't assigned to your pair.",
+    });
+  }
+}
+
 export const mentorRouter = createTRPCRouter({
+  getCurrentWeek: mentorProcedure.query(async ({ ctx }) => {
+    const config = await ctx.db.config.findFirst({
+      select: { currentWeek: true },
+    });
+
+    return config?.currentWeek ?? 1;
+  }),
+
   getMyPair: mentorProcedure.query(async ({ ctx }) => {
     const pair = await ctx.db.mentorPair.findFirst({
       where: {
@@ -201,6 +243,216 @@ export const mentorRouter = createTRPCRouter({
         .map(({ registration: _registration, ...member }) => member),
     }));
   }),
+
+  /*
+   * Everything the weekly sheet needs for one team and one week, plus the
+   * previous week's objectives — those are what the mentors sit down to
+   * evaluate, so they have to be on screen while filling this week in.
+   */
+  getWeeklyTracking: mentorProcedure
+    .input(z.object({ teamId: z.string(), week: z.number().int().min(1).max(52) }))
+    .query(async ({ ctx, input }) => {
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
+
+      const team = await ctx.db.team.findUnique({
+        where: { id: input.teamId },
+        select: {
+          id: true,
+          name: true,
+          members: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              interviewArea: true,
+            },
+            orderBy: { name: "asc" },
+          },
+        },
+      });
+
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found." });
+      }
+
+      const objectives = await ctx.db.weeklyObjective.findMany({
+        where: {
+          teamId: input.teamId,
+          edition: CURRENT_EDITION,
+          week: { in: [input.week, input.week - 1] },
+        },
+      });
+
+      const reviews = await ctx.db.weeklyCandidateReview.findMany({
+        where: {
+          teamId: input.teamId,
+          edition: CURRENT_EDITION,
+          week: input.week,
+        },
+        include: { scores: true },
+      });
+
+      return {
+        team,
+        week: input.week,
+        objectives: objectives.filter((row) => row.week === input.week),
+        previousObjectives: objectives.filter(
+          (row) => row.week === input.week - 1,
+        ),
+        reviews,
+      };
+    }),
+
+  saveWeeklyObjective: mentorProcedure
+    .input(
+      z.object({
+        teamId: z.string(),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
+        area: z.nativeEnum(InterviewAreaEnum),
+        objective: z.string().trim().min(1).max(1000),
+        status: z.string().trim().max(200).optional(),
+        notes: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
+
+      const data = {
+        objective: input.objective,
+        status: input.status ?? null,
+        notes: input.notes ?? null,
+        updatedById: ctx.session.user.id,
+      };
+
+      await ctx.db.weeklyObjective.upsert({
+        where: {
+          teamId_edition_week_area: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            week: input.week,
+            area: input.area,
+          },
+        },
+        create: {
+          teamId: input.teamId,
+          edition: CURRENT_EDITION,
+          week: input.week,
+          area: input.area,
+          ...data,
+        },
+        update: data,
+      });
+
+      return { success: true };
+    }),
+
+  saveWeeklyReview: mentorProcedure
+    .input(
+      z.object({
+        teamId: z.string(),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
+        candidateId: z.string(),
+        evidence: z.string().trim().max(2000).optional(),
+        mentorQuestions: z.string().trim().max(2000).optional(),
+        justification: z.string().trim().max(2000).optional(),
+        strengths: z.string().trim().max(2000).optional(),
+        opportunities: z.string().trim().max(2000).optional(),
+        recommendations: z.string().trim().max(2000).optional(),
+        scores: z.array(
+          z.object({
+            criterion: z.enum(RUBRIC_CRITERION_KEYS),
+            level: z.nativeEnum(RubricLevel),
+            justification: z.string().trim().max(2000).optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
+
+      const isMember = await ctx.db.user.findFirst({
+        where: { id: input.candidateId, teamId: input.teamId },
+        select: { id: true },
+      });
+
+      if (!isMember) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That candidate isn't on this team.",
+        });
+      }
+
+      const data = {
+        evidence: input.evidence ?? null,
+        mentorQuestions: input.mentorQuestions ?? null,
+        justification: input.justification ?? null,
+        strengths: input.strengths ?? null,
+        opportunities: input.opportunities ?? null,
+        recommendations: input.recommendations ?? null,
+        updatedById: ctx.session.user.id,
+      };
+
+      await ctx.db.$transaction(async (tx) => {
+        const review = await tx.weeklyCandidateReview.upsert({
+          where: {
+            candidateId_edition_week: {
+              candidateId: input.candidateId,
+              edition: CURRENT_EDITION,
+              week: input.week,
+            },
+          },
+          create: {
+            teamId: input.teamId,
+            candidateId: input.candidateId,
+            edition: CURRENT_EDITION,
+            week: input.week,
+            ...data,
+          },
+          /*
+           * teamId is refreshed too: the row is keyed by candidate and week,
+           * so a candidate who changed teams would otherwise keep a review
+           * pointing at the old team and disappear from this team's sheet.
+           */
+          update: { ...data, teamId: input.teamId },
+        });
+
+        /*
+         * A criterion left unmarked is cleared rather than kept, so the saved
+         * rubric always matches what the mentor sees on screen.
+         */
+        await tx.weeklyRubricScore.deleteMany({
+          where: {
+            reviewId: review.id,
+            criterion: {
+              notIn: input.scores.map((score) => score.criterion),
+            },
+          },
+        });
+
+        for (const score of input.scores) {
+          await tx.weeklyRubricScore.upsert({
+            where: {
+              reviewId_criterion: {
+                reviewId: review.id,
+                criterion: score.criterion,
+              },
+            },
+            create: {
+              reviewId: review.id,
+              criterion: score.criterion,
+              level: score.level,
+              justification: score.justification ?? null,
+            },
+            update: {
+              level: score.level,
+              justification: score.justification ?? null,
+            },
+          });
+        }
+      });
+
+      return { success: true };
+    }),
 
   reportTeamConflict: mentorProcedure
     .input(z.object({ teamId: z.string(), knowsSomeone: z.boolean() }))

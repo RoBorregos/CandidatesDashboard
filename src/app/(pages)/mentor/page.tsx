@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Header from "../../_components/header";
 import Footer from "../../_components/footer";
 import { getServerAuthSession } from "~/server/auth";
@@ -87,17 +88,27 @@ export default async function MentorPage() {
                   >
                     <div className="flex items-center justify-between gap-2 bg-gray-900 px-3 py-2 text-sm font-medium text-white">
                       <span>{team.name}</span>
-                      {confirmed ? (
-                        <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
-                          Confirmed
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
-                          {myAnswer === null
-                            ? "Awaiting your confirmation"
-                            : "Awaiting your partner"}
-                        </span>
-                      )}
+
+                      <span className="flex items-center gap-2">
+                        {confirmed ? (
+                          <span className="inline-flex rounded-full bg-green-900/60 px-2.5 py-1 text-xs font-medium text-green-300">
+                            Confirmed
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-yellow-900/60 px-2.5 py-1 text-xs font-medium text-yellow-300">
+                            {myAnswer === null
+                              ? "Awaiting your confirmation"
+                              : "Awaiting your partner"}
+                          </span>
+                        )}
+
+                        <Link
+                          href={`/mentor/team/${team.id}`}
+                          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                        >
+                          Seguimiento semanal
+                        </Link>
+                      </span>
                     </div>
 
                     <table className="w-full table-auto border-collapse">

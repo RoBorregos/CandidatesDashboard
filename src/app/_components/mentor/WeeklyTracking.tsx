@@ -51,8 +51,11 @@ const EMPTY_TEAM_NOTE = (): TeamNoteDraft => ({
 
 type ObjectivesByArea = Record<AreaKey, ObjectiveDraft[]>;
 
-const EMPTY_OBJECTIVES = () =>
-  Object.fromEntries(INTERVIEW_AREAS.map((area) => [area, []])) as ObjectivesByArea;
+const EMPTY_OBJECTIVES = (): ObjectivesByArea => ({
+  PROGRAMMING: [],
+  MECHANICS: [],
+  ELECTRONICS: [],
+});
 
 export default function WeeklyTracking({
   teamId,

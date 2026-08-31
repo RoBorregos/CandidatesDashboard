@@ -79,15 +79,15 @@ model Registration {
 }
 
 model RegistrationMember {
-  id               String            @id @default(cuid())
-  registrationId   String
-  registration     Registration      @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  order            Int
-  name             String
-  email            String
-  phone            String
-  career           String
-  semester         Int
+  id                String             @id @default(cuid())
+  registrationId    String
+  registration      Registration       @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  order             Int
+  name              String
+  email             String
+  phone             String
+  career            String
+  semester          Int
   interviewArea     InterviewArea?
   edition           Int                @default(2026)
   userId            String?
@@ -159,7 +159,18 @@ enum RubricLevel {
   OUTSTANDING
 }
 
-// Block 1 of the mentors' sheet: one objective per team, per week, per area.
+enum ObjectiveStatus {
+  NOT_STARTED
+  BLOCKED
+  IN_PROGRESS
+  DONE
+}
+
+// Block 1 of the mentors' sheet: the objectives a team sets for a week.
+//
+// An area can hold several of them — an area with two candidates has each of
+// them setting their own — so there is no unique key past the row's id, and
+// candidateId says whose objective it is when the mentors pin it on someone.
 model WeeklyObjective {
   id      String @id @default(cuid())
   edition Int    @default(2026)
@@ -170,9 +181,15 @@ model WeeklyObjective {
 
   area InterviewArea
 
+  candidateId String?
+  candidate   User?   @relation("WeeklyObjectiveOwner", fields: [candidateId], references: [id], onDelete: SetNull)
+
   objective String
-  status    String?
+  status    ObjectiveStatus?
   notes     String?
+
+  // Block 3: the objective rubric, one row per criterion.
+  scores WeeklyRubricScore[]
 
   updatedById String?
   updatedBy   User?   @relation("WeeklyObjectiveAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
@@ -180,7 +197,6 @@ model WeeklyObjective {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([teamId, edition, week, area])
   @@index([teamId, edition, week])
 }
 
@@ -203,8 +219,8 @@ model WeeklyCandidateReview {
   opportunities   String?
   recommendations String?
 
-  // Block 3: the objective rubric, one row per criterion.
-  scores WeeklyRubricScore[]
+  // The intro week's "Experiencia previa" answers.
+  answers WeeklyCandidateAnswer[]
 
   updatedById String?
   updatedBy   User?   @relation("WeeklyReviewAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
@@ -219,15 +235,63 @@ model WeeklyCandidateReview {
 model WeeklyRubricScore {
   id String @id @default(cuid())
 
-  reviewId String
-  review   WeeklyCandidateReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  objectiveId String
+  objective   WeeklyObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
 
   // Key from OBJECTIVE_RUBRIC in ~/lib/rubric.
   criterion     String
   level         RubricLevel
   justification String?
 
-  @@unique([reviewId, criterion])
+  @@unique([objectiveId, criterion])
+}
+
+model WeeklyCandidateAnswer {
+  id String @id @default(cuid())
+
+  reviewId String
+  review   WeeklyCandidateReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  // Key from INTRO_CANDIDATE_QUESTIONS in ~/lib/intro-meeting.
+  questionKey String
+  answer      String
+
+  @@unique([reviewId, questionKey])
+}
+
+// What the mentors write about the team as a whole for a week: their general
+// notes plus the answers to the intro meeting's guide questions.
+model WeeklyTeamNote {
+  id      String @id @default(cuid())
+  edition Int    @default(2026)
+  week    Int
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  generalNotes String?
+  answers      WeeklyTeamAnswer[]
+
+  updatedById String?
+  updatedBy   User?   @relation("WeeklyTeamNoteAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, edition, week])
+}
+
+model WeeklyTeamAnswer {
+  id String @id @default(cuid())
+
+  noteId String
+  note   WeeklyTeamNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  // Key from INTRO_TEAM_QUESTIONS in ~/lib/intro-meeting.
+  questionKey String
+  answer      String
+
+  @@unique([noteId, questionKey])
 }
 
 model MentorChallenge {
@@ -301,9 +365,11 @@ model User {
   reportedTeamConflicts MentorPairTeamConflict[] @relation("ReportedTeamConflicts")
   mentorChallenges      MentorChallenge[]        @relation("MentorChallenges")
 
-  weeklyReviews        WeeklyCandidateReview[] @relation("WeeklyReviewCandidate")
+  weeklyReviews         WeeklyCandidateReview[] @relation("WeeklyReviewCandidate")
   authoredWeeklyReviews WeeklyCandidateReview[] @relation("WeeklyReviewAuthor")
-  authoredObjectives   WeeklyObjective[]       @relation("WeeklyObjectiveAuthor")
+  authoredObjectives    WeeklyObjective[]       @relation("WeeklyObjectiveAuthor")
+  ownedWeeklyObjectives WeeklyObjective[]       @relation("WeeklyObjectiveOwner")
+  authoredTeamNotes     WeeklyTeamNote[]        @relation("WeeklyTeamNoteAuthor")
 }
 
 model VerificationToken {
@@ -328,13 +394,13 @@ model Admin {
 }
 
 model Team {
-  id             String         @id @default(cuid())
-  name           String         @unique
+  id             String          @id @default(cuid())
+  name           String          @unique
   driveLink      String?
   binnacleLink   String?
   robotImageLink String?
   githubLink     String?
-  isActive       Boolean        @default(true)
+  isActive       Boolean         @default(true)
   challengeA     ChallengeA[]
   challengeB     ChallengeB[]
   challengeC     ChallengeC[]
@@ -346,6 +412,7 @@ model Team {
   mentorPairConflicts MentorPairTeamConflict[]
   weeklyObjectives    WeeklyObjective[]
   weeklyReviews       WeeklyCandidateReview[]
+  weeklyTeamNotes     WeeklyTeamNote[]
 }
 
 model Round {

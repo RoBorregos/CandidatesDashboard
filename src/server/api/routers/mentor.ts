@@ -4,8 +4,16 @@ import { createTRPCRouter, mentorProcedure } from "~/server/api/trpc";
 import { CURRENT_EDITION } from "~/lib/registration";
 import { beginnerTeamIds } from "~/server/teams";
 import type { InterviewArea, PrismaClient } from "@prisma/client";
-import { InterviewArea as InterviewAreaEnum, RubricLevel } from "@prisma/client";
+import {
+  InterviewArea as InterviewAreaEnum,
+  ObjectiveStatus,
+  RubricLevel,
+} from "@prisma/client";
 import { MAX_TRACKING_WEEK, RUBRIC_CRITERION_KEYS } from "~/lib/rubric";
+import {
+  INTRO_CANDIDATE_QUESTION_KEYS,
+  INTRO_TEAM_QUESTION_KEYS,
+} from "~/lib/intro-meeting";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
 
@@ -61,6 +69,25 @@ async function assertMentorsTeam(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "This team isn't assigned to your pair.",
+    });
+  }
+}
+
+/** Nothing on a team's sheet may point at someone who isn't on that team. */
+async function assertTeamMember(
+  db: PrismaClient,
+  candidateId: string,
+  teamId: string,
+) {
+  const member = await db.user.findFirst({
+    where: { id: candidateId, teamId },
+    select: { id: true },
+  });
+
+  if (!member) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That candidate isn't on this team.",
     });
   }
 }
@@ -191,7 +218,12 @@ export const mentorRouter = createTRPCRouter({
    * evaluate, so they have to be on screen while filling this week in.
    */
   getWeeklyTracking: mentorProcedure
-    .input(z.object({ teamId: z.string(), week: z.number().int().min(1).max(52) }))
+    .input(
+      z.object({
+        teamId: z.string(),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
 
@@ -222,6 +254,9 @@ export const mentorRouter = createTRPCRouter({
           edition: CURRENT_EDITION,
           week: { in: [input.week, input.week - 1] },
         },
+        include: { scores: true },
+        // Creation order is what numbers the objectives 1, 2, 3 within an area.
+        orderBy: [{ area: "asc" }, { createdAt: "asc" }],
       });
 
       const reviews = await ctx.db.weeklyCandidateReview.findMany({
@@ -230,7 +265,18 @@ export const mentorRouter = createTRPCRouter({
           edition: CURRENT_EDITION,
           week: input.week,
         },
-        include: { scores: true },
+        include: { answers: true },
+      });
+
+      const teamNote = await ctx.db.weeklyTeamNote.findUnique({
+        where: {
+          teamId_edition_week: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            week: input.week,
+          },
+        },
+        include: { answers: true },
       });
 
       return {
@@ -241,48 +287,144 @@ export const mentorRouter = createTRPCRouter({
           (row) => row.week === input.week - 1,
         ),
         reviews,
+        teamNote,
       };
     }),
 
+  /*
+   * One objective row and its rubric. An area can hold several objectives, so
+   * the row is addressed by id: no id means the mentor just added it.
+   */
   saveWeeklyObjective: mentorProcedure
     .input(
       z.object({
         teamId: z.string(),
         week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
+        id: z.string().optional(),
         area: z.nativeEnum(InterviewAreaEnum),
+        candidateId: z.string().nullable().optional(),
         objective: z.string().trim().min(1).max(1000),
-        status: z.string().trim().max(200).optional(),
+        status: z.nativeEnum(ObjectiveStatus).nullable().optional(),
         notes: z.string().trim().max(2000).optional(),
+        scores: z.array(
+          z.object({
+            criterion: z.enum(RUBRIC_CRITERION_KEYS),
+            level: z.nativeEnum(RubricLevel),
+            justification: z.string().trim().max(2000).optional(),
+          }),
+        ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
 
+      if (input.candidateId) {
+        await assertTeamMember(ctx.db, input.candidateId, input.teamId);
+      }
+
+      /*
+       * An id from somewhere else would otherwise let a mentor rewrite another
+       * team's objective, so it has to match the row this sheet is showing.
+       */
+      if (input.id) {
+        const existing = await ctx.db.weeklyObjective.findUnique({
+          where: { id: input.id },
+          select: { teamId: true, edition: true, week: true },
+        });
+
+        if (
+          !existing ||
+          existing.teamId !== input.teamId ||
+          existing.edition !== CURRENT_EDITION ||
+          existing.week !== input.week
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That objective isn't part of this week's sheet.",
+          });
+        }
+      }
+
       const data = {
+        area: input.area,
+        candidateId: input.candidateId ?? null,
         objective: input.objective,
         status: input.status ?? null,
         notes: input.notes ?? null,
         updatedById: ctx.session.user.id,
       };
 
-      await ctx.db.weeklyObjective.upsert({
-        where: {
-          teamId_edition_week_area: {
-            teamId: input.teamId,
-            edition: CURRENT_EDITION,
-            week: input.week,
-            area: input.area,
+      return ctx.db.$transaction(async (tx) => {
+        const objective = input.id
+          ? await tx.weeklyObjective.update({
+              where: { id: input.id },
+              data,
+            })
+          : await tx.weeklyObjective.create({
+              data: {
+                teamId: input.teamId,
+                edition: CURRENT_EDITION,
+                week: input.week,
+                ...data,
+              },
+            });
+
+        /*
+         * A criterion left unmarked is cleared rather than kept, so the saved
+         * rubric always matches what the mentor sees on screen.
+         */
+        await tx.weeklyRubricScore.deleteMany({
+          where: {
+            objectiveId: objective.id,
+            criterion: { notIn: input.scores.map((score) => score.criterion) },
           },
-        },
-        create: {
-          teamId: input.teamId,
-          edition: CURRENT_EDITION,
-          week: input.week,
-          area: input.area,
-          ...data,
-        },
-        update: data,
+        });
+
+        for (const score of input.scores) {
+          await tx.weeklyRubricScore.upsert({
+            where: {
+              objectiveId_criterion: {
+                objectiveId: objective.id,
+                criterion: score.criterion,
+              },
+            },
+            create: {
+              objectiveId: objective.id,
+              criterion: score.criterion,
+              level: score.level,
+              justification: score.justification ?? null,
+            },
+            update: {
+              level: score.level,
+              justification: score.justification ?? null,
+            },
+          });
+        }
+
+        // The client needs this to stop treating a new row as unsaved.
+        return { id: objective.id };
       });
+    }),
+
+  deleteWeeklyObjective: mentorProcedure
+    .input(z.object({ objectiveId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const objective = await ctx.db.weeklyObjective.findUnique({
+        where: { id: input.objectiveId },
+        select: { teamId: true },
+      });
+
+      if (!objective) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Objective not found.",
+        });
+      }
+
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, objective.teamId);
+
+      // Its rubric scores go with it, by cascade.
+      await ctx.db.weeklyObjective.delete({ where: { id: input.objectiveId } });
 
       return { success: true };
     }),
@@ -299,29 +441,17 @@ export const mentorRouter = createTRPCRouter({
         strengths: z.string().trim().max(2000).optional(),
         opportunities: z.string().trim().max(2000).optional(),
         recommendations: z.string().trim().max(2000).optional(),
-        scores: z.array(
+        answers: z.array(
           z.object({
-            criterion: z.enum(RUBRIC_CRITERION_KEYS),
-            level: z.nativeEnum(RubricLevel),
-            justification: z.string().trim().max(2000).optional(),
+            questionKey: z.enum(INTRO_CANDIDATE_QUESTION_KEYS),
+            answer: z.string().trim().max(2000),
           }),
         ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
-
-      const isMember = await ctx.db.user.findFirst({
-        where: { id: input.candidateId, teamId: input.teamId },
-        select: { id: true },
-      });
-
-      if (!isMember) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "That candidate isn't on this team.",
-        });
-      }
+      await assertTeamMember(ctx.db, input.candidateId, input.teamId);
 
       const data = {
         evidence: input.evidence ?? null,
@@ -358,36 +488,103 @@ export const mentorRouter = createTRPCRouter({
         });
 
         /*
-         * A criterion left unmarked is cleared rather than kept, so the saved
-         * rubric always matches what the mentor sees on screen.
+         * A question left blank is cleared rather than kept, so the saved
+         * answers always match what the mentor sees on screen.
          */
-        await tx.weeklyRubricScore.deleteMany({
+        await tx.weeklyCandidateAnswer.deleteMany({
           where: {
             reviewId: review.id,
-            criterion: {
-              notIn: input.scores.map((score) => score.criterion),
+            questionKey: {
+              notIn: input.answers.map((answer) => answer.questionKey),
             },
           },
         });
 
-        for (const score of input.scores) {
-          await tx.weeklyRubricScore.upsert({
+        for (const answer of input.answers) {
+          await tx.weeklyCandidateAnswer.upsert({
             where: {
-              reviewId_criterion: {
+              reviewId_questionKey: {
                 reviewId: review.id,
-                criterion: score.criterion,
+                questionKey: answer.questionKey,
               },
             },
             create: {
               reviewId: review.id,
-              criterion: score.criterion,
-              level: score.level,
-              justification: score.justification ?? null,
+              questionKey: answer.questionKey,
+              answer: answer.answer,
             },
-            update: {
-              level: score.level,
-              justification: score.justification ?? null,
+            update: { answer: answer.answer },
+          });
+        }
+      });
+
+      return { success: true };
+    }),
+
+  /* The team-wide half of the intro meeting: guide questions and free notes. */
+  saveTeamNote: mentorProcedure
+    .input(
+      z.object({
+        teamId: z.string(),
+        week: z.number().int().min(1).max(MAX_TRACKING_WEEK),
+        generalNotes: z.string().trim().max(4000).optional(),
+        answers: z.array(
+          z.object({
+            questionKey: z.enum(INTRO_TEAM_QUESTION_KEYS),
+            answer: z.string().trim().max(2000),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
+
+      const data = {
+        generalNotes: input.generalNotes ?? null,
+        updatedById: ctx.session.user.id,
+      };
+
+      await ctx.db.$transaction(async (tx) => {
+        const note = await tx.weeklyTeamNote.upsert({
+          where: {
+            teamId_edition_week: {
+              teamId: input.teamId,
+              edition: CURRENT_EDITION,
+              week: input.week,
             },
+          },
+          create: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            week: input.week,
+            ...data,
+          },
+          update: data,
+        });
+
+        await tx.weeklyTeamAnswer.deleteMany({
+          where: {
+            noteId: note.id,
+            questionKey: {
+              notIn: input.answers.map((answer) => answer.questionKey),
+            },
+          },
+        });
+
+        for (const answer of input.answers) {
+          await tx.weeklyTeamAnswer.upsert({
+            where: {
+              noteId_questionKey: {
+                noteId: note.id,
+                questionKey: answer.questionKey,
+              },
+            },
+            create: {
+              noteId: note.id,
+              questionKey: answer.questionKey,
+              answer: answer.answer,
+            },
+            update: { answer: answer.answer },
           });
         }
       });

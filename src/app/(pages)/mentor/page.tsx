@@ -134,7 +134,18 @@ export default async function MentorPage() {
                             className="border-t border-gray-700 hover:bg-gray-900"
                           >
                             <td className="border-l border-gray-700 px-3 py-3 font-medium first:border-l-0">
-                              {member.name ?? member.email ?? "—"}
+                              <span className="flex flex-wrap items-center gap-2">
+                                {member.name ?? member.email ?? "—"}
+
+                                {!member.hasAccount && (
+                                  <span
+                                    className="rounded-full bg-yellow-900/60 px-2 py-0.5 text-xs font-medium text-yellow-300"
+                                    title="Todavía no ha entrado a la plataforma — contáctalo por teléfono o correo."
+                                  >
+                                    Sin cuenta
+                                  </span>
+                                )}
+                              </span>
                             </td>
                             <td className="border-l border-gray-700 px-3 py-3">
                               {member.interviewArea ?? "-"}

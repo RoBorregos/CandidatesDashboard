@@ -41,6 +41,148 @@ async function contactsByEmail(
   );
 }
 
+type RosterMember = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  interviewArea: InterviewArea | null;
+  // False until they sign in for the first time — the mentor's cue to chase them.
+  hasAccount: boolean;
+};
+
+/*
+ * The full roster of a team, including whoever has never signed in.
+ *
+ * Team.members only holds Users, and a User row doesn't exist until first
+ * login, so a mentor reading it never sees the candidates they most need to
+ * contact. The registrations placed on the team carry everyone — with the
+ * phone number — so the roster starts there and folds the accounts in.
+ *
+ * Both ways a team is filled set Registration.teamId (acceptRegistration and
+ * autoAssignUsers), so registrations cover both.
+ */
+async function teamRosters(
+  db: PrismaClient,
+  teamIds: string[],
+): Promise<Map<string, RosterMember[]>> {
+  const rosters = new Map<string, RosterMember[]>();
+  const seenByTeam = new Map<string, Set<string>>();
+
+  for (const teamId of teamIds) {
+    rosters.set(teamId, []);
+    seenByTeam.set(teamId, new Set());
+  }
+
+  if (teamIds.length === 0) return rosters;
+
+  const registrations = await db.registration.findMany({
+    where: { teamId: { in: teamIds } },
+    select: {
+      teamId: true,
+      members: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          interviewArea: true,
+        },
+        orderBy: { order: "asc" },
+      },
+    },
+  });
+
+  const memberEmails = registrations.flatMap((registration) =>
+    registration.members.map((member) => member.email),
+  );
+
+  /*
+   * Accounts are pulled by team *and* by registered email: someone can have an
+   * account whose teamId isn't set yet, and they shouldn't be reported as
+   * having never signed in.
+   */
+  const users = await db.user.findMany({
+    where: {
+      OR: [{ teamId: { in: teamIds } }, { email: { in: memberEmails } }],
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      interviewArea: true,
+      teamId: true,
+    },
+  });
+
+  const userByEmail = new Map(
+    users.flatMap((user) =>
+      user.email ? [[user.email.toLowerCase(), user] as const] : [],
+    ),
+  );
+
+  for (const registration of registrations) {
+    const roster = registration.teamId
+      ? rosters.get(registration.teamId)
+      : undefined;
+    const seen = registration.teamId
+      ? seenByTeam.get(registration.teamId)
+      : undefined;
+
+    if (!roster || !seen) continue;
+
+    for (const member of registration.members) {
+      const key = member.email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const user = userByEmail.get(key);
+
+      roster.push({
+        id: user?.id ?? member.id,
+        name: member.name,
+        email: member.email,
+        phone: member.phone,
+        interviewArea: member.interviewArea ?? user?.interviewArea ?? null,
+        hasAccount: Boolean(user),
+      });
+    }
+  }
+
+  // Accounts sitting in a team that no registration on that team covers.
+  const orphanEmails = users.flatMap((user) =>
+    user.teamId && rosters.has(user.teamId) && user.email ? [user.email] : [],
+  );
+
+  const contacts = await contactsByEmail(db, orphanEmails);
+
+  for (const user of users) {
+    const roster = user.teamId ? rosters.get(user.teamId) : undefined;
+    const seen = user.teamId ? seenByTeam.get(user.teamId) : undefined;
+
+    if (!roster || !seen) continue;
+
+    const key = user.email?.toLowerCase() ?? user.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const contact = user.email
+      ? contacts.get(user.email.toLowerCase())
+      : undefined;
+
+    roster.push({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: contact?.phone ?? null,
+      interviewArea: user.interviewArea ?? contact?.interviewArea ?? null,
+      hasAccount: true,
+    });
+  }
+
+  return rosters;
+}
+
 /*
  * Weekly tracking is only writable by the pair the team belongs to. Anything
  * that reads or writes it goes through here first.
@@ -115,18 +257,7 @@ export const mentorRouter = createTRPCRouter({
         mentorB: { select: { id: true, name: true, email: true } },
         teams: {
           include: {
-            team: {
-              include: {
-                members: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    interviewArea: true,
-                  },
-                },
-              },
-            },
+            team: { select: { id: true, name: true } },
           },
         },
       },
@@ -134,15 +265,13 @@ export const mentorRouter = createTRPCRouter({
 
     if (!pair) return null;
 
-    // Mentors need the candidates' contact details, which only the
-    // registration has.
-    const contacts = await contactsByEmail(
+    /*
+     * Built from the registrations, not Team.members, so candidates who have
+     * never signed in still reach their mentor with a phone number.
+     */
+    const rosters = await teamRosters(
       ctx.db,
-      pair.teams.flatMap((assignment) =>
-        assignment.team.members.flatMap((member) =>
-          member.email ? [member.email] : [],
-        ),
-      ),
+      pair.teams.map((assignment) => assignment.teamId),
     );
 
     return {
@@ -151,18 +280,7 @@ export const mentorRouter = createTRPCRouter({
         ...assignment,
         team: {
           ...assignment.team,
-          members: assignment.team.members.map((member) => {
-            const contact = member.email
-              ? contacts.get(member.email.toLowerCase())
-              : undefined;
-
-            return {
-              ...member,
-              phone: contact?.phone ?? null,
-              // The User copy is only filled once a registration is accepted.
-              interviewArea: member.interviewArea ?? contact?.interviewArea ?? null,
-            };
-          }),
+          members: rosters.get(assignment.teamId) ?? [],
         },
       })),
     };

@@ -9,6 +9,8 @@ import { testingUtilitiesRouter } from "./admin/testing-utilities";
 import { staffManagementRouter } from "./admin/staff-management";
 import { mentorManagementRouter } from "./admin/mentor-management";
 import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
+import { registrationWindowRouter } from "./admin/registration-window";
+import { challengeMentorManagementRouter } from "./admin/challenge-mentor-management";
 
 export const adminRouter = createTRPCRouter({
   // User Management
@@ -37,6 +39,15 @@ export const adminRouter = createTRPCRouter({
   getRoundVisibilityStatus: roundControlRouter.getRoundVisibilityStatus,
   revealNextRound: roundControlRouter.revealNextRound,
 
+  // Registration Window
+  getRegistrationWindow: registrationWindowRouter.getRegistrationWindow,
+  scheduleRegistrationClose: registrationWindowRouter.scheduleRegistrationClose,
+  openRegistrationTemporarily:
+    registrationWindowRouter.openRegistrationTemporarily,
+  closeRegistrationNow: registrationWindowRouter.closeRegistrationNow,
+  followRegistrationSchedule:
+    registrationWindowRouter.followRegistrationSchedule,
+
   // Interview Management
   getInterviewers: interviewManagementRouter.getInterviewers,
   createInterviewer: interviewManagementRouter.createInterviewer,
@@ -61,18 +72,23 @@ export const adminRouter = createTRPCRouter({
   // Mentor Management
   setUserMentor: mentorManagementRouter.setUserMentor,
   getMentors: mentorManagementRouter.getMentors,
-  getCandidates: mentorManagementRouter.getCandidates,
-  getAssignments: mentorManagementRouter.getAssignments,
-  assignMentor: mentorManagementRouter.assignMentor,
-  removeMentor: mentorManagementRouter.removeMentor,
+  getMentorEligibleUsers: mentorManagementRouter.getMentorEligibleUsers,
 
   // Mentor Pair Management
   getPairs: mentorPairManagementRouter.getPairs,
   getUnpairedMentors: mentorPairManagementRouter.getUnpairedMentors,
+  getTeamsWithPairs: mentorPairManagementRouter.getTeamsWithPairs,
   createPair: mentorPairManagementRouter.createPair,
   dissolvePair: mentorPairManagementRouter.dissolvePair,
   previewPairAssignment: mentorPairManagementRouter.previewPairAssignment,
   commitPairAssignment: mentorPairManagementRouter.commitPairAssignment,
   assignPairToTeam: mentorPairManagementRouter.assignPairToTeam,
   unassignPairFromTeam: mentorPairManagementRouter.unassignPairFromTeam,
+  clearPairTeamConflict: mentorPairManagementRouter.clearPairTeamConflict,
+  getMentorWeek: mentorPairManagementRouter.getMentorWeek,
+  setMentorWeek: mentorPairManagementRouter.setMentorWeek,
+
+  // Challenge Mentor Management (advanced track)
+  getChallengeGroups: challengeMentorManagementRouter.getChallengeGroups,
+  setChallengeMentors: challengeMentorManagementRouter.setChallengeMentors,
 });

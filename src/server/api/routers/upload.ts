@@ -159,6 +159,13 @@ function keyMatchesBase(customId: string, base: string): boolean {
 
 /** List every file currently stored on UploadThing (paginated). */
 async function listAllFiles() {
+  const cacheKey = "__ut_list_all_files_cache__";
+  const ttlMs = 10_000;
+  const cached = (globalThis as unknown as Record<string, unknown>)[cacheKey] as
+    | { at: number; files: { key: string; customId: string }[] }
+    | undefined;
+  if (cached && Date.now() - cached.at < ttlMs) return cached.files;
+
   const files: { key: string; customId: string }[] = [];
   let offset = 0;
   for (;;) {
@@ -171,6 +178,11 @@ async function listAllFiles() {
     if (!page.hasMore) break;
     offset = files.length;
   }
+
+  (globalThis as unknown as Record<string, unknown>)[cacheKey] = {
+    at: Date.now(),
+    files,
+  };
   return files;
 }
 

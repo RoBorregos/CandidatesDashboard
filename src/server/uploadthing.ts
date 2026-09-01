@@ -18,6 +18,10 @@ import {
   userUploadFolderPath,
   weekUsageBytes,
 } from "~/server/api/routers/upload";
+import {
+  getUploadDeniedMessage,
+  isUploadAllowedForWeek,
+} from "~/server/week-schedule";
 
 const f = createUploadthing();
 
@@ -35,6 +39,16 @@ export const ourFileRouter = {
       const session = await getServerAuthSession();
       if (!session?.user?.id) {
         throw new Error("Unauthorized");
+      }
+
+      // Week gating: only allow uploads when the real-time clock falls within
+      // the requested week's window (UTC-6). Defense-in-depth on top of the
+      // tRPC `prepareUpload` gate, which is what surfaces the 401 the client
+      // sees.
+      if (!isUploadAllowedForWeek(input.week)) {
+        throw new Error(
+          getUploadDeniedMessage(input.week),
+        );
       }
 
       const user = await db.user.findUnique({

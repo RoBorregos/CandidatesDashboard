@@ -7,6 +7,23 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import {
+  getUploadDeniedMessage,
+  isUploadAllowedForWeek,
+} from "~/server/week-schedule";
+
+/**
+ * Reject an upload/comment that targets a week whose delivery window (UTC-6)
+ * doesn't match the real-time clock. Thrown as 401 UNAUTHORIZED.
+ */
+function assertWeekOpen(week: number): void {
+  if (!isUploadAllowedForWeek(week)) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: getUploadDeniedMessage(week),
+    });
+  }
+}
 
 /**
  * Upload microservice.
@@ -517,6 +534,9 @@ export const uploadRouter = createTRPCRouter({
         });
       }
 
+      // Pre-upload gate: block submissions for a week that isn't open (401).
+      assertWeekOpen(input.week);
+
       const team = await ctx.db.team.findUnique({
         where: { id: teamId },
         select: { name: true },
@@ -569,6 +589,9 @@ export const uploadRouter = createTRPCRouter({
           message: "Debes pertenecer a un equipo para comentar",
         });
       }
+
+      // Only allow comments during the week's delivery window (401 otherwise).
+      assertWeekOpen(input.week);
 
       const team = await ctx.db.team.findUnique({
         where: { id: teamId },

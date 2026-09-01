@@ -278,32 +278,36 @@ export type TeamUploadRecord = {
  * (`{Semana-[1-5]}/{team}/{user}/{filename}` for individual weeks,
  * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
  * previous record: the older DB row and storage file are freed here.
+ *
+ * The record is keyed by its unique `customId` (the same deterministic path),
+ * not by a read-delete-create on (teamId, week, name, userId) — upserting keeps
+ * two concurrent uploads/comments for the same slot from racing into a unique
+ * constraint violation on create(). The previous row's storage blob is still
+ * freed by the shared key lookup.
  */
 export async function recordTeamUpload(input: TeamUploadRecord) {
-  const older = await db.teamUpload.findMany({
-    where: {
+  const existing = await db.teamUpload.findUnique({
+    where: { customId: input.customId },
+    select: { fileKey: true },
+  });
+
+  if (existing?.fileKey && existing.fileKey !== input.fileKey) {
+    await utapi.deleteFiles(existing.fileKey).catch(() => undefined);
+  }
+
+  return db.teamUpload.upsert({
+    where: { customId: input.customId },
+    update: {
       teamId: input.teamId,
       week: input.week,
       name: input.name,
-      // For individual weeks only the owner's previous record can be replaced.
-      ...(isFinalWeek(input.week) ? {} : { userId: input.userId }),
+      fileKey: input.fileKey,
+      fileUrl: input.fileUrl,
+      fileSize: input.fileSize,
+      fileType: input.fileType,
     },
-    select: { id: true, fileKey: true },
+    create: input,
   });
-
-  const staleKeys = older
-    .map((row) => row.fileKey)
-    .filter((key) => key !== input.fileKey);
-  if (staleKeys.length > 0) {
-    await utapi.deleteFiles(staleKeys).catch(() => undefined);
-  }
-  if (older.length > 0) {
-    await db.teamUpload.deleteMany({
-      where: { id: { in: older.map((row) => row.id) } },
-    });
-  }
-
-  return db.teamUpload.create({ data: input });
 }
 
 /** Resolve the caller's team, falling back to a DB lookup when the session lags behind. */

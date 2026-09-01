@@ -11,6 +11,12 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "rbrgs/server/uploadthing";
 
+// Start the local cron scheduler in development.
+// On Vercel the platform's built-in cron (vercel.json) handles this instead.
+if (process.env.NODE_ENV === "development") {
+  void import("rbrgs/server/local-cron").then((m) => m.startLocalCron());
+}
+
 export const metadata: Metadata = {
   title: "Candidates 2026",
   description:

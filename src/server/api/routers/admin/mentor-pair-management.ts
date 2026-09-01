@@ -50,8 +50,12 @@ export const mentorPairManagementRouter = createTRPCRouter({
 
   /*
    * Active teams with the pair mentoring them, if any. A team holds at most one
-   * pair (TeamMentorPair.teamId is unique), so this is what the admin reads to
-   * tell covered teams from the ones still waiting.
+   * pair (TeamMentorPair.teamId is unique → 1:1), so querying the `mentorPairs`
+   * list with a take: 1 yields the single assignment. The list is filtered by
+   * edition so a team that carried a pair from an earlier edition isn't shown
+   * as covered now. Always go through this list relation (take: 1) — the schema
+   * exposes no singular `mentorPair` back-relation, so reach for it and this
+   * is the single place that maps it to the 1:1 shape the admin sees.
    */
   getTeamsWithPairs: adminProcedure.query(async ({ ctx }) => {
     const beginnerIds = new Set(await beginnerTeamIds(ctx.db, CURRENT_EDITION));
@@ -61,7 +65,9 @@ export const mentorPairManagementRouter = createTRPCRouter({
       select: {
         id: true,
         name: true,
-        mentorPair: {
+        mentorPairs: {
+          where: { mentorPair: { edition: CURRENT_EDITION } },
+          take: 1,
           select: {
             assignedAt: true,
             mentorPair: {
@@ -77,19 +83,22 @@ export const mentorPairManagementRouter = createTRPCRouter({
       orderBy: { name: "asc" },
     });
 
-    return teams.map((team) => ({
-      id: team.id,
-      name: team.name,
-      isBeginner: beginnerIds.has(team.id),
-      assignment: team.mentorPair
-        ? {
-            assignedAt: team.mentorPair.assignedAt,
-            pairId: team.mentorPair.mentorPair.id,
-            mentorA: team.mentorPair.mentorPair.mentorA,
-            mentorB: team.mentorPair.mentorPair.mentorB,
-          }
-        : null,
-    }));
+    return teams.map((team) => {
+      const assignment = team.mentorPairs[0];
+      return {
+        id: team.id,
+        name: team.name,
+        isBeginner: beginnerIds.has(team.id),
+        assignment: assignment
+          ? {
+              assignedAt: assignment.assignedAt,
+              pairId: assignment.mentorPair.id,
+              mentorA: assignment.mentorPair.mentorA,
+              mentorB: assignment.mentorPair.mentorB,
+            }
+          : null,
+      };
+    });
   }),
 
   createPair: adminProcedure
@@ -184,10 +193,16 @@ export const mentorPairManagementRouter = createTRPCRouter({
   previewPairAssignment: adminProcedure.query(async ({ ctx }) => {
     const beginnerIds = await beginnerTeamIds(ctx.db, CURRENT_EDITION);
 
+    /*
+     * A team holds at most one pair (TeamMentorPair.teamId is unique), so the
+     * relation is 1:1 — the same shape getTeamsWithPairs reads. Filter the lack
+     * of an assignment by edition so a team that carried a pair from an earlier
+     * edition isn't mistaken for one still waiting this edition.
+     */
     const unassignedTeams = await ctx.db.team.findMany({
       where: {
         isActive: true,
-        mentorPairs: { none: {} },
+        mentorPairs: { none: { mentorPair: { edition: CURRENT_EDITION } } },
         id: { in: beginnerIds },
       },
       select: { id: true, name: true },

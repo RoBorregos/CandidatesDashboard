@@ -396,13 +396,13 @@ model Admin {
 }
 
 model Team {
-  id             String          @id @default(cuid())
-  name           String          @unique
+  id             String           @id @default(cuid())
+  name           String           @unique
   driveLink      String?
   binnacleLink   String?
   robotImageLink String?
   githubLink     String?
-  isActive       Boolean         @default(true)
+  isActive       Boolean          @default(true)
   challengeA     ChallengeA[]
   challengeB     ChallengeB[]
   challengeC     ChallengeC[]
@@ -411,34 +411,34 @@ model Team {
   registrations  Registration[]
   uploads        TeamUpload[]
   mentorPairs    TeamMentorPair[]
-}
-
-model TeamUpload {
-  id        String    @id @default(cuid())
-  teamId    String
-  week      Int
-  name      String
-  fileKey   String    @unique
-  customId  String    @unique
-  fileUrl   String
-  fileSize  Int?
-  fileType  String?
-  // Owning user. Null for team-wide weeks (the FINAL submission), where the
-  // whole team shares the same folder and can see every file.
-  userId      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user      User?     @relation("UserTeamUploads", fields: [userId], references: [id], onDelete: Cascade)
-  mentorPairId String?
-  mentorPair    TeamMentorPair? @relation(fields: [mentorPairId], references: [id])
-
-  @@index([teamId, week, userId])
 
   mentorPairConflicts MentorPairTeamConflict[]
   weeklyObjectives    WeeklyObjective[]
   weeklyReviews       WeeklyCandidateReview[]
   weeklyTeamNotes     WeeklyTeamNote[]
+}
+
+model TeamUpload {
+  id           String          @id @default(cuid())
+  teamId       String
+  week         Int
+  name         String
+  fileKey      String          @unique
+  customId     String          @unique
+  fileUrl      String
+  fileSize     Int?
+  fileType     String?
+  // Owning user. Null for team-wide weeks (the FINAL submission), where the
+  // whole team shares the same folder and can see every file.
+  userId       String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  team         Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         User?           @relation("UserTeamUploads", fields: [userId], references: [id], onDelete: Cascade)
+  mentorPairId String?
+  mentorPair   TeamMentorPair? @relation(fields: [mentorPairId], references: [id])
+
+  @@index([teamId, week, userId])
 }
 
 model Round {

@@ -205,7 +205,7 @@ export default function WeeklyTracking({
       setObjectives((previous) => {
         const next = { ...previous };
         for (const area of INTERVIEW_AREAS) {
-          next[area as AreaKey] = (next[area as AreaKey] ?? []).filter(
+          next[area] = (next[area] ?? []).filter(
             (row) => row.id !== variables.objectiveId,
           );
         }

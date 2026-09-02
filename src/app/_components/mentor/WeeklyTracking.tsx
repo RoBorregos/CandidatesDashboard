@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
@@ -84,16 +84,25 @@ export default function WeeklyTracking({
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
 
+  // Tracks the teamId/week whose data has already been seeded into drafts,
+  // so a refetch after a save (which reuses the same key) doesn't clobber
+  // whatever the mentor is still typing elsewhere on the page.
+  const seededKeyRef = useRef<string | null>(null);
+
   /*
-   * Drafts are re-seeded whenever the server data changes — switching weeks
-   * has to pull that week's answers in, not keep the previous week's on screen.
-   * Rows the mentor added but hasn't saved yet (id === null) are carried over,
-   * so a refetch can't wipe out what they're in the middle of typing.
+   * Drafts are re-seeded only the first time each week's data arrives —
+   * switching weeks has to pull that week's answers in, not keep the
+   * previous week's on screen. A refetch triggered by saving one row must
+   * NOT re-seed, or unsaved edits in every other field get wiped out.
    */
   useEffect(() => {
     if (!data) return;
 
-    setObjectives((previous) => {
+    const key = `${teamId}:${week}`;
+    if (seededKeyRef.current === key) return;
+    seededKeyRef.current = key;
+
+    setObjectives(() => {
       const next = EMPTY_OBJECTIVES();
 
       for (const row of data.objectives) {
@@ -121,13 +130,6 @@ export default function WeeklyTracking({
           notes: row.notes ?? "",
           scores,
         });
-      }
-
-      for (const area of INTERVIEW_AREAS) {
-        const unsaved = (previous[area] ?? []).filter(
-          (draft) => draft.id === null,
-        );
-        next[area].push(...unsaved);
       }
 
       return next;
@@ -181,7 +183,7 @@ export default function WeeklyTracking({
     }
 
     setTeamNote(note);
-  }, [data]);
+  }, [data, teamId, week]);
 
   const refresh = async () => {
     await utils.mentor.getWeeklyTracking.invalidate({ teamId, week });
@@ -198,8 +200,17 @@ export default function WeeklyTracking({
   });
 
   const deleteObjective = api.mentor.deleteWeeklyObjective.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_result, variables) => {
       toast.success("Objetivo eliminado.");
+      setObjectives((previous) => {
+        const next = { ...previous };
+        for (const area of INTERVIEW_AREAS) {
+          next[area] = (next[area] ?? []).filter(
+            (row) => row.id !== variables.objectiveId,
+          );
+        }
+        return next;
+      });
       await refresh();
     },
     onError: (mutationError) => toast.error(mutationError.message),

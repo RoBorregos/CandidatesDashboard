@@ -7,6 +7,7 @@ import { adminRouter } from "./routers/admin";
 import { configRouter } from "./routers/config";
 import { interviewerRouter } from "./routers/interviewer";
 import { registrationRouter } from "./routers/registration";
+import { uploadRouter } from "./routers/upload";
 import { mentorRouter } from "./routers/mentor";
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   config: configRouter,
   interviewer: interviewerRouter,
   registration: registrationRouter,
+  uploads: uploadRouter,
   mentor: mentorRouter,
 });
 

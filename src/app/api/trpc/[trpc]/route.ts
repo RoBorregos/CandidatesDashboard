@@ -15,8 +15,8 @@ const createContext = async (req: NextRequest) => {
   });
 };
 
-const handler = (req: NextRequest) =>
-  fetchRequestHandler({
+const handler = async (req: NextRequest) => {
+  const response = await fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
@@ -30,5 +30,12 @@ const handler = (req: NextRequest) =>
           }
         : undefined,
   });
+
+  // tRPC queries go out as GET and carry no cache headers, so browsers may
+  // serve identical repeated calls (e.g. polling or a page refresh) straight
+  // from the HTTP cache, hiding DB-side changes. Never cache API responses.
+  response.headers.set("cache-control", "no-store");
+  return response;
+};
 
 export { handler as GET, handler as POST };

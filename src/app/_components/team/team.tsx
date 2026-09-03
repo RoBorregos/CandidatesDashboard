@@ -9,7 +9,6 @@ import { useCallback, useState } from "react";
 import { TeamType } from "rbrgs/server/api/routers/team";
 import Results from "./results";
 import interviewData from "./interview.json";
-import Upload from "./upload";
 
 interface Data {
   col1: string;

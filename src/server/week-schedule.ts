@@ -29,28 +29,28 @@ export interface WeekWindow {
 export const WEEK_SCHEDULE: readonly WeekWindow[] = [
   {
     week: 2,
-    start: "2026-09-14T00:00:00-06:00",
-    end: "2026-09-19T23:59:59-06:00",
+    start: "2026-09-06T00:00:00-06:00",
+    end: "2026-09-12T23:59:59-06:00",
   },
   {
     week: 3,
-    start: "2026-09-21T00:00:00-06:00",
-    end: "2026-09-26T23:59:59-06:00",
+    start: "2026-09-13T00:00:00-06:00",
+    end: "2026-09-19T23:59:59-06:00",
   },
   {
     week: 4,
-    start: "2026-09-28T00:00:00-06:00",
-    end: "2026-10-03T23:59:59-06:00",
+    start: "2026-09-20T00:00:00-06:00",
+    end: "2026-09-26T23:59:59-06:00",
   },
   {
     week: 5,
-    start: "2026-10-05T00:00:00-06:00",
-    end: "2026-10-10T23:59:59-06:00",
+    start: "2026-09-27T00:00:00-06:00",
+    end: "2026-10-03T23:59:59-06:00",
   },
   {
     week: 6,
-    start: "2026-10-12T00:00:00-06:00",
-    end: "2026-10-17T23:59:59-06:00",
+    start: "2026-10-04T00:00:00-06:00",
+    end: "2026-10-10T23:59:59-06:00",
   },
 ] as const;
 
@@ -118,49 +118,6 @@ export function getUploadDeniedMessage(
   }
 
   return `La semana ${requestedWeek} no está abierta. Actualmente estamos en la Semana ${currentWeek}.`;
-}
-
-/**
- * Build Vercel-compatible cron entries from the week schedule.
- * Each week gets two entries: one to activate at the window start and one to
- * deactivate at the first moment the window is over.  Times are converted
- * from UTC-6 to UTC.
- */
-export function buildCronEntries(): { path: string; schedule: string }[] {
-  const entries: { path: string; schedule: string }[] = [];
-
-  for (const window of WEEK_SCHEDULE) {
-    const startDate = new Date(window.start);
-    // The `end` is inclusive (23:59:59 local): activation ends at the first
-    // tick of the next day, i.e. start + (window length) + 1ms rounds up — we
-    // just take the day after the end at 00:00:00 local.
-    const endDate = new Date(window.end);
-    const nextDay = new Date(endDate);
-    nextDay.setDate(endDate.getDate() + 1);
-    nextDay.setHours(0, 0, 0, 0);
-
-    const sMin = startDate.getUTCMinutes();
-    const sHour = startDate.getUTCHours();
-    const sDay = startDate.getUTCDate();
-    const sMonth = startDate.getUTCMonth() + 1;
-
-    const eMin = nextDay.getUTCMinutes();
-    const eHour = nextDay.getUTCHours();
-    const eDay = nextDay.getUTCDate();
-    const eMonth = nextDay.getUTCMonth() + 1;
-
-    entries.push({
-      path: `/api/cron/toggle-services?action=activate&week=${window.week}`,
-      schedule: `${sMin} ${sHour} ${sDay} ${sMonth} *`,
-    });
-
-    entries.push({
-      path: `/api/cron/toggle-services?action=deactivate&week=${window.week}`,
-      schedule: `${eMin} ${eHour} ${eDay} ${eMonth} *`,
-    });
-  }
-
-  return entries;
 }
 
 /**

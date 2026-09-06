@@ -34,13 +34,14 @@ function assertWeekOpen(week: number): void {
  * and persists every upload (and its folder path) in the database via Prisma.
  *
  * Weeks 2-6 are private to the user who uploaded them: only the owner sees
- * their own folder. The FINAL week is shared by the whole team.
+ * their own folder. The FINAL week (week 7) is shared by the whole team.
  */
 
 export const MAX_UPLOAD_WEEK = 7;
 export const MIN_UPLOAD_WEEK = 2;
 export const MAX_INDIVIDUAL_WEEK = 6;
 // The reserved week number for the final submission ("FINAL" in the UI).
+// Shares week 6's delivery window but uses a team-wide shared folder.
 export const FINAL_WEEK = 7;
 
 // Weekly comments are accumulated into a single COMMENTS.md. A single comment
@@ -83,7 +84,7 @@ export function isFinalWeek(week: number): boolean {
 }
 
 /**
- * Build the folder prefix `{Semana-[2-6]|FINAL}/{teamName}` that every object
+ * Build the folder prefix `{Semana-[1-5]|FINAL}/{teamName}` that every object
  * of a week lives under. The user segment is only included for individual
  * weeks, where each member gets their own private subfolder.
  */
@@ -493,7 +494,7 @@ export const uploadRouter = createTRPCRouter({
     const records = await ctx.db.teamUpload.findMany({
       where: {
         teamId,
-        // Weeks 1-5 are private (only the owner's files), the FINAL week is shared.
+        // Weeks 2-6 are private (only the owner's files), the FINAL week is shared.
         OR: [{ week: FINAL_WEEK }, { userId: ctx.session.user.id }],
       },
       orderBy: [{ week: "asc" }, { createdAt: "desc" }],
@@ -501,7 +502,7 @@ export const uploadRouter = createTRPCRouter({
     return reconcileWithStorage(records);
   }),
 
-  /** Uploads visible to the caller for a single week (1-7). */
+  /** Uploads visible to the caller for a single week (2-7). */
   getByWeek: protectedProcedure
     .input(z.object({ week: uploadWeekSchema }))
     .query(async ({ ctx, input }) => {
@@ -579,7 +580,7 @@ export const uploadRouter = createTRPCRouter({
    * The client only sends the new comment text; the server takes care of
    * reading the current COMMENTS.md, appending the comment, and re-storing the
    * file. This keeps every comment (terminated by \x04 and separated by a
-   * linebreak) inside a single per-user COMMENTS.md for weeks 1-5 (and a
+   * linebreak) inside a single per-user COMMENTS.md for weeks 2-6 (and a
    * shared one for FINAL) without the client having to download and re-upload
    * the whole file. The input is capped at MAX_COMMENT_CHARS characters and
    * MAX_COMMENT_BYTES bytes.

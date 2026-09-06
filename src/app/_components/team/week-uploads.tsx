@@ -6,21 +6,21 @@ import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
-const WEEKS = [1, 2, 3, 4, 5, "FINAL"] as const;
+const WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
 type WeekKey = (typeof WEEKS)[number];
 
 const WEEK_LABELS: Record<WeekKey, string> = {
-  1: "Semana 1",
   2: "Semana 2",
   3: "Semana 3",
   4: "Semana 4",
   5: "Semana 5",
+  6: "Semana 6",
   FINAL: "Final",
 };
 
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
-const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 6 : week);
+const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
 
 // Comments for a week are accumulated into a single COMMENTS.md. A single
 // comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
@@ -67,7 +67,7 @@ export default function WeekUploads({
   teamName: string;
   userName: string;
 }) {
-  const [week, setWeek] = useState<WeekKey>(1);
+  const [week, setWeek] = useState<WeekKey>(2);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">

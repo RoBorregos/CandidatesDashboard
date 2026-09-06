@@ -22,39 +22,35 @@ export interface WeekWindow {
 }
 
 /**
- * POC schedule: Week 1 (Aug 31 – Sep 5) and Week 2 (Sep 7 – Sep 12), 2026.
- * Extend this array as new weeks are announced.
+ * Week schedule: Weeks 2–6 are individual submissions; FINAL (week 7) shares
+ * week 6's delivery window but uses a team-wide shared folder.
+ * Week 1 is the intro meeting and has no delivery window.
  */
 export const WEEK_SCHEDULE: readonly WeekWindow[] = [
   {
-    week: 1,
-    start: "2026-08-31T00:00:00-06:00",
-    end: "2026-09-05T23:59:59-06:00",
-  },
-  {
     week: 2,
-    start: "2026-09-07T00:00:00-06:00",
-    end: "2026-09-12T23:59:59-06:00",
-  },
-  {
-    week: 3,
     start: "2026-09-14T00:00:00-06:00",
     end: "2026-09-19T23:59:59-06:00",
   },
   {
-    week: 4,
+    week: 3,
     start: "2026-09-21T00:00:00-06:00",
     end: "2026-09-26T23:59:59-06:00",
   },
   {
-    week: 5,
+    week: 4,
     start: "2026-09-28T00:00:00-06:00",
     end: "2026-10-03T23:59:59-06:00",
   },
   {
-    week: 6,
+    week: 5,
     start: "2026-10-05T00:00:00-06:00",
     end: "2026-10-10T23:59:59-06:00",
+  },
+  {
+    week: 6,
+    start: "2026-10-12T00:00:00-06:00",
+    end: "2026-10-17T23:59:59-06:00",
   },
 ] as const;
 
@@ -87,7 +83,11 @@ export function isUploadAllowedForWeek(
   weekNumber: number,
   now: Date = new Date(),
 ): boolean {
-  return resolveCurrentWeek(now) === weekNumber;
+  const currentWeek = resolveCurrentWeek(now);
+  if (currentWeek === null) return false;
+  // FINAL (week 7) shares week 6's delivery window.
+  if (weekNumber === 7) return currentWeek === 6;
+  return currentWeek === weekNumber;
 }
 
 /**
@@ -105,7 +105,9 @@ export function getUploadDeniedMessage(
   now: Date = new Date(),
 ): string {
   const currentWeek = resolveCurrentWeek(now);
-  const window = getWeekWindow(requestedWeek);
+  // FINAL (week 7) shares week 6's window.
+  const window =
+    getWeekWindow(requestedWeek) ?? (requestedWeek === 7 ? getWeekWindow(6) : null);
 
   if (!window) {
     return `La semana ${requestedWeek} no tiene una ventana de entrega definida.`;
@@ -175,7 +177,7 @@ export async function syncCurrentWeekInDb(
   const currentWeek = resolveCurrentWeek(now);
 
   const config = await db.config.findFirst({ select: { currentWeek: true } });
-  const previousWeek = config?.currentWeek ?? 1;
+  const previousWeek = config?.currentWeek ?? 2;
 
   // When outside all windows, keep the last known week so the UI stays usable.
   const targetWeek = currentWeek ?? previousWeek;

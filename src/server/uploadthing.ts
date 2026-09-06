@@ -8,6 +8,7 @@ import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 import {
   appendCommentToFile,
+  bustListAllFilesCache,
   folderUserName,
   isFinalWeek,
   MAX_WEEK_BYTES,
@@ -129,6 +130,9 @@ export const ourFileRouter = {
         fileType: file.type,
         userId: isFinalWeek(metadata.week) ? null : metadata.userId,
       });
+
+      // Bust the listAllFiles cache so reconcileWithStorage sees the new file.
+      bustListAllFilesCache();
 
       // A comment submitted together with files is accumulated into the same
       // COMMENTS.md (per user for individual weeks, shared for FINAL) so it

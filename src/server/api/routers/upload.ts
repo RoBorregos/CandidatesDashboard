@@ -29,17 +29,17 @@ function assertWeekOpen(week: number): void {
  * Upload microservice.
  *
  * Handles uploads organized in folders on UploadThing with the shape:
- *   {Semana-[1-5]}/{teamName}/{userName}/{file}  -- individual weeks
+ *   {Semana-[2-6]}/{teamName}/{userName}/{file}  -- individual weeks
  *   FINAL/{teamName}/{file}                        -- final submission, team-wide
  * and persists every upload (and its folder path) in the database via Prisma.
  *
- * Weeks 1-5 are private to the user who uploaded them: only the owner sees
+ * Weeks 2-6 are private to the user who uploaded them: only the owner sees
  * their own folder. The FINAL week is shared by the whole team.
  */
 
 export const MAX_UPLOAD_WEEK = 7;
-export const MIN_UPLOAD_WEEK = 1;
-export const MAX_INDIVIDUAL_WEEK = 5;
+export const MIN_UPLOAD_WEEK = 2;
+export const MAX_INDIVIDUAL_WEEK = 6;
 // The reserved week number for the final submission ("FINAL" in the UI).
 export const FINAL_WEEK = 7;
 
@@ -72,7 +72,7 @@ function sanitizeSegment(value: string): string {
     .replace(/[^\w.[\]()+-]/g, "");
 }
 
-/** First path segment for a week: "Semana-1"…"Semana-5" or "FINAL" for the final week. */
+/** First path segment for a week: "Semana-2"…"Semana-6" or "FINAL" for the final week. */
 export function weekSegment(week: number): string {
   return week === FINAL_WEEK ? "FINAL" : `Semana-${week}`;
 }
@@ -83,7 +83,7 @@ export function isFinalWeek(week: number): boolean {
 }
 
 /**
- * Build the folder prefix `{Semana-[1-5]|FINAL}/{teamName}` that every object
+ * Build the folder prefix `{Semana-[2-6]|FINAL}/{teamName}` that every object
  * of a week lives under. The user segment is only included for individual
  * weeks, where each member gets their own private subfolder.
  */
@@ -111,8 +111,8 @@ export function teamUploadFolderPath(
 }
 
 /**
- * Build the folder path for a user's private week (weeks 1-5):
- * `{Semana-[1-5]}/{teamName}/{userName}/{fileName}`. Used to display and to
+ * Build the folder path for a user's private week (weeks 2-6):
+ * `{Semana-[2-6]}/{teamName}/{userName}/{fileName}`. Used to display and to
  * locate older uploads of the same file.
  */
 export function userUploadFolderPath(
@@ -172,6 +172,16 @@ function keyMatchesBase(customId: string, base: string): boolean {
     customId.startsWith(`${base}(`) ||
     customId.startsWith(`${base}+`)
   );
+}
+
+/**
+ * Force the next call to `listAllFiles` to fetch a fresh listing from
+ * UploadThing instead of returning a cached snapshot. Called after every
+ * upload so that `reconcileWithStorage` sees the newly stored file.
+ */
+export function bustListAllFilesCache() {
+  const cacheKey = "__ut_list_all_files_cache__";
+  delete (globalThis as unknown as Record<string, unknown>)[cacheKey];
 }
 
 /** List every file currently stored on UploadThing (paginated). */

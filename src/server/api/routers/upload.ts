@@ -83,11 +83,7 @@ export function isFinalWeek(week: number): boolean {
   return week === FINAL_WEEK;
 }
 
-/**
- * Build the folder prefix `{Semana-[1-5]|FINAL}/{teamName}` that every object
- * of a week lives under. The user segment is only included for individual
- * weeks, where each member gets their own private subfolder.
- */
+// Prefix folder name for a team/week/user (or team/week for FINAL). Used to locate uploads.
 function folderPrefix(
   teamName: string,
   week: number,
@@ -125,11 +121,6 @@ export function userUploadFolderPath(
   return `${folderPrefix(teamName, week, userName)}/${sanitizeSegment(fileName)}`;
 }
 
-/**
- * Deterministic "base" a file name maps to inside its folder. Used to locate
- * an existing file regardless of which revision is stored (only legacy files
- * with a customId can match here).
- */
 function folderBase(
   teamName: string,
   week: number,
@@ -142,12 +133,6 @@ function folderBase(
   return `${folderPrefix(teamName, week, userName)}/${base}`;
 }
 
-/**
- * Strip the folder prefix a renamed object carries
- * (`{Semana-[1-5]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
- * file name. Kept deterministic so the object name on UploadThing is exactly
- * the folder path + file name.
- */
 export function stripFolderPrefix(
   teamName: string,
   week: number,
@@ -157,11 +142,6 @@ export function stripFolderPrefix(
   const prefix = `${folderPrefix(teamName, week, userName)}/`;
   return fullName.startsWith(prefix) ? fullName.slice(prefix.length) : fullName;
 }
-
-/**
- * Does a stored customId belong to the same team/week + base file name?
- * (Only legacy files carried a customId; new uploads are renamed instead.)
- */
 
 /** Does a stored customId belong to the same team/week + base file name? */
 function keyMatchesBase(customId: string, base: string): boolean {
@@ -175,11 +155,6 @@ function keyMatchesBase(customId: string, base: string): boolean {
   );
 }
 
-/**
- * Force the next call to `listAllFiles` to fetch a fresh listing from
- * UploadThing instead of returning a cached snapshot. Called after every
- * upload so that `reconcileWithStorage` sees the newly stored file.
- */
 export function bustListAllFilesCache() {
   const cacheKey = "__ut_list_all_files_cache__";
   delete (globalThis as unknown as Record<string, unknown>)[cacheKey];
@@ -301,18 +276,6 @@ export type TeamUploadRecord = {
   userId: string | null;
 };
 
-/**
- * Persist an upload record. Because the object name is deterministic
- * (`{Semana-[1-5]}/{team}/{user}/{filename}` for individual weeks,
- * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
- * previous record: the older DB row and storage file are freed here.
- *
- * The record is keyed by its unique `customId` (the same deterministic path),
- * not by a read-delete-create on (teamId, week, name, userId) — upserting keeps
- * two concurrent uploads/comments for the same slot from racing into a unique
- * constraint violation on create(). The previous row's storage blob is still
- * freed by the shared key lookup.
- */
 export async function recordTeamUpload(input: TeamUploadRecord) {
   const existing = await db.teamUpload.findUnique({
     where: { customId: input.customId },
@@ -364,8 +327,6 @@ export async function weekUsageBytes(
       teamId,
       week,
       NOT: { name: COMMENTS_FILE },
-      // Individual weeks bill only the user's own subfolder; the FINAL week
-      // counts the whole shared folder.
       ...(isFinalWeek(week) ? {} : { userId }),
     },
     select: { fileSize: true },
@@ -385,25 +346,14 @@ export function folderUserName(
   return userName != null && userName.trim().length > 0 ? userName : userId;
 }
 
-/**
- * Append a comment (a diff) to a user's/team's COMMENTS.md.
- *
- * Reads the current COMMENTS.md, appends the comment (terminated by \x04 and
- * separated by a linebreak), re-stores the file and replaces the DB record.
- * Enforces MAX_COMMENT_CHARS and MAX_COMMENT_BYTES. Shared by the
- * `submitComment` procedure and the file-upload path so a comment sent together
- * with files lands in the same COMMENTS.md.
- */
+// comments.md
 export async function appendCommentToFile(input: {
   db: typeof db;
   teamId: string;
   teamName: string;
   week: number;
   text: string;
-  // A user's private week has its own COMMENTS.md inside the user folder;
-  // the team-wide FINAL week shares a single COMMENTS.md (userId null).
   userId: string | null;
-  // Concrete folder segment used for individual weeks (already resolved).
   userName: string;
 }): Promise<void> {
   const { db, teamId, teamName, week, text, userId, userName } = input;
@@ -521,14 +471,7 @@ export const uploadRouter = createTRPCRouter({
       return reconcileWithStorage(records);
     }),
 
-  /**
-   * Pre-upload gate: the client calls this BEFORE uploading to verify that the
-   * target folder paths on UploadThing are clear. Any file that already lives
-   * in the caller's `{Semana-[1-5]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
-   * with the same name is freed so the upload cannot collide with a 409. Also
-   * serves as a manual reconciliation when the realtime list refresh fails for
-   * another account.
-   */
+  // Preupload gate - {week}/{team}/{user}/* or FINAL/{team}/* folders are only writable during the week's delivery window (401 otherwise).
   prepareUpload: protectedProcedure
     .input(
       z.object({
@@ -574,17 +517,7 @@ export const uploadRouter = createTRPCRouter({
       };
     }),
 
-  /**
-   * Append a weekly comment (a diff) to the caller's COMMENTS.md.
-   *
-   * The client only sends the new comment text; the server takes care of
-   * reading the current COMMENTS.md, appending the comment, and re-storing the
-   * file. This keeps every comment (terminated by \x04 and separated by a
-   * linebreak) inside a single per-user COMMENTS.md for weeks 2-6 (and a
-   * shared one for FINAL) without the client having to download and re-upload
-   * the whole file. The input is capped at MAX_COMMENT_CHARS characters and
-   * MAX_COMMENT_BYTES bytes.
-   */
+  // Append a weekly comment (a diff) to the caller's COMMENTS.md.
   submitComment: protectedProcedure
     .input(
       z.object({
@@ -656,10 +589,6 @@ export const uploadRouter = createTRPCRouter({
         });
       }
 
-      // Best-effort storage cleanup: even if UploadThing is briefly unable to
-      // remove the blob (eventual consistency), the record must disappear so
-      // the UI reflects reality. The next upload to the same folder frees the
-      // leftover via `clearFolderConflicts`.
       await utapi.deleteFiles(upload.fileKey).catch(() => undefined);
       await ctx.db.teamUpload.delete({ where: { id: upload.id } });
 

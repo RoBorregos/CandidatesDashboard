@@ -133,7 +133,9 @@ export async function syncCurrentWeekInDb(
 }> {
   const currentWeek = resolveCurrentWeek(now);
 
-  const config = await db.config.findFirst({ select: { currentWeek: true } });
+  const config = await db.config.findFirst({
+    select: { id: true, currentWeek: true },
+  });
   const previousWeek = config?.currentWeek ?? 2;
 
   // When outside all windows, keep the last known week so the UI stays usable.
@@ -142,11 +144,14 @@ export async function syncCurrentWeekInDb(
     return { previousWeek, currentWeek, updated: false };
   }
 
-  await db.config.upsert({
-    where: { id: 1 },
-    update: { currentWeek: targetWeek },
-    create: { currentWeek: targetWeek },
-  });
+  if (config) {
+    await db.config.update({
+      where: { id: config.id },
+      data: { currentWeek: targetWeek },
+    });
+  } else {
+    await db.config.create({ data: { currentWeek: targetWeek } });
+  }
 
   return { previousWeek, currentWeek, updated: true };
 }

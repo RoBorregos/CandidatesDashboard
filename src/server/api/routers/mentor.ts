@@ -784,7 +784,8 @@ export const mentorRouter = createTRPCRouter({
         const nextTeam = await tx.team.findFirst({
           where: {
             isActive: true,
-            mentorPair: null,
+            // A team holds at most one pair (TeamMentorPair.teamId is unique),
+            mentorPairs: { none: { mentorPair: { edition: CURRENT_EDITION } } },
             id: { in: beginnerIds.filter((id) => !rejected.has(id)) },
           },
           orderBy: { name: "asc" },

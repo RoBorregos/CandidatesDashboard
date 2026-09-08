@@ -133,6 +133,7 @@ export default async function TeamPage({
         </div>
         <TeamPreseason
           teamName={team.name}
+          userName={session.user.name ?? ""}
           members={team.members}
           registration={registration}
         />

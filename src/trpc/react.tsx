@@ -55,6 +55,13 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             headers.set("x-trpc-source", "nextjs-react");
             return headers;
           },
+          // Never let the browser's HTTP cache serve a past tRPC response: DB
+          // rows (e.g. uploads deleted by an admin) must always be re-fetched.
+          fetch: (input, init) =>
+            fetch(input, {
+              ...(init as RequestInit),
+              cache: "no-store",
+            }),
         }),
       ],
     }),

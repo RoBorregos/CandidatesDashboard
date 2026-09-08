@@ -78,7 +78,7 @@ export default function WeekUploads({
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Las semanas 1 a 5 son personales
+        Sube aquí los archivos de cada semana. Las semanas 2 a 6 son personales
         (solo tú ves tus archivos); la entrega final es compartida con todo tu
         equipo.
       </p>
@@ -405,7 +405,7 @@ function WeekFiles({
     uploadedBytes + pendingFiles.reduce((sum, f) => sum + f.size, 0);
   const weeklyPct = Math.min(100, (weeklyUsageBytes / MAX_WEEK_BYTES) * 100);
 
-  // Weeks 1-5 live in the caller's private folder; the FINAL week is shared by
+  // Weeks 2-6 live in the caller's private folder; the FINAL week is shared by
   // the whole team in a single folder.
   const folderLabel =
     week === "FINAL"

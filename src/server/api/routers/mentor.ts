@@ -240,7 +240,7 @@ export const mentorRouter = createTRPCRouter({
       select: { currentWeek: true },
     });
 
-    return config?.currentWeek ?? 1;
+    return config?.currentWeek ?? 2;
   }),
 
   getMyPair: mentorProcedure.query(async ({ ctx }) => {

@@ -352,7 +352,7 @@ export const mentorPairManagementRouter = createTRPCRouter({
       select: { currentWeek: true },
     });
 
-    return { week: config?.currentWeek ?? 1 };
+    return { week: config?.currentWeek ?? 2 };
   }),
 
   setMentorWeek: adminProcedure

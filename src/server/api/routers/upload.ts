@@ -442,7 +442,7 @@ export async function appendCommentToFile(input: {
 
   const appended = content
     ? `${content}\n---\n${normalizedText}\n---\n`
-    : `${normalizedText}\n---\n`;
+    : `---\n${normalizedText}\n---\n`;
 
   const fileName = isFinalWeek(week)
     ? teamUploadFolderPath(teamName, week, COMMENTS_FILE)

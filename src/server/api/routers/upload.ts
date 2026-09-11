@@ -419,10 +419,6 @@ export async function appendCommentToFile(input: {
       const res = await fetch(existing.fileUrl);
       if (res.ok) {
         content = await res.text();
-      } else {
-        await db.teamUpload.delete({ where: { id: existing.id } }).catch(() => {
-          // Ignore: the record is stale and will be cleaned up next time.  
-        });
       }
     } catch {
       content = "";

@@ -432,6 +432,8 @@ export async function appendCommentToFile(input: {
   const normalizedText = text.replace(/\n/g, "  ");
 
   const lastSegment = content
+    .replace(/^---\n?/, "")
+    .replace(/\n?---$/, "")
     .split(/\n---\n/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)

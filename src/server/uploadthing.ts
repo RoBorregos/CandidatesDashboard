@@ -61,7 +61,7 @@ export const ourFileRouter = {
         (f) => f.name.toUpperCase() === COMMENTS_FILE.toUpperCase(),
       );
       if (hasCommentsFile) {
-        throw new Error("No se permite subir COMMENTS.md directamente");
+        throw new Error(`No se permite subir ${COMMENTS_FILE} directamente`);
       }
 
       // The week's folder is capped at 256 MB total (not per file): reject the

@@ -432,6 +432,8 @@ export async function appendCommentToFile(input: {
   const normalizedText = text.replace(/\n/g, "  ");
 
   const lastSegment = content
+    .replace(/^---\n?/, "")
+    .replace(/\n?---$/, "")
     .split(/\n---\n/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
@@ -442,7 +444,7 @@ export async function appendCommentToFile(input: {
 
   const appended = content
     ? `${content}\n---\n${normalizedText}\n---\n`
-    : `${normalizedText}\n---\n`;
+    : `---\n${normalizedText}\n---\n`;
 
   const fileName = isFinalWeek(week)
     ? teamUploadFolderPath(teamName, week, COMMENTS_FILE)

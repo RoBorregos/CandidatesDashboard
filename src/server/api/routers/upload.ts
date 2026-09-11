@@ -420,9 +420,9 @@ export async function appendCommentToFile(input: {
       if (res.ok) {
         content = await res.text();
       } else {
-        // File was deleted from UploadThing but the DB record is stale —
-        // clear the record so we start fresh.
-        await db.teamUpload.delete({ where: { id: existing.id } }).catch(() => {});
+        await db.teamUpload.delete({ where: { id: existing.id } }).catch(() => {
+          // Ignore: the record is stale and will be cleaned up next time.  
+        });
       }
     } catch {
       content = "";

@@ -14,6 +14,11 @@ import {
   INTRO_CANDIDATE_QUESTION_KEYS,
   INTRO_TEAM_QUESTION_KEYS,
 } from "~/lib/intro-meeting";
+import {
+  COMMENTS_FILE,
+  MIN_UPLOAD_WEEK,
+  MAX_UPLOAD_WEEK,
+} from "./upload";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
 
@@ -407,6 +412,98 @@ export const mentorRouter = createTRPCRouter({
         reviews,
         teamNote,
       };
+    }),
+
+  /*
+   * Fetch uploads + comments for every member of a team for a given week.
+   * Mapping: tracking week 2-6 → individual uploads, week 7 → FINAL (shared).
+   * Weeks 1 and 8+ return empty arrays (no uploads expected).
+   */
+  getTeamWeekUploads: mentorProcedure
+    .input(
+      z.object({
+        teamId: z.string(),
+        week: z.number().int().min(MIN_UPLOAD_WEEK).max(MAX_UPLOAD_WEEK),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
+
+      // Fetch all uploads for this team + week (excluding COMMENTS.md).
+      const uploads = await ctx.db.teamUpload.findMany({
+        where: {
+          teamId: input.teamId,
+          week: input.week,
+          NOT: { name: COMMENTS_FILE },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Group files by userId. Individual weeks have a userId; FINAL has null.
+      const filesByUser = new Map<string, typeof uploads>();
+      for (const upload of uploads) {
+        const key = upload.userId ?? "__final__";
+        const list = filesByUser.get(key) ?? [];
+        list.push(upload);
+        filesByUser.set(key, list);
+      }
+
+      // Fetch COMMENTS.md for each member (individual weeks) or one shared
+      // record for the FINAL week.
+      const commentRecords = await ctx.db.teamUpload.findMany({
+        where: {
+          teamId: input.teamId,
+          week: input.week,
+          name: COMMENTS_FILE,
+        },
+      });
+
+      const commentsByUser = new Map<string, string[]>();
+
+      for (const record of commentRecords) {
+        const key = record.userId ?? "__final__";
+        try {
+          const res = await fetch(record.fileUrl);
+          if (!res.ok) continue;
+          const content = await res.text();
+          const parsed = content
+            .split("\x04")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+          commentsByUser.set(key, parsed);
+        } catch {
+          // If fetching fails, skip — the UI will show no comments.
+        }
+      }
+
+      // Build the response keyed by userId.
+      const memberUploads: Record<
+        string,
+        { files: typeof uploads; comments: string[] }
+      > = {};
+
+      // Collect all unique userIds from both files and comment records.
+      const allUserIds = new Set<string>();
+      for (const key of filesByUser.keys()) {
+        if (key !== "__final__") allUserIds.add(key);
+      }
+      for (const key of commentsByUser.keys()) {
+        if (key !== "__final__") allUserIds.add(key);
+      }
+
+      for (const userId of allUserIds) {
+        memberUploads[userId] = {
+          files: filesByUser.get(userId) ?? [],
+          comments: commentsByUser.get(userId) ?? [],
+        };
+      }
+
+      // FINAL week files (no userId) are shared — return them separately so
+      // the frontend can decide how to display them.
+      const finalFiles = filesByUser.get("__final__") ?? [];
+      const finalComments = commentsByUser.get("__final__") ?? [];
+
+      return { memberUploads, finalFiles, finalComments };
     }),
 
   /*

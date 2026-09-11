@@ -178,21 +178,24 @@ function WeekFiles({
 
   const { startUpload, isUploading } = useUploadThing("teamUploader", {
     onBeforeUploadBegin: async (selectedFiles) => {
-      if (selectedFiles.length > 0) {
-        try {
-          const result = await prepareUpload.mutateAsync({
-            week: weekNumber,
-            fileNames: selectedFiles.map((file) => file.name),
-          });
-          if (result.freed > 0 || result.conflicts.length > 0) {
-            toast.info("Se reemplazará el archivo anterior de la carpeta");
-          }
-        } catch {
-          // The server-side middleware frees conflicts too, so a failed
-          // pre-check doesn't have to block the upload.
+      // Strip COMMENTS.md if it somehow made it into the queue.
+      const safeSelectedFiles = selectedFiles.filter(
+        (f) => f.name.toUpperCase() !== COMMENTS_FILE.toUpperCase(),
+      );
+      if (safeSelectedFiles.length === 0) return [];
+      try {
+        const result = await prepareUpload.mutateAsync({
+          week: weekNumber,
+          fileNames: safeSelectedFiles.map((file) => file.name),
+        });
+        if (result.freed > 0 || result.conflicts.length > 0) {
+          toast.info("Se reemplazará el archivo anterior de la carpeta");
         }
+      } catch {
+        // The server-side middleware frees conflicts too, so a failed
+        // pre-check doesn't have to block the upload.
       }
-      return selectedFiles;
+      return safeSelectedFiles;
     },
     onUploadBegin: () => {
       // Do NOT reset progress here: onUploadBegin fires once per file, so
@@ -225,9 +228,15 @@ function WeekFiles({
   // the upload button, so accidental selections are never sent to storage.
   const queueFiles = (selectedFiles: File[]) => {
     if (selectedFiles.length === 0 || isUploading) return;
+    // COMMENTS.md is managed server-side only; block candidates from uploading
+    // it directly (which would bypass the per-comment character limit).
+    const filtered = selectedFiles.filter(
+      (f) => f.name.toUpperCase() !== COMMENTS_FILE.toUpperCase(),
+    );
+    if (filtered.length === 0) return;
     // Reject the selection up front if it would push the week past its 256 MB cap.
     const pendingBytes = pendingFiles.reduce((sum, f) => sum + f.size, 0);
-    const addedBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+    const addedBytes = filtered.reduce((sum, f) => sum + f.size, 0);
     if (uploadedBytes + pendingBytes + addedBytes > MAX_WEEK_BYTES) {
       toast.error("Esta semana alcanzaría el límite de 256 MB");
       return;
@@ -236,7 +245,7 @@ function WeekFiles({
       const known = new Set(prev.map((f) => `${f.name}-${f.size}-${f.lastModified}`));
       return [
         ...prev,
-        ...selectedFiles.filter(
+        ...filtered.filter(
           (f) => !known.has(`${f.name}-${f.size}-${f.lastModified}`),
         ),
       ];

@@ -54,6 +54,15 @@ export const ourFileRouter = {
         throw new Error("Team not found");
       }
 
+      // COMMENTS.md is managed server-side only (appendCommentToFile); block
+      // candidates from uploading it directly to bypass the character limit.
+      const hasCommentsFile = files.some(
+        (f) => f.name.toUpperCase() === "COMMENTS.MD",
+      );
+      if (hasCommentsFile) {
+        throw new Error("No se permite subir COMMENTS.md directamente");
+      }
+
       // The week's folder is capped at 256 MB total (not per file): reject the
       // upload up front if adding these files would exceed the allowance. For
       // individual weeks the cap is per user; for FINAL it is per team.

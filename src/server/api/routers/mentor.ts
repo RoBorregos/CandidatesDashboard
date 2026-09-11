@@ -466,8 +466,9 @@ export const mentorRouter = createTRPCRouter({
           const res = await fetch(record.fileUrl);
           if (!res.ok) continue;
           const content = await res.text();
+          // Support both old (\x04) and new (\n---\n) delimiters.
           const parsed = content
-            .split("\x04")
+            .split(/\n---\n|\x04/)
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
           commentsByUser.set(key, parsed);

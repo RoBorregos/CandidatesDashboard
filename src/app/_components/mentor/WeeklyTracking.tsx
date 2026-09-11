@@ -73,12 +73,6 @@ export default function WeeklyTracking({
     { teamId, week },
   );
 
-  const uploadsQueryEnabled = week >= 2 && week <= 7;
-  const { data: weekUploads } = api.mentor.getTeamWeekUploads.useQuery(
-    { teamId, week },
-    { enabled: uploadsQueryEnabled },
-  );
-
   const [objectives, setObjectives] = useState<ObjectivesByArea>(
     EMPTY_OBJECTIVES,
   );
@@ -538,7 +532,6 @@ export default function WeeklyTracking({
               submitReview(member.id, reviews[member.id] ?? EMPTY_REVIEW())
             }
             isSaving={savingMemberId === member.id}
-            uploads={weekUploads?.memberUploads[member.id]}
           />
         ))
       )}

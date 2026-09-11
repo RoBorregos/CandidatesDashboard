@@ -21,6 +21,7 @@ import {
 } from "~/server/api/routers/upload";
 
 const f = createUploadthing();
+const COMMENTS_FILE = "COMMENTS.md";
 
 export const ourFileRouter = {
   teamUploader: f({
@@ -52,6 +53,15 @@ export const ourFileRouter = {
       });
       if (!team) {
         throw new Error("Team not found");
+      }
+
+      // COMMENTS.md is managed server-side only (appendCommentToFile); block
+      // candidates from uploading it directly to bypass the character limit.
+      const hasCommentsFile = files.some(
+        (f) => f.name.toUpperCase() === COMMENTS_FILE.toUpperCase(),
+      );
+      if (hasCommentsFile) {
+        throw new Error(`No se permite subir ${COMMENTS_FILE} directamente`);
       }
 
       // The week's folder is capped at 256 MB total (not per file): reject the

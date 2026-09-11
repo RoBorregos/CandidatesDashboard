@@ -182,10 +182,10 @@ export default function CandidateReview({
             {uploads && uploads.comments.length > 0 ? (
               <ul className="space-y-1.5">
                 {uploads.comments.map((comment, index) => (
-                  <li
-                    key={index}
-                    className="rounded-md bg-gray-700/50 px-3 py-2 text-xs text-gray-300"
-                  >
+                    <li
+                      key={index}
+                      className="rounded-md bg-gray-700/50 px-3 py-2 text-xs text-gray-300"
+                    >
                     {comment}
                   </li>
                 ))}

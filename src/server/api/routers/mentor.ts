@@ -467,6 +467,7 @@ export const mentorRouter = createTRPCRouter({
           if (!res.ok) continue;
           const content = await res.text();
           // Support both old (\x04) and new (\n---\n) delimiters.
+          // Replace double spaces with newlines for display.
           const parsed = content
             .split(/\n---\n|\x04/)
             .map((s) => s.trim())

@@ -416,28 +416,33 @@ export async function appendCommentToFile(input: {
   let content = "";
   if (existing) {
     try {
-      content = await (await fetch(existing.fileUrl)).text();
+      const res = await fetch(existing.fileUrl);
+      if (res.ok) {
+        content = await res.text();
+      } else {
+        // File was deleted from UploadThing but the DB record is stale —
+        // clear the record so we start fresh.
+        await db.teamUpload.delete({ where: { id: existing.id } }).catch(() => {});
+      }
     } catch {
       content = "";
     }
   }
 
-  // Idempotency guard: the comment appended to a batch is placed only once.
-  // UploadThing runs `onUploadComplete` once per uploaded file, so without this
-  // the same comment would be appended once per file. We detect this by checking
-  // whether the most recent segment is already this comment; if so, a sibling
-  // file already wrote it and we skip re-writing it. This is deterministic and
-  // safe across concurrent/duplicate onUploadComplete calls.
+  const normalizedText = text.replace(/\n/g, "  ");
+
   const lastSegment = content
     .split(/\n---\n/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     .at(-1);
-  if (lastSegment != null && lastSegment === text.trim()) {
+  if (lastSegment != null && lastSegment === normalizedText.trim()) {
     return;
   }
 
-  const appended = content ? `${content}\n---\n${text}\n---\n` : `${text}\n---\n`;
+  const appended = content
+    ? `${content}\n---\n${normalizedText}\n---\n`
+    : `${normalizedText}\n---\n`;
 
   const fileName = isFinalWeek(week)
     ? teamUploadFolderPath(teamName, week, COMMENTS_FILE)

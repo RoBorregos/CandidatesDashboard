@@ -47,6 +47,7 @@ export default function CandidateReview({
   onChange,
   onSave,
   isSaving,
+  uploads,
 }: {
   member: {
     id: string;
@@ -59,6 +60,16 @@ export default function CandidateReview({
   onChange: (patch: Partial<ReviewDraft>) => void;
   onSave: () => void;
   isSaving: boolean;
+  uploads?: {
+    files: {
+      id: string;
+      name: string;
+      fileUrl: string;
+      fileSize: number | null;
+      fileType: string | null;
+    }[];
+    comments: string[];
+  };
 }) {
   const textFields = [
     ...EVIDENCE_FIELDS.filter(([field]) =>
@@ -96,17 +107,95 @@ export default function CandidateReview({
 
       {textFields.length > 0 && (
         <div className="grid gap-3 md:grid-cols-2">
-          {textFields.map(([field, label]) => (
-            <label key={field} className="text-xs text-gray-400">
-              {label}
-              <textarea
-                value={draft[field]}
-                onChange={(event) => onChange({ [field]: event.target.value })}
-                rows={3}
-                className={`mt-1 ${inputClass}`}
-              />
-            </label>
-          ))}
+          {/* Left column: evidence, justification, opportunities + files */}
+          <div className="space-y-3">
+            {textFields
+              .filter(([field]) => field !== "mentorQuestions" && field !== "strengths" && field !== "recommendations")
+              .map(([field, label]) => (
+                <label key={field} className="text-xs text-gray-400">
+                  {label}
+                  <textarea
+                    value={draft[field]}
+                    onChange={(event) => onChange({ [field]: event.target.value })}
+                    rows={3}
+                    className={`mt-1 ${inputClass}`}
+                  />
+                </label>
+              ))}
+            <div className="my-2 border-t border-dashed border-gray-600" />
+            <p className="mb-1 text-xs font-semibold text-gray-300">
+              Archivos subidos
+            </p>
+            {uploads && uploads.files.length > 0 ? (
+              <ul className="space-y-1">
+                {uploads.files.map((file) => (
+                  <li key={file.id} className="flex items-center gap-2">
+                    <span
+                      title="Subido"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-500"
+                    />
+                    <a
+                      href={file.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={file.name}
+                      className="min-w-0 truncate text-xs text-blue-400 underline-offset-2 hover:underline"
+                    >
+                      {file.name}
+                    </a>
+                    <span className="shrink-0 text-[10px] text-gray-500">
+                        {file.fileSize != null ? (() => {
+                          const units = ["B", "KB", "MB", "GB"];
+                          const i = Math.min(Math.floor(Math.log(file.fileSize) / Math.log(1024)), units.length - 1);
+                          return `${(file.fileSize / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+                        })() : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-500 italic">
+                Aquí se mostrarán los archivos.
+              </p>
+            )}
+          </div>
+
+          {/* Right column: mentorQuestions, strengths, recommendations + comments */}
+          <div className="space-y-3">
+            {textFields
+              .filter(([field]) => field !== "evidence" && field !== "justification" && field !== "opportunities")
+              .map(([field, label]) => (
+                <label key={field} className="text-xs text-gray-400">
+                  {label}
+                  <textarea
+                    value={draft[field]}
+                    onChange={(event) => onChange({ [field]: event.target.value })}
+                    rows={3}
+                    className={`mt-1 ${inputClass}`}
+                  />
+                </label>
+              ))}
+            <div className="my-2 border-t border-dashed border-gray-600" />
+            <p className="mb-1 text-xs font-semibold text-gray-300">
+              Comentarios subidos
+            </p>
+            {uploads && uploads.comments.length > 0 ? (
+              <ul className="space-y-1.5">
+                {uploads.comments.map((comment, index) => (
+                    <li
+                      key={index}
+                      className="rounded-md bg-gray-700/50 px-3 py-2 text-xs text-gray-300"
+                    >
+                    {comment}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-500 italic">
+                Aquí se mostrarán los comentarios.
+              </p>
+            )}
+          </div>
         </div>
       )}
 

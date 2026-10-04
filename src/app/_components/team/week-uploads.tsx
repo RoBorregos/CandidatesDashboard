@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
+import { CURRENT_WEEK, isWeekPastDue, WEEK_PAST_DUE_MESSAGE } from "~/lib/weeks";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
 const WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
@@ -21,6 +22,13 @@ const WEEK_LABELS: Record<WeekKey, string> = {
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
 const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
+
+// Open on the week the competition is on right now (~/lib/weeks). Without it
+// the default would be week 2, which is long past due and would land on the
+// block screen.
+const DEFAULT_WEEK: WeekKey = WEEKS.includes(CURRENT_WEEK as WeekKey)
+  ? (CURRENT_WEEK as WeekKey)
+  : WEEKS[0];
 
 // Comments for a week are accumulated into a single COMMENTS.md. A single
 // comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
@@ -67,7 +75,7 @@ export default function WeekUploads({
   teamName: string;
   userName: string;
 }) {
-  const [week, setWeek] = useState<WeekKey>(2);
+  const [week, setWeek] = useState<WeekKey>(DEFAULT_WEEK);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
@@ -84,23 +92,61 @@ export default function WeekUploads({
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {WEEKS.map((w) => (
-          <button
-            key={w}
-            type="button"
-            onClick={() => setWeek(w)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              w === week
-                ? "bg-roboblue text-white"
-                : "border border-neutral-700 text-neutral-300 hover:border-neutral-500"
-            }`}
-          >
-            {WEEK_LABELS[w]}
-          </button>
-        ))}
+        {WEEKS.map((w) => {
+          // Weeks before the current one are past due: still clickable, but
+          // they open the block screen instead of the uploader.
+          const closed = isWeekPastDue(toWeekNumber(w));
+          return (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setWeek(w)}
+              title={closed ? "Semana fuera de plazo" : undefined}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                w === week
+                  ? closed
+                    ? "bg-neutral-700 text-white"
+                    : "bg-roboblue text-white"
+                  : closed
+                    ? "border border-neutral-800 text-neutral-500 hover:border-neutral-600"
+                    : "border border-neutral-700 text-neutral-300 hover:border-neutral-500"
+              }`}
+            >
+              {WEEK_LABELS[w]}
+              {closed && (
+                <span aria-hidden className="ml-1.5 text-xs">
+                  🔒
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <WeekFiles teamName={teamName} userName={userName} week={week} />
+    </div>
+  );
+}
+
+/**
+ * Block screen for a week whose submission window already closed: no drop
+ * zone, no comment box and no delete buttons — only what was already
+ * delivered stays visible below. Compared against the hardcoded week in
+ * ~/lib/weeks until #99 makes due dates dynamic.
+ */
+function WeekClosedScreen({ week }: { week: WeekKey }) {
+  return (
+    <div className="mt-4 rounded-xl border border-neutral-700 bg-gradient-to-tr from-neutral-950 to-neutral-900 p-8 text-center">
+      <p className="font-jersey_25 text-5xl leading-none text-amber-500">
+        {WEEK_LABELS[week]} cerrada
+      </p>
+      <p className="mt-4 font-archivo text-neutral-300">
+        {WEEK_PAST_DUE_MESSAGE}
+      </p>
+      <p className="mt-2 font-archivo text-sm text-neutral-400">
+        Vamos en la Semana {CURRENT_WEEK}: ahí es donde puedes subir tus
+        archivos. Si crees que esto es un error, escríbenos y lo revisamos.
+      </p>
     </div>
   );
 }
@@ -116,6 +162,9 @@ function WeekFiles({
 }) {
   const utils = api.useUtils();
   const weekNumber = toWeekNumber(week);
+  // Past-due weeks are read-only: the uploader is replaced by a block screen
+  // (the server refuses the write regardless, see assertWeekOpen/middleware).
+  const pastDue = isWeekPastDue(weekNumber);
   const { data: files, isLoading } = api.uploads.getByWeek.useQuery(
     { week: weekNumber },
     {
@@ -228,6 +277,10 @@ function WeekFiles({
   // the upload button, so accidental selections are never sent to storage.
   const queueFiles = (selectedFiles: File[]) => {
     if (selectedFiles.length === 0 || isUploading) return;
+    if (pastDue) {
+      toast.error(WEEK_PAST_DUE_MESSAGE);
+      return;
+    }
     // COMMENTS.md is managed server-side only; block candidates from uploading
     // it directly (which would bypass the per-comment character limit).
     const filtered = selectedFiles.filter(
@@ -264,6 +317,10 @@ function WeekFiles({
   // popup (only after every upload has settled).
   const handleUpload = async () => {
     if (isUploading || submitComment.isPending) return;
+    if (pastDue) {
+      toast.error(WEEK_PAST_DUE_MESSAGE);
+      return;
+    }
     commentFilesRef.current = false;
     const text = comment.trim();
     if (text) {
@@ -437,6 +494,10 @@ function WeekFiles({
         </p>
       </div>
 
+      {pastDue ? (
+        <WeekClosedScreen week={week} />
+      ) : (
+        <>
       {uploadSucceeded && (
         <p className="mt-2 flex items-center gap-1 text-sm font-medium text-green-400">
           <span aria-hidden>Éxito –</span> ¡Archivo(s) subido(s) correctamente!
@@ -597,8 +658,16 @@ function WeekFiles({
           </div>
         )}
       </div>
+        </>
+      )}
 
-      <ul className="mt-4 space-y-2">
+      {pastDue && (
+        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          Archivos entregados
+        </p>
+      )}
+
+      <ul className={`space-y-2 ${pastDue ? "mt-2" : "mt-4"}`}>
         {visibleFiles.map((file) => (
           <li
             key={file.id}
@@ -625,19 +694,23 @@ function WeekFiles({
                   {formatBytes(file.fileSize)}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => remove.mutate({ id: file.id })}
-                className="shrink-0 rounded-md px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
-              >
-                Eliminar
-              </button>
+              {!pastDue && (
+                <button
+                  type="button"
+                  onClick={() => remove.mutate({ id: file.id })}
+                  className="shrink-0 rounded-md px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                >
+                  Eliminar
+                </button>
+              )}
             </span>
           </li>
         ))}
         {!isLoading && visibleFiles.length === 0 && (
           <li className="rounded-lg border border-dashed border-neutral-800 p-3 text-sm text-neutral-500">
-            Todavía no hay archivos en esta semana.
+            {pastDue
+              ? "No entregaste archivos en esta semana."
+              : "Todavía no hay archivos en esta semana."}
           </li>
         )}
       </ul>

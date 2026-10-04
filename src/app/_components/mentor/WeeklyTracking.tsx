@@ -525,6 +525,7 @@ export default function WeeklyTracking({
             member={member}
             draft={reviews[member.id] ?? EMPTY_REVIEW()}
             layout={layout}
+            week={week}
             onChange={(patch) =>
               setReviews((previous) => ({
                 ...previous,

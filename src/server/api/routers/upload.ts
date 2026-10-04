@@ -7,6 +7,17 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { FINAL_WEEK, isFinalWeek, MAX_UPLOAD_WEEK, MIN_UPLOAD_WEEK } from "~/lib/weeks";
+
+// Week numbering lives in ~/lib/weeks together with the delivery schedule
+// used for the late tag; re-exported here so existing imports keep working.
+export {
+  FINAL_WEEK,
+  isFinalWeek,
+  MAX_INDIVIDUAL_WEEK,
+  MAX_UPLOAD_WEEK,
+  MIN_UPLOAD_WEEK,
+} from "~/lib/weeks";
 
 /**
  * Upload microservice.
@@ -19,12 +30,6 @@ import { db } from "~/server/db";
  * Weeks 2-6 are private to the user who uploaded them: only the owner sees
  * their own folder. The FINAL week is shared by the whole team.
  */
-
-export const MAX_UPLOAD_WEEK = 7;
-export const MIN_UPLOAD_WEEK = 2;
-export const MAX_INDIVIDUAL_WEEK = 6;
-// The reserved week number for the final submission ("FINAL" in the UI).
-export const FINAL_WEEK = 7;
 
 // Weekly comments are accumulated into a single COMMENTS.md. A single comment
 // (the "diff") is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
@@ -58,11 +63,6 @@ function sanitizeSegment(value: string): string {
 /** First path segment for a week: "Semana-2"…"Semana-6" or "FINAL" for the final week. */
 export function weekSegment(week: number): string {
   return week === FINAL_WEEK ? "FINAL" : `Semana-${week}`;
-}
-
-/** True when a week is the shared team-level FINAL submission. */
-export function isFinalWeek(week: number): boolean {
-  return week === FINAL_WEEK;
 }
 
 /**

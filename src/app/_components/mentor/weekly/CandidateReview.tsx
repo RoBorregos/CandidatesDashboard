@@ -9,6 +9,7 @@ import {
   type WeekLayout,
 } from "~/lib/intro-meeting";
 import { AREA_LABELS } from "~/lib/registration";
+import LateTag from "../../late-tag";
 import { buttonClass, inputClass } from "./styles";
 
 export type ReviewDraft = {
@@ -44,6 +45,7 @@ export default function CandidateReview({
   member,
   draft,
   layout,
+  week,
   onChange,
   onSave,
   isSaving,
@@ -57,6 +59,8 @@ export default function CandidateReview({
   };
   draft: ReviewDraft;
   layout: WeekLayout;
+  /** Tracking week being reviewed, used to check files against its deadline. */
+  week: number;
   onChange: (patch: Partial<ReviewDraft>) => void;
   onSave: () => void;
   isSaving: boolean;
@@ -67,6 +71,10 @@ export default function CandidateReview({
       fileUrl: string;
       fileSize: number | null;
       fileType: string | null;
+      // When the file first arrived and when it was last re-uploaded; the
+      // late tag reads the latest of the two.
+      createdAt: Date;
+      updatedAt: Date;
     }[];
     comments: string[];
   };
@@ -143,6 +151,10 @@ export default function CandidateReview({
                     >
                       {file.name}
                     </a>
+                    <LateTag
+                      week={week}
+                      uploadedAt={file.updatedAt ?? file.createdAt}
+                    />
                     <span className="shrink-0 text-[10px] text-gray-500">
                         {file.fileSize != null ? (() => {
                           const units = ["B", "KB", "MB", "GB"];

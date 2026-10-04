@@ -4,6 +4,13 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
+import LateTag from "../late-tag";
+import {
+  CURRENT_WEEK,
+  DEADLINE_TIME_ZONE,
+  weekAssignedAt,
+  weekDueAt,
+} from "~/lib/weeks";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
 const WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
@@ -21,6 +28,23 @@ const WEEK_LABELS: Record<WeekKey, string> = {
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
 const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
+
+// Open on the week the competition is on right now (~/lib/weeks) instead of
+// always starting at week 2, which by now is mostly history.
+const DEFAULT_WEEK: WeekKey = WEEKS.includes(CURRENT_WEEK as WeekKey)
+  ? (CURRENT_WEEK as WeekKey)
+  : WEEKS[0];
+
+// "sáb 12 sep 2026, 11:59 p. m." — schedule dates are hardcoded in
+// ~/lib/weeks and always shown in the event's time zone.
+function formatScheduleDate(date: Date, withTime: boolean): string {
+  return date.toLocaleString("es-MX", {
+    ...(withTime
+      ? { dateStyle: "medium", timeStyle: "short" }
+      : { dateStyle: "medium" }),
+    timeZone: DEADLINE_TIME_ZONE,
+  });
+}
 
 // Comments for a week are accumulated into a single COMMENTS.md. A single
 // comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
@@ -67,7 +91,7 @@ export default function WeekUploads({
   teamName: string;
   userName: string;
 }) {
-  const [week, setWeek] = useState<WeekKey>(2);
+  const [week, setWeek] = useState<WeekKey>(DEFAULT_WEEK);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
@@ -421,6 +445,13 @@ function WeekFiles({
       ? `FINAL/${teamName}/`
       : `Semana-${weekNumber}/${teamName}/${dashedUserName(userName)}/`;
 
+  // Hardcoded schedule (~/lib/weeks): when this week's assignment went out
+  // and when delivery closes. Shown as context for the late tag.
+  const assignedAt = weekAssignedAt(weekNumber);
+  const dueAt = weekDueAt(weekNumber);
+  const deadlinePassed = dueAt != null && Date.now() > dueAt.getTime();
+  const hasSchedule = assignedAt != null || dueAt != null;
+
   return (
     <div className="mt-5">
       <div className="flex items-center justify-between gap-3">
@@ -436,6 +467,26 @@ function WeekFiles({
           </span>
         </p>
       </div>
+
+      {hasSchedule && (
+        <p className="mt-1 text-xs text-neutral-500">
+          {assignedAt && (
+            <>Asignada el {formatScheduleDate(assignedAt, false)} · </>
+          )}
+          {dueAt && (
+            <>
+              Límite de entrega:{" "}
+              <span
+                className={
+                  deadlinePassed ? "font-medium text-amber-400" : "text-neutral-400"
+                }
+              >
+                {formatScheduleDate(dueAt, true)}
+              </span>
+            </>
+          )}
+        </p>
+      )}
 
       {uploadSucceeded && (
         <p className="mt-2 flex items-center gap-1 text-sm font-medium text-green-400">
@@ -618,6 +669,13 @@ function WeekFiles({
               >
                 {file.name}
               </a>
+              {/* `updatedAt` is when the stored file reached the server, so a
+                  file replaced after the deadline is judged on the version
+                  that is actually there. */}
+              <LateTag
+                week={weekNumber}
+                uploadedAt={file.updatedAt ?? file.createdAt}
+              />
             </span>
             <span className="flex shrink-0 items-center gap-3">
               {formatBytes(file.fileSize) && (

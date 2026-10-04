@@ -19,6 +19,7 @@ import {
   userUploadFolderPath,
   weekUsageBytes,
 } from "~/server/api/routers/upload";
+import { isWeekPastDue, WEEK_PAST_DUE_MESSAGE } from "~/lib/weeks";
 
 const f = createUploadthing();
 const COMMENTS_FILE = "COMMENTS.md";
@@ -53,6 +54,13 @@ export const ourFileRouter = {
       });
       if (!team) {
         throw new Error("Team not found");
+      }
+
+      // Weeks before the current one (~/lib/weeks) are past due: their window
+      // is closed and no file may be written to them anymore. This is the hard
+      // gate for #113 — the UI shows a block screen on top of it.
+      if (isWeekPastDue(input.week)) {
+        throw new Error(WEEK_PAST_DUE_MESSAGE);
       }
 
       // COMMENTS.md is managed server-side only (appendCommentToFile); block

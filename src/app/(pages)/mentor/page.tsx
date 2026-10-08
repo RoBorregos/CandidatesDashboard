@@ -5,6 +5,7 @@ import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
 import { api } from "~/trpc/server";
 import TeamConflictPrompt from "../../_components/mentor/TeamConflictPrompt";
+import { DeadlineLateTag } from "../../_components/late-tag";
 
 export default async function MentorPage() {
   const session = await getServerAuthSession();
@@ -22,6 +23,7 @@ export default async function MentorPage() {
 
   const pair = await api.mentor.getMyPair();
   const challengeGroups = await api.mentor.getMyChallengeCandidates();
+  const advancedDueAt = await api.advancedSubmission.getDeadline();
 
   const isMentorA = pair?.mentorAId === session.user.id;
   const partner = pair && (isMentorA ? pair.mentorB : pair.mentorA);
@@ -243,6 +245,15 @@ export default async function MentorPage() {
                         <th className="border-l border-t border-gray-700 px-3 py-3">
                           Phone
                         </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          Bitácora
+                        </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          GitHub
+                        </th>
+                        <th className="border-l border-t border-gray-700 px-3 py-3">
+                          Video demo
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -273,12 +284,48 @@ export default async function MentorPage() {
                               {candidate.phone}
                             </a>
                           </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            <SubmissionLink
+                              url={candidate.advancedSubmission?.bitacoraUrl}
+                              uploadedAt={
+                                candidate.advancedSubmission?.bitacoraUploadedAt
+                              }
+                              dueAt={advancedDueAt}
+                              label={
+                                candidate.advancedSubmission?.bitacoraName ??
+                                "Ver bitácora"
+                              }
+                            />
+                          </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            <SubmissionLink
+                              url={candidate.advancedSubmission?.githubUrl}
+                              uploadedAt={
+                                candidate.advancedSubmission?.githubUpdatedAt
+                              }
+                              dueAt={advancedDueAt}
+                              label="Repositorio"
+                            />
+                          </td>
+                          <td className="border-l border-gray-700 px-3 py-3">
+                            <SubmissionLink
+                              url={candidate.advancedSubmission?.videoUrl}
+                              uploadedAt={
+                                candidate.advancedSubmission?.videoUploadedAt
+                              }
+                              dueAt={advancedDueAt}
+                              label={
+                                candidate.advancedSubmission?.videoName ??
+                                "Ver video"
+                              }
+                            />
+                          </td>
                         </tr>
                       ))}
                       {group.candidates.length === 0 && (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={7}
                             className="px-3 py-4 text-sm text-gray-400"
                           >
                             No candidates registered for this challenge yet.
@@ -296,5 +343,36 @@ export default async function MentorPage() {
 
       <Footer />
     </div>
+  );
+}
+
+/** One handed-in item of an advanced candidate, or "Pendiente" while missing. */
+function SubmissionLink({
+  url,
+  label,
+  uploadedAt,
+  dueAt,
+}: {
+  url: string | null | undefined;
+  label: string;
+  uploadedAt: Date | null | undefined;
+  dueAt: Date;
+}) {
+  if (!url) {
+    return <span className="text-gray-500">Pendiente</span>;
+  }
+  return (
+    <span className="flex items-center gap-2">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={label}
+        className="block max-w-[14rem] truncate text-blue-400 hover:underline"
+      >
+        {label}
+      </a>
+      <DeadlineLateTag dueAt={dueAt} uploadedAt={uploadedAt} />
+    </span>
   );
 }

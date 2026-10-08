@@ -323,6 +323,19 @@ export const mentorRouter = createTRPCRouter({
         phone: true,
         interviewArea: true,
         registration: { select: { challenge: true } },
+        // What they've handed in so far (bitácora, repo, demo video).
+        advancedSubmission: {
+          select: {
+            githubUrl: true,
+            githubUpdatedAt: true,
+            bitacoraName: true,
+            bitacoraUrl: true,
+            bitacoraUploadedAt: true,
+            videoName: true,
+            videoUrl: true,
+            videoUploadedAt: true,
+          },
+        },
       },
       orderBy: { name: "asc" },
     });

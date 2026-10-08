@@ -4,6 +4,13 @@ import { z } from "zod";
 export const CURRENT_EDITION = 2026;
 
 /**
+ * When advanced candidates must have handed in their bitácora, repo and demo
+ * video, until an admin moves it (Config.advancedSubmissionDueAt). Friday
+ * 11:59 pm Monterrey time.
+ */
+export const DEFAULT_ADVANCED_DUE_AT = new Date("2026-10-09T23:59:00-06:00");
+
+/**
  * Where the competition happens. Dates shown to candidates are rendered on the
  * server, so without this they would come out in the host's timezone (UTC on
  * Vercel) and tell a student in Monterrey the wrong day and hour.

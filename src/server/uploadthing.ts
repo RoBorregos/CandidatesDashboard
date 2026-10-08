@@ -19,9 +19,49 @@ import {
   userUploadFolderPath,
   weekUsageBytes,
 } from "~/server/api/routers/upload";
+import {
+  ADVANCED_CLOSED_MESSAGE,
+  advancedDueAt,
+  advancedFolderPath,
+  findAdvancedMember,
+  recordAdvancedFile,
+  type AdvancedFileKind,
+} from "~/server/api/routers/advanced-submission";
 
 const f = createUploadthing();
 const COMMENTS_FILE = "COMMENTS.md";
+
+/*
+ * Advanced candidates hand in one bitácora and one demo video. Both routes
+ * share this: only an advanced registrant may upload, and the object is
+ * renamed into their `Avanzados/{user}/{kind}/` folder.
+ */
+function advancedUploader(kind: AdvancedFileKind) {
+  return async ({ files }: { files: readonly { name: string }[] }) => {
+    const session = await getServerAuthSession();
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized");
+    }
+
+    const member = await findAdvancedMember(db, session.user.email);
+    if (!member) {
+      throw new Error("Solo los candidatos avanzados pueden hacer esta entrega");
+    }
+    if (Date.now() > (await advancedDueAt(db)).getTime()) {
+      throw new Error(ADVANCED_CLOSED_MESSAGE);
+    }
+
+    const userName = folderUserName(member.name, session.user.id);
+    return {
+      registrationMemberId: member.id,
+      originalName: files[0]?.name ?? kind,
+      [UTFiles]: files.map((file) => ({
+        ...file,
+        name: advancedFolderPath(userName, kind, file.name),
+      })),
+    };
+  };
+}
 
 export const ourFileRouter = {
   teamUploader: f({
@@ -150,6 +190,38 @@ export const ourFileRouter = {
         name: record.name,
         fileUrl: record.fileUrl,
       };
+    }),
+
+  advancedBitacora: f({
+    blob: { maxFileSize: "32MB", maxFileCount: 1 },
+  })
+    .middleware(advancedUploader("bitacora"))
+    .onUploadComplete(async ({ metadata, file }) => {
+      await recordAdvancedFile(db, {
+        registrationMemberId: metadata.registrationMemberId,
+        kind: "bitacora",
+        key: file.key,
+        name: metadata.originalName,
+        url: file.ufsUrl,
+        size: file.size,
+      });
+      return { url: file.ufsUrl };
+    }),
+
+  advancedVideo: f({
+    video: { maxFileSize: "256MB", maxFileCount: 1 },
+  })
+    .middleware(advancedUploader("video"))
+    .onUploadComplete(async ({ metadata, file }) => {
+      await recordAdvancedFile(db, {
+        registrationMemberId: metadata.registrationMemberId,
+        kind: "video",
+        key: file.key,
+        name: metadata.originalName,
+        url: file.ufsUrl,
+        size: file.size,
+      });
+      return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;
 

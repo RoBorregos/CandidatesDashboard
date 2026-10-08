@@ -94,11 +94,41 @@ model RegistrationMember {
   user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   mentorAssignments MentorAssignment[]
 
+  advancedSubmission AdvancedSubmission?
+
   @@unique([registrationId, order])
   @@unique([email, edition])
   @@unique([userId, edition])
   @@index([career])
   @@index([semester])
+}
+
+// What an advanced (individual) candidate hands in: their bitácora, the
+// GitHub repo and a demo video. One row per candidate; re-uploading a file
+// replaces the previous one. Files live on UploadThing like TeamUpload.
+model AdvancedSubmission {
+  id String @id @default(cuid())
+
+  registrationMemberId String             @unique
+  registrationMember   RegistrationMember @relation(fields: [registrationMemberId], references: [id], onDelete: Cascade)
+
+  githubUrl       String?
+  githubUpdatedAt DateTime?
+
+  bitacoraKey  String? @unique
+  bitacoraName String?
+  bitacoraUrl  String?
+  bitacoraSize Int?
+  bitacoraUploadedAt DateTime?
+
+  videoKey  String? @unique
+  videoName String?
+  videoUrl  String?
+  videoSize Int?
+  videoUploadedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MentorAssignment {
@@ -521,6 +551,10 @@ model Config {
   registrationClosesAt      DateTime?
   registrationOverride      RegistrationOverride?
   registrationOverrideUntil DateTime?
+
+  // Advanced-track hand-in deadline. Null falls back to
+  // DEFAULT_ADVANCED_DUE_AT in ~/lib/registration.
+  advancedSubmissionDueAt DateTime?
 
   @@map("config")
 }

@@ -23,7 +23,7 @@ const CONFIG_SELECT = { id: true, ...WINDOW_SELECT } as const;
 const CONFIG_LOCK_KEY = 4820_1126;
 
 /** The Config row is a singleton that older installs may not have yet. */
-async function getOrCreateConfig(db: typeof Db) {
+export async function getOrCreateConfig(db: typeof Db) {
   const existing = await db.config.findFirst({ select: CONFIG_SELECT });
   if (existing) return existing;
 

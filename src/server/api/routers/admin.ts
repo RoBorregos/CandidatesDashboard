@@ -10,6 +10,7 @@ import { staffManagementRouter } from "./admin/staff-management";
 import { mentorManagementRouter } from "./admin/mentor-management";
 import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
 import { registrationWindowRouter } from "./admin/registration-window";
+import { advancedDeadlineRouter } from "./admin/advanced-deadline";
 import { challengeMentorManagementRouter } from "./admin/challenge-mentor-management";
 
 export const adminRouter = createTRPCRouter({
@@ -91,4 +92,6 @@ export const adminRouter = createTRPCRouter({
   // Challenge Mentor Management (advanced track)
   getChallengeGroups: challengeMentorManagementRouter.getChallengeGroups,
   setChallengeMentors: challengeMentorManagementRouter.setChallengeMentors,
+  getAdvancedDeadline: advancedDeadlineRouter.getAdvancedDeadline,
+  setAdvancedDeadline: advancedDeadlineRouter.setAdvancedDeadline,
 });

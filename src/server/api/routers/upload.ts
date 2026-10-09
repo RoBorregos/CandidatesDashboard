@@ -52,7 +52,7 @@ const utapi = new UTApi();
  * Clean a path segment so it is safe to use inside a customId:
  * spaces become dashes and non-word characters are dropped.
  */
-function sanitizeSegment(value: string): string {
+export function sanitizeSegment(value: string): string {
   return value
     .normalize("NFKD")
     .trim()

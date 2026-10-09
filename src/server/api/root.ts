@@ -9,6 +9,7 @@ import { interviewerRouter } from "./routers/interviewer";
 import { registrationRouter } from "./routers/registration";
 import { uploadRouter } from "./routers/upload";
 import { mentorRouter } from "./routers/mentor";
+import { advancedSubmissionRouter } from "./routers/advanced-submission";
 /**
  * This is the primary router for your server.
  *
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   registration: registrationRouter,
   uploads: uploadRouter,
   mentor: mentorRouter,
+  advancedSubmission: advancedSubmissionRouter,
 });
 
 // export type definition of API

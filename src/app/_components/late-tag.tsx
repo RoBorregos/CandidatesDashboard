@@ -30,14 +30,43 @@ export default function LateTag({
   if (!isLate(week, uploadedAt)) return null;
 
   const due = weekDueAt(week);
-  const title = due
-    ? `Límite de entrega: ${due.toLocaleString("es-MX", {
-        dateStyle: "medium",
-        timeStyle: "short",
-        timeZone: DEADLINE_TIME_ZONE,
-      })}`
-    : LATE_TAG_LABEL;
+  return (
+    <LateChip
+      title={due ? dueTitle(due) : LATE_TAG_LABEL}
+      className={className}
+    />
+  );
+}
 
+/**
+ * Same chip against an explicit deadline instead of the weekly schedule
+ * (the advanced track's hand-in). Renders nothing when on time or unstamped.
+ */
+export function DeadlineLateTag({
+  dueAt,
+  uploadedAt,
+  className = "",
+}: {
+  dueAt: Date | string | number;
+  uploadedAt: Date | string | number | null | undefined;
+  className?: string;
+}) {
+  if (uploadedAt == null) return null;
+  const due = new Date(dueAt);
+  if (new Date(uploadedAt).getTime() <= due.getTime()) return null;
+
+  return <LateChip title={dueTitle(due)} className={className} />;
+}
+
+function dueTitle(due: Date) {
+  return `Límite de entrega: ${due.toLocaleString("es-MX", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: DEADLINE_TIME_ZONE,
+  })}`;
+}
+
+function LateChip({ title, className }: { title: string; className: string }) {
   return (
     <span
       title={title}

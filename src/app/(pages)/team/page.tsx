@@ -6,6 +6,7 @@ import CustomLoginText from "../../_components/custom-login-text";
 import TeamInfo from "../../_components/team/team";
 import TeamPreseason from "../../_components/team/preseason";
 import RegistrationSummary from "../../_components/team/registration-summary";
+import AdvancedSubmission from "../../_components/team/advanced-submission";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Role } from "@prisma/client";
@@ -114,7 +115,10 @@ export default async function TeamPage({
         <div className="pt-16 lg:pt-0">
           <Header title="Team" subtitle="Tu registro" />
         </div>
-        <div className="mx-auto max-w-3xl px-6 pb-20">
+        <div className="mx-auto max-w-3xl space-y-6 px-6 pb-20">
+          {/* Advanced candidates compete alone and never get a team, so this
+              is where they hand in their bitácora, repo and demo video. */}
+          {registration.track === "ADVANCED" && <AdvancedSubmission />}
           <RegistrationSummary registration={registration} />
         </div>
         <Footer />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import AdvancedDeadlineControl from "./AdvancedDeadlineControl";
 
 export default function ChallengeMentorManagement() {
   const utils = api.useUtils();
@@ -74,6 +75,8 @@ export default function ChallengeMentorManagement() {
           mentor every candidate in that group.
         </p>
       </div>
+
+      <AdvancedDeadlineControl />
 
       {data?.groups.map((group) => {
         const selected = selection[group.challenge] ?? [];

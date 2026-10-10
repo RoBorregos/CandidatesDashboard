@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { Pattern } from "@prisma/client";
+import {
+  CHECKPOINT_RESULT_VALUES,
+  MAX_RUN_SECONDS,
+  MAZE_LIMITS,
+  ROUND_NUMBERS,
+} from "rbrgs/lib/scoring";
 
 export const genericDataSchema = z.object({
   obtainedBonus: z.boolean({
@@ -93,4 +99,69 @@ export const challengeCSchema = z.object({
   //   .int()
   //   .min(0, { message: "Los puntos tienen que ser mayor o igual a 0" })
   //   .max(250, { message: "Los puntos tienen que ser menor o igual a 250" }),
+});
+
+/*
+ * 2026 judging forms (Pista A: MAZE, Pista B: Niveles). Limits come from
+ * ~/lib/scoring so the forms, the router and the rubric cannot disagree.
+ */
+export const trackRunBaseSchema = z.object({
+  round: z.coerce
+    .number()
+    .int()
+    .refine((round) => (ROUND_NUMBERS as readonly number[]).includes(round), {
+      message: "round must be 1, 2 or 3",
+    }),
+  teamId: z.string().min(1, { message: "Select a team" }),
+  runSeconds: z.coerce
+    .number()
+    .int()
+    .min(0, { message: "Run time must be at least 0" })
+    .max(MAX_RUN_SECONDS, {
+      message: `Run time must be at most ${MAX_RUN_SECONDS} seconds`,
+    }),
+  lackOfProgress: z.coerce
+    .number()
+    .int()
+    .min(0, { message: "Lack of progress must be at least 0" }),
+});
+
+export const mazeRunSchema = trackRunBaseSchema
+  .extend({
+    detectedColors: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(MAZE_LIMITS.detectedColors, {
+        message: `At most ${MAZE_LIMITS.detectedColors} colors`,
+      }),
+    speedbumps: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(MAZE_LIMITS.speedbumps, {
+        message: `At most ${MAZE_LIMITS.speedbumps} speedbumps`,
+      }),
+    staircases: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(MAZE_LIMITS.staircases, {
+        message: `At most ${MAZE_LIMITS.staircases} staircases`,
+      }),
+    crossedRamp: z.boolean(),
+    reachedFinalCheckpoint: z.boolean(),
+    returnBonus: z.boolean(),
+    arucoBonus: z.boolean(),
+  })
+  .refine((run) => !run.returnBonus || run.reachedFinalCheckpoint, {
+    message: "The return bonus requires reaching the final checkpoint",
+    path: ["returnBonus"],
+  });
+
+export const levelsRunSchema = trackRunBaseSchema.extend({
+  tookBall: z.boolean(),
+  section1: z.enum(CHECKPOINT_RESULT_VALUES),
+  section2: z.enum(CHECKPOINT_RESULT_VALUES),
+  section3: z.enum(CHECKPOINT_RESULT_VALUES),
 });

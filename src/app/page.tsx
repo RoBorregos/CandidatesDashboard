@@ -1,6 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
+// Only used by the Register button, commented out below while registration is closed.
+// import Link from "next/link";
 import { HydrateClient } from "rbrgs/trpc/server";
+import { COMPETITION_STARTS_AT } from "rbrgs/lib/competition";
 import robologo from "../../public/images/white-logo.png";
 import acuityBrands from "../../public/images/sponsors/AcuityBrandsLogo.webp";
 import digikey from "../../public/images/sponsors/DigiKey.png";
@@ -12,6 +14,7 @@ import line from "../../public/images/line.jpg";
 import Footer from "./_components/footer";
 import EventTimeline from "./_components/timeline";
 import ImageFade from "./_components/imageFade";
+import { HeroCountdown } from "./_components/HeroCountdown";
 
 /**
  * Secciones que se esconden mientras no se anuncian los retos ni el programa
@@ -45,12 +48,21 @@ export default async function Home() {
             <p className="mt-[-2vw] font-anton text-[6vw] text-white lg:text-[3vw]">
               By RoBorregos
             </p>
+            {/*
+              Registration is closed: the button is kept here, commented out,
+              so it can be restored together with the `Link` import above.
+
             <Link
               href="/register"
               className="mt-[4vw] inline-block rounded-full bg-roboblue px-[6vw] py-[2vw] font-archivo text-[4vw] font-semibold text-white transition-opacity hover:opacity-90 lg:mt-[1.5vw] lg:px-[3vw] lg:py-[0.8vw] lg:text-[1.5vw]"
             >
               Register
             </Link>
+            */}
+            <HeroCountdown
+              targetDate={COMPETITION_STARTS_AT}
+              className="mt-[6vw] lg:mt-[2vw]"
+            />
           </div>
           <div className="absolute left-1/2 top-[80vw] -z-10 -translate-x-1/2 -translate-y-1/2 transform lg:top-1/2">
             <Image

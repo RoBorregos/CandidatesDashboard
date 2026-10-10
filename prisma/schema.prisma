@@ -402,6 +402,9 @@ model User {
   authoredObjectives    WeeklyObjective[]       @relation("WeeklyObjectiveAuthor")
   ownedWeeklyObjectives WeeklyObjective[]       @relation("WeeklyObjectiveOwner")
   authoredTeamNotes     WeeklyTeamNote[]        @relation("WeeklyTeamNoteAuthor")
+
+  judgedMazeRuns   MazeRun[]   @relation("MazeRunJudge")
+  judgedLevelsRuns LevelsRun[] @relation("LevelsRunJudge")
 }
 
 model VerificationToken {
@@ -446,6 +449,9 @@ model Team {
   weeklyObjectives    WeeklyObjective[]
   weeklyReviews       WeeklyCandidateReview[]
   weeklyTeamNotes     WeeklyTeamNote[]
+
+  mazeRuns   MazeRun[]
+  levelsRuns LevelsRun[]
 }
 
 model TeamUpload {
@@ -538,6 +544,63 @@ model ChallengeC {
   crossedRampWithoutTouching Boolean
   user                       User     @relation(fields: [judgeID], references: [id], onDelete: Cascade)
   team                       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+// 2026 judging: one row per team, round and track run. The 2025 ChallengeA/B/C
+// tables above are kept for past results. Points are computed by ~/lib/scoring
+// and stored so the scoreboard does not depend on later rubric edits.
+model MazeRun {
+  id      String @id @default(cuid())
+  edition Int    @default(2026)
+  round   Int
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  judgeId String
+  judge   User   @relation("MazeRunJudge", fields: [judgeId], references: [id], onDelete: Cascade)
+
+  detectedColors         Int
+  speedbumps             Int
+  staircases             Int
+  crossedRamp            Boolean
+  reachedFinalCheckpoint Boolean
+  returnBonus            Boolean
+  arucoBonus             Boolean
+
+  lackOfProgress Int
+  runSeconds     Int
+  points         Int
+
+  createdAt DateTime @default(now())
+
+  @@index([teamId, edition, round])
+}
+
+model LevelsRun {
+  id      String @id @default(cuid())
+  edition Int    @default(2026)
+  round   Int
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  judgeId String
+  judge   User   @relation("LevelsRunJudge", fields: [judgeId], references: [id], onDelete: Cascade)
+
+  tookBall Boolean
+  // NOT_REACHED | WITHOUT_BALL | WITH_BALL, from CHECKPOINT_RESULTS in ~/lib/scoring.
+  section1 String
+  section2 String
+  section3 String
+
+  lackOfProgress Int
+  runSeconds     Int
+  points         Int
+
+  createdAt DateTime @default(now())
+
+  @@index([teamId, edition, round])
 }
 
 model Config {

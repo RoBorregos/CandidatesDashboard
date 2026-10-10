@@ -3,6 +3,50 @@ import { parse } from "csv-parse";
 import fs from "fs";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import {
+  buildTrackSchedule,
+  competitionTime,
+  findScheduleConflicts,
+  formatTime,
+  INTERVIEW_MS,
+  scheduleFromStoredRuns,
+  TEAMS_PER_GROUP,
+  type Area,
+  type RoundWindow,
+  type TeamRoundSchedule,
+} from "~/lib/competition-schedule";
+
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24h)");
+
+/** The admin form: competition day plus the three round windows (CDMX time). */
+const trackScheduleInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
+  windows: z
+    .array(
+      z.object({
+        number: z.number().int().min(1).max(3),
+        start: hhmm,
+        end: hhmm,
+      }),
+    )
+    .length(3),
+});
+
+function toRoundWindows(
+  input: z.infer<typeof trackScheduleInput>,
+): RoundWindow[] {
+  return input.windows.map((w) => {
+    const start = competitionTime(w.start, input.date);
+    const end = competitionTime(w.end, input.date);
+    if (end <= start) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Round ${w.number}: the end time must be after the start time.`,
+      });
+    }
+    return { number: w.number, start, end };
+  });
+}
 
 // Helper function to compute date from time string
 const ComputeDate = ({ date }: { date: string | undefined }) => {
@@ -24,6 +68,202 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
 };
 
 export const scheduleManagementRouter = createTRPCRouter({
+  /*
+   * 2026 schedule (see ~/lib/competition-schedule): three rounds, each team
+   * runs Pista A and Pista B once per round, in groups of four on 2 A + 2 B
+   * tracks. The 2025 generators further down are kept but no longer used by
+   * the admin dashboard.
+   */
+
+  /**
+   * (Re)builds the given rounds for every active team with the times in the
+   * form. Use it before the event and on the day to shift a delayed round:
+   * only the selected rounds are replaced, and a round that was already
+   * revealed stays revealed. Returns the interviews that clash with the new
+   * times.
+   */
+  generateTrackSchedule: adminProcedure
+    .input(
+      trackScheduleInput.extend({
+        rounds: z.array(z.number().int().min(1).max(3)).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const windows = toRoundWindows(input);
+      const selected = windows.filter((w) => input.rounds.includes(w.number));
+
+      const activeTeams = await ctx.db.team.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true },
+      });
+      if (activeTeams.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active teams found",
+        });
+      }
+      const teamIds = activeTeams.map((team) => team.id);
+
+      let schedule: TeamRoundSchedule[];
+      try {
+        schedule = buildTrackSchedule(teamIds, selected);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      await ctx.db.$transaction(
+        async (tx) => {
+          for (const window of selected) {
+            const wasVisible =
+              (await tx.round.count({
+                where: { number: window.number, isVisible: true },
+              })) > 0;
+
+            await tx.round.deleteMany({
+              where: { number: window.number, teamId: { in: teamIds } },
+            });
+
+            for (const entry of schedule.filter(
+              (e) => e.round === window.number,
+            )) {
+              await tx.round.create({
+                data: {
+                  teamId: entry.teamId,
+                  number: entry.round,
+                  isVisible: wasVisible,
+                  challenges: {
+                    create: entry.runs.map((run) => ({
+                      name: run.track,
+                      time: run.start,
+                    })),
+                  },
+                },
+              });
+            }
+          }
+        },
+        { timeout: 60_000 },
+      );
+
+      // Check the interviews already booked against the whole new schedule.
+      const stored = await ctx.db.round.findMany({
+        where: { teamId: { in: teamIds } },
+        select: { teamId: true, number: true, challenges: true },
+      });
+      const fullSchedule = stored
+        .map((round) =>
+          round.teamId
+            ? scheduleFromStoredRuns(
+                round.teamId,
+                round.number,
+                round.challenges,
+              )
+            : null,
+        )
+        .filter((entry): entry is TeamRoundSchedule => entry !== null);
+
+      const interviewed = await ctx.db.user.findMany({
+        where: {
+          teamId: { in: teamIds },
+          interviewTime: { not: null },
+          interviewerId: { not: null },
+        },
+        select: {
+          id: true,
+          name: true,
+          teamId: true,
+          interviewArea: true,
+          interviewTime: true,
+          interviewerId: true,
+          team: { select: { name: true } },
+        },
+      });
+      const conflicts = findScheduleConflicts(
+        interviewed.map((u) => ({
+          id: u.id,
+          teamId: u.teamId!,
+          area: (u.interviewArea as Area | null) ?? null,
+        })),
+        interviewed.map((u) => ({
+          candidateId: u.id,
+          interviewerId: u.interviewerId!,
+          start: u.interviewTime!,
+          end: new Date(u.interviewTime!.getTime() + INTERVIEW_MS),
+        })),
+        fullSchedule,
+        windows,
+      );
+      const byId = new Map(interviewed.map((u) => [u.id, u]));
+
+      return {
+        teamsScheduled: teamIds.length,
+        rounds: selected.map((w) => w.number),
+        groupsPerRound: Math.ceil(teamIds.length / TEAMS_PER_GROUP),
+        interviewConflicts: conflicts.map((c) => {
+          const user = byId.get(c.candidateId);
+          return {
+            name: user?.name ?? c.candidateId,
+            team: user?.team?.name ?? "",
+            time: user?.interviewTime ? formatTime(user.interviewTime) : "",
+            reason: c.reason,
+          };
+        }),
+      };
+    }),
+
+  /** Stored 2026 schedule as admin tables: one row per group start time. */
+  getTrackScheduleTables: adminProcedure.query(async ({ ctx }) => {
+    const rounds = await ctx.db.round.findMany({
+      where: { team: { isActive: true } },
+      select: {
+        number: true,
+        isVisible: true,
+        team: { select: { name: true } },
+        challenges: { select: { name: true, time: true } },
+      },
+    });
+
+    type Row = { time: string; at: number; lanes: Record<string, string[]> };
+    const tables = new Map<
+      number,
+      { visible: boolean; rows: Map<string, Row> }
+    >();
+
+    for (const round of rounds) {
+      const table = tables.get(round.number) ?? {
+        visible: false,
+        rows: new Map<string, Row>(),
+      };
+      table.visible ||= round.isVisible;
+      tables.set(round.number, table);
+
+      for (const run of round.challenges) {
+        const lane = /pista\s*([ab]\d?)/i.exec(run.name)?.[1]?.toUpperCase();
+        if (!lane) continue;
+        const time = formatTime(run.time);
+        const row = table.rows.get(time) ?? {
+          time,
+          at: run.time.getTime(),
+          lanes: {},
+        };
+        (row.lanes[lane] ??= []).push(round.team?.name ?? "");
+        table.rows.set(time, row);
+      }
+    }
+
+    return [...tables.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([number, table]) => ({
+        number,
+        visible: table.visible,
+        rows: [...table.rows.values()].sort((a, b) => a.at - b.at),
+      }));
+  }),
+
   // Existing uploadTeamData procedure
   uploadTeamData: adminProcedure.mutation(async ({ ctx }) => {
     const records: string[][] = [];

@@ -15,6 +15,40 @@ type TeamScores = {
 import { Role } from "@prisma/client";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { Round } from "rbrgs/lib/round";
+import {
+  compareTeams,
+  countedRuns,
+  ROUND_NUMBERS,
+  type TrackRun,
+} from "rbrgs/lib/scoring";
+
+/** 2026 scoreboard row: Pista A (MAZE) and Pista B (Niveles) per round. */
+export type TrackTeamScores = {
+  teamId: string;
+  teamName: string;
+  rounds: Record<number, { maze: number | null; levels: number | null }>;
+  mazeTotal: number;
+  levelsTotal: number;
+  total: number;
+  /** Seconds used in the counted runs; less wins a tie. */
+  tiebreakSeconds: number;
+};
+
+/**
+ * Latest run per team and round. A judge who re-submits replaces the earlier
+ * evaluation instead of adding to it.
+ */
+function latestByTeamAndRound<
+  T extends { teamId: string; round: number; createdAt: Date },
+>(runs: T[]): Map<string, T> {
+  const latest = new Map<string, T>();
+  for (const run of runs) {
+    const key = `${run.teamId}:${run.round}`;
+    const current = latest.get(key);
+    if (!current || run.createdAt > current.createdAt) latest.set(key, run);
+  }
+  return latest;
+}
 
 export const scoreboardRouter = createTRPCRouter({
   getScoreboard: publicProcedure.query(async ({ ctx }) => {
@@ -140,5 +174,79 @@ export const scoreboardRouter = createTRPCRouter({
 
     // Sort by total score descending
     return teamScores.sort((a, b) => b.total - a.total);
+  }),
+
+  // 2026 edition: two tracks per round, scored with ~/lib/scoring.
+  getTrackScoreboard: publicProcedure.query(async ({ ctx }) => {
+    const config = await ctx.db.config.findFirst();
+    const isAdmin = ctx.session?.user.role == Role.ADMIN;
+    // While frozen, the last round stays hidden from everyone but admins.
+    const hiddenRound =
+      (config?.freeze ?? false) && !isAdmin
+        ? ROUND_NUMBERS[ROUND_NUMBERS.length - 1]
+        : null;
+
+    const [teams, mazeRuns, levelsRuns] = await Promise.all([
+      ctx.db.team.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+      ctx.db.mazeRun.findMany({ where: { edition: 2026 } }),
+      ctx.db.levelsRun.findMany({ where: { edition: 2026 } }),
+    ]);
+
+    const maze = latestByTeamAndRound(mazeRuns);
+    const levels = latestByTeamAndRound(levelsRuns);
+
+    const rows: TrackTeamScores[] = teams.map((team) => {
+      const rounds: TrackTeamScores["rounds"] = {};
+      const mazeTrack: TrackRun[] = [];
+      const levelsTrack: TrackRun[] = [];
+
+      for (const round of ROUND_NUMBERS) {
+        const visible = round !== hiddenRound;
+        const mazeRun = visible ? maze.get(`${team.id}:${round}`) : undefined;
+        const levelsRun = visible
+          ? levels.get(`${team.id}:${round}`)
+          : undefined;
+
+        rounds[round] = {
+          maze: mazeRun?.points ?? null,
+          levels: levelsRun?.points ?? null,
+        };
+        if (mazeRun) {
+          mazeTrack.push({
+            round,
+            points: mazeRun.points,
+            seconds: mazeRun.runSeconds,
+          });
+        }
+        if (levelsRun) {
+          levelsTrack.push({
+            round,
+            points: levelsRun.points,
+            seconds: levelsRun.runSeconds,
+          });
+        }
+      }
+
+      const counted = [...countedRuns(mazeTrack), ...countedRuns(levelsTrack)];
+      const sum = (runs: TrackRun[]) =>
+        runs.reduce((total, run) => total + run.points, 0);
+      const mazeTotal = sum(countedRuns(mazeTrack));
+      const levelsTotal = sum(countedRuns(levelsTrack));
+
+      return {
+        teamId: team.id,
+        teamName: team.name,
+        rounds,
+        mazeTotal,
+        levelsTotal,
+        total: mazeTotal + levelsTotal,
+        tiebreakSeconds: counted.reduce((total, run) => total + run.seconds, 0),
+      };
+    });
+
+    return rows.sort(compareTeams);
   }),
 });

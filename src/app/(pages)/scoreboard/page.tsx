@@ -6,6 +6,7 @@ import Header from "../../_components/header";
 import Title from "../../_components/title";
 import { api } from "~/trpc/react";
 import { Round } from "../../../lib/round";
+import { ROUND_NUMBERS } from "../../../lib/scoring";
 import RandomText from "../../_components/random-text";
 
 const TwitchEmbed = ({ channel }: { channel: string }) => (
@@ -25,7 +26,9 @@ export default function ScoreboardPage() {
     data: scores,
     isLoading,
     refetch,
-  } = api.scoreboard.getScoreboard.useQuery();
+    // 2026: Pista A + Pista B per round. The 2025 three-challenge board is
+    // still served by api.scoreboard.getScoreboard.
+  } = api.scoreboard.getTrackScoreboard.useQuery();
 
   const { data: isFrozen } = api.config.isScoreboardFrozen.useQuery();
   const { data: competitionStarted } =
@@ -98,15 +101,12 @@ export default function ScoreboardPage() {
         <table className="w-full table-fixed border-collapse text-white">
           <colgroup>
             <col className="w-48" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
-            <col className="w-16" />
+            {ROUND_NUMBERS.map((round) => (
+              <React.Fragment key={round}>
+                <col className="w-16" />
+                <col className="w-16" />
+              </React.Fragment>
+            ))}
             <col className="w-20" />
           </colgroup>
           <thead>
@@ -114,29 +114,22 @@ export default function ScoreboardPage() {
               <th className="p-4 text-left" rowSpan={2}>
                 Team
               </th>
-              <th className="p-4 text-center" colSpan={3}>
-                Round 1
-              </th>
-              <th className="p-4 text-center" colSpan={3}>
-                Round 2
-              </th>
-              <th className="p-4 text-center" colSpan={3}>
-                Round 3
-              </th>
+              {ROUND_NUMBERS.map((round) => (
+                <th key={round} className="p-4 text-center" colSpan={2}>
+                  Round {round}
+                </th>
+              ))}
               <th className="p-4 text-right" rowSpan={2}>
                 Total
               </th>
             </tr>
             <tr className="border-b border-gray-700">
-              <th className="p-3 text-sm font-normal">C1</th>
-              <th className="p-3 text-sm font-normal">C2</th>
-              <th className="p-3 text-sm font-normal">C3</th>
-              <th className="p-3 text-sm font-normal">C1</th>
-              <th className="p-3 text-sm font-normal">C2</th>
-              <th className="p-3 text-sm font-normal">C3</th>
-              <th className="p-3 text-sm font-normal">C1</th>
-              <th className="p-3 text-sm font-normal">C2</th>
-              <th className="p-3 text-sm font-normal">C3</th>
+              {ROUND_NUMBERS.map((round) => (
+                <React.Fragment key={round}>
+                  <th className="p-3 text-sm font-normal">A</th>
+                  <th className="p-3 text-sm font-normal">B</th>
+                </React.Fragment>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -146,33 +139,27 @@ export default function ScoreboardPage() {
                 className="border-b border-gray-700 transition-colors hover:bg-gray-800/30"
               >
                 <td className="p-4 font-medium">{team.teamName}</td>
-                {Object.values(Round)
-                  .filter((value): value is number => typeof value === "number") // Filter only numeric values
-                  .map((roundId: Round) => (
-                    <React.Fragment key={roundId}>
+                {ROUND_NUMBERS.map((round) => {
+                  const hidden = isFrozen && round === Round.C;
+                  return (
+                    <React.Fragment key={round}>
                       <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C ? (
+                        {hidden ? (
                           <RandomText />
                         ) : (
-                          (team.rounds[roundId]?.challengeA ?? "-")
+                          (team.rounds[round]?.maze ?? "-")
                         )}
                       </td>
                       <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C ? (
+                        {hidden ? (
                           <RandomText />
                         ) : (
-                          (team.rounds[roundId]?.challengeB ?? "-")
-                        )}
-                      </td>
-                      <td className="p-4 text-center">
-                        {isFrozen && roundId === Round.C ? (
-                          <RandomText />
-                        ) : (
-                          (team.rounds[roundId]?.challengeC ?? "-")
+                          (team.rounds[round]?.levels ?? "-")
                         )}
                       </td>
                     </React.Fragment>
-                  ))}
+                  );
+                })}
                 <td className="p-4 text-center font-semibold">{team.total}</td>
               </tr>
             ))}

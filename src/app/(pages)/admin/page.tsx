@@ -5,7 +5,9 @@ import { api } from "~/trpc/react";
 import { useState } from "react";
 import TeamManagement from "~/app/_components/admin/TeamManagement";
 import TeamStatusManagement from "~/app/_components/admin/TeamStatusManagement";
-import ScheduleControl from "~/app/_components/admin/ScheduleControl";
+// 2025 generator, replaced by TrackScheduleControl (see the schedule tab below).
+// import ScheduleControl from "~/app/_components/admin/ScheduleControl";
+import TrackScheduleControl from "~/app/_components/admin/TrackScheduleControl";
 import RoundControl from "~/app/_components/admin/RoundControl";
 import InterviewManagement from "~/app/_components/admin/InterviewManagement";
 import StaffManagement from "~/app/_components/admin/StaffManagement";
@@ -105,6 +107,16 @@ export default function AdminPage() {
         )}
 
         {selectedTab === "schedule" && (
+          <TrackScheduleControl
+            activeTeams={activeTeams}
+            refetchScheduleTeams={refetchScheduleTeams}
+          />
+        )}
+        {/*
+          2025 generator (3 challenges per round, tracks A/B/C), kept for
+          reference. Uncomment it, and its import, to use it again.
+
+        {selectedTab === "schedule" && (
           <ScheduleControl
             activeTeams={activeTeams}
             config={config}
@@ -112,6 +124,7 @@ export default function AdminPage() {
             refetchConfig={refetchConfig}
           />
         )}
+        */}
 
         {selectedTab === "rounds" && (
           <RoundControl

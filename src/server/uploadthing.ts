@@ -8,7 +8,9 @@ import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 import {
   appendCommentToFile,
+  assignFinalDeliverable,
   bustListAllFilesCache,
+  finalDeliverableSchema,
   folderUserName,
   isFinalWeek,
   MAX_WEEK_BYTES,
@@ -19,6 +21,10 @@ import {
   userUploadFolderPath,
   weekUsageBytes,
 } from "~/server/api/routers/upload";
+import {
+  FINAL_MANIFEST_FILE,
+  FINAL_REPOSITORY_FILE,
+} from "~/lib/final-deliverables";
 import {
   ADVANCED_CLOSED_MESSAGE,
   advancedDueAt,
@@ -71,6 +77,8 @@ export const ourFileRouter = {
       z.object({
         week: uploadWeekSchema,
         comment: z.string().min(1).max(2045).optional(),
+        // FINAL only: which of the hardcoded deliverables the file fills.
+        deliverable: finalDeliverableSchema.optional(),
       }),
     )
     .middleware(async ({ files, input }) => {
@@ -103,6 +111,22 @@ export const ourFileRouter = {
       if (hasCommentsFile) {
         throw new Error(`No se permite subir ${COMMENTS_FILE} directamente`);
       }
+      // Same for the FINAL manifest and repository link files.
+      for (const internal of [FINAL_MANIFEST_FILE, FINAL_REPOSITORY_FILE]) {
+        if (files.some((f) => f.name.toUpperCase() === internal.toUpperCase())) {
+          throw new Error(`No se permite subir ${internal} directamente`);
+        }
+      }
+
+      // The FINAL folder only takes its hardcoded deliverables, one file each.
+      if (isFinalWeek(input.week)) {
+        if (!input.deliverable) {
+          throw new Error("Indica qué entrega final es este archivo");
+        }
+        if (files.length !== 1) {
+          throw new Error("Cada entrega final es un solo archivo");
+        }
+      }
 
       // The week's folder is capped at 256 MB total (not per file): reject the
       // upload up front if adding these files would exceed the allowance. For
@@ -120,7 +144,7 @@ export const ourFileRouter = {
         throw new Error("La semana excedería el límite de 256 MB");
       }
 
-      // Rename each object to `{Semana-[1-5]}/{team}/{user}/{file}` for
+      // Rename each object to `{Semana-[2-7]}/{team}/{user}/{file}` for
       // individual weeks and `FINAL/{team}/{file}` for the final, so
       // UploadThing shows the file inside its per-user / team folder. We
       // deliberately do NOT set a customId: a repeated customId is what makes
@@ -130,6 +154,7 @@ export const ourFileRouter = {
         teamName: team.name,
         week: input.week,
         comment: input.comment,
+        deliverable: isFinalWeek(input.week) ? input.deliverable : undefined,
         userId,
         userName,
         [UTFiles]: files.map((file) => ({
@@ -166,6 +191,17 @@ export const ourFileRouter = {
         fileType: file.type,
         userId: isFinalWeek(metadata.week) ? null : metadata.userId,
       });
+
+      // A FINAL file takes over its deliverable slot (replacing the old one).
+      if (isFinalWeek(metadata.week) && metadata.deliverable) {
+        await assignFinalDeliverable({
+          client: db,
+          teamId: metadata.teamId,
+          teamName: metadata.teamName,
+          fileName: name,
+          deliverable: metadata.deliverable,
+        });
+      }
 
       // Bust the listAllFiles cache so reconcileWithStorage sees the new file.
       bustListAllFilesCache();

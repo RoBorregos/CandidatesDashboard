@@ -503,7 +503,14 @@ export async function appendCommentToFile(input: {
   });
 }
 
-/** Contents of one of the server-managed JSON files in `FINAL/{team}/`. */
+/**
+ * Contents of one of the server-managed JSON files in `FINAL/{team}/`.
+ *
+ * Null only when the file was never written. A failed fetch throws instead:
+ * read as "no file yet", it would make updateFinalManifest write an empty
+ * manifest back and wipe the team's slots whenever UploadThing is briefly
+ * unavailable.
+ */
 async function readFinalJson(
   client: typeof db,
   teamId: string,
@@ -513,12 +520,23 @@ async function readFinalJson(
     where: { ...finalFolderWhere(teamId), name },
   });
   if (!record) return null;
+  let res: Response;
   try {
-    const res = await fetch(record.fileUrl, { cache: "no-store" });
-    return res.ok ? await res.text() : null;
-  } catch {
-    return null;
+    res = await fetch(record.fileUrl, { cache: "no-store" });
+  } catch (cause) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "No se pudo leer la entrega final, intenta de nuevo",
+      cause,
+    });
   }
+  if (!res.ok) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "No se pudo leer la entrega final, intenta de nuevo",
+    });
+  }
+  return res.text();
 }
 
 /** Store (replace) a server-managed JSON file at `FINAL/{team}/{name}`. */

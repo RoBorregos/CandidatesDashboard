@@ -5,15 +5,17 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
 import LateTag from "../late-tag";
+import FinalDeliverables from "./final-deliverables";
 import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
+  FINAL_WEEK,
   weekAssignedAt,
   weekDueAt,
 } from "~/lib/weeks";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
-const WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
+const WEEKS = [2, 3, 4, 5, 6, 7, "FINAL"] as const;
 type WeekKey = (typeof WEEKS)[number];
 
 const WEEK_LABELS: Record<WeekKey, string> = {
@@ -22,12 +24,13 @@ const WEEK_LABELS: Record<WeekKey, string> = {
   4: "Semana 4",
   5: "Semana 5",
   6: "Semana 6",
+  7: "Semana 7",
   FINAL: "Final",
 };
 
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
-const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
+const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? FINAL_WEEK : week);
 
 // Open on the week the competition is on right now (~/lib/weeks) instead of
 // always starting at week 2, which by now is mostly history.
@@ -102,7 +105,7 @@ export default function WeekUploads({
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Las semanas 1 a 5 son personales
+        Sube aquí los archivos de cada semana. Las semanas 2 a 7 son personales
         (solo tú ves tus archivos); la entrega final es compartida con todo tu
         equipo.
       </p>
@@ -124,7 +127,12 @@ export default function WeekUploads({
         ))}
       </div>
 
-      <WeekFiles teamName={teamName} userName={userName} week={week} />
+      {/* FINAL has its own hardcoded deliverables instead of a free folder. */}
+      {week === "FINAL" ? (
+        <FinalDeliverables teamName={teamName} />
+      ) : (
+        <WeekFiles teamName={teamName} userName={userName} week={week} />
+      )}
     </div>
   );
 }
@@ -438,7 +446,7 @@ function WeekFiles({
     uploadedBytes + pendingFiles.reduce((sum, f) => sum + f.size, 0);
   const weeklyPct = Math.min(100, (weeklyUsageBytes / MAX_WEEK_BYTES) * 100);
 
-  // Weeks 1-5 live in the caller's private folder; the FINAL week is shared by
+  // Weeks 2-7 live in the caller's private folder; the FINAL week is shared by
   // the whole team in a single folder.
   const folderLabel =
     week === "FINAL"

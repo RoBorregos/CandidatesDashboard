@@ -7,12 +7,11 @@
  *   - Three rounds. In every round each team runs Pista A and Pista B once,
  *     so a round is two 8-minute segments per team (2 min calibration + 6 min
  *     run).
- *   - There are four tracks: two A and two B. Teams go out in groups of four
- *     that start together: two teams on the A tracks and two on the B tracks,
- *     then they swap. A group therefore takes two segments (16 min).
- *   - The next group must already be in line when the previous one starts,
- *     so a team is busy from the previous group's start until its own
- *     second segment ends.
+ *   - There are four tracks: two A and two B. Every segment a pair of teams
+ *     starts on A1/A2 and another pair on B1/B2, and a team rests at least
+ *     MIN_TRACK_GAP_MS (55 min) between its two tracks (see trackLayout).
+ *   - A team must already be in line when the run before its own starts,
+ *     so each run is busy from one segment before it until it ends.
  *   - Individual interviews can only happen inside the three round windows,
  *     never while the candidate's team is queued or on a track.
  *
@@ -40,11 +39,26 @@ export const SEGMENT_MS = 8 * MINUTE_MS;
 /** Each team runs Pista A and Pista B once per round. */
 export const SEGMENTS_PER_ROUND = 2;
 
-/** Teams that start at the same time (two A tracks + two B tracks). */
+/**
+ * First 2026 layout (groups of four running A and B back to back), kept for
+ * the commented-out builder below.
+ */
 export const TEAMS_PER_GROUP = 4;
-
-/** A group runs both of its segments back to back. */
 export const GROUP_MS = SEGMENTS_PER_ROUND * SEGMENT_MS;
+
+/** Teams that run at the same time on one kind of track (A1 + A2, B1 + B2). */
+export const TEAMS_PER_PAIR = 2;
+
+/** Minimum rest between the end of a team's first run and its second run. */
+export const MIN_TRACK_GAP_MS = 55 * MINUTE_MS;
+
+/** Start-to-start distance, in segments, that guarantees MIN_TRACK_GAP_MS. */
+export const GAP_SEGMENTS = Math.ceil(
+  (MIN_TRACK_GAP_MS + SEGMENT_MS) / SEGMENT_MS,
+);
+
+/** A team has to be in line when the run before its own starts. */
+export const QUEUE_MS = SEGMENT_MS;
 
 /** Length of an individual interview. */
 export const INTERVIEW_MS = 15 * MINUTE_MS;
@@ -113,18 +127,123 @@ export type TeamRoundSchedule = {
   round: number;
   group: number;
   runs: TrackRun[];
-  /** From the moment the team has to be in line until its last run ends. */
-  busy: Interval;
+  /** One interval per run: from lining up until that run ends. */
+  busy: Interval[];
+};
+
+export type TrackLayout = {
+  /** Pairs of teams (the last one may have a single team). */
+  pairs: number;
+  /** Length of the A/B rotation, in segments. */
+  cycle: number;
+  /** How many segments after its A run a pair runs B (mod cycle). */
+  offset: number;
+  /** Segments from the round start until the last run ends. */
+  segments: number;
 };
 
 /**
- * Splits the teams into groups of four and lays out both segments of every
- * round. Within a group the first two teams start on the A tracks and the
- * last two on the B tracks, then they swap.
+ * Every 8-minute segment, one pair of teams starts on A1/A2 and another
+ * pair on B1/B2, so all four tracks stay busy. Pair j runs A at segment j
+ * and B at segment (j + offset) mod cycle: the first half of the pairs goes
+ * A then B, the rest B then A. Both distances are at least GAP_SEGMENTS, so
+ * no team runs its second track less than MIN_TRACK_GAP_MS after the first.
+ * With few teams the cycle is stretched to 2 * GAP_SEGMENTS and some
+ * segments stay empty.
+ */
+export function trackLayout(teamCount: number): TrackLayout {
+  const pairs = Math.ceil(teamCount / TEAMS_PER_PAIR);
+  if (pairs === 0) return { pairs, cycle: 0, offset: 0, segments: 0 };
+
+  const cycle = Math.max(pairs, 2 * GAP_SEGMENTS);
+  const offset = Math.floor(cycle / 2);
+  let segments = 0;
+  for (let j = 0; j < pairs; j++) {
+    segments = Math.max(segments, j + 1, ((j + offset) % cycle) + 1);
+  }
+  return { pairs, cycle, offset, segments };
+}
+
+/**
+ * Lays out both runs of every team in every round (see trackLayout).
+ * Teams 2j and 2j + 1 form pair j and use lanes 1 and 2.
  *
- * Throws if the groups do not fit inside a round window.
+ * Throws if the runs do not fit inside a round window.
  */
 export function buildTrackSchedule(
+  teamIds: string[],
+  windows: RoundWindow[] = roundWindows(),
+): TeamRoundSchedule[] {
+  const layout = trackLayout(teamIds.length);
+  const schedule: TeamRoundSchedule[] = [];
+
+  for (const window of windows) {
+    const needed = layout.segments * SEGMENT_MS;
+    const available = window.end.getTime() - window.start.getTime();
+    if (needed > available) {
+      throw new Error(
+        `Round ${window.number}: ${teamIds.length} teams need ${needed / MINUTE_MS} min (with ${MIN_TRACK_GAP_MS / MINUTE_MS} min between tracks) but the window only has ${available / MINUTE_MS} min.`,
+      );
+    }
+
+    teamIds.forEach((teamId, index) => {
+      const pair = Math.floor(index / TEAMS_PER_PAIR);
+      const lane = index % TEAMS_PER_PAIR;
+      const slots = {
+        A: pair,
+        B: (pair + layout.offset) % layout.cycle,
+      } as const;
+
+      const runs: TrackRun[] = (["A", "B"] as const)
+        .map((kind) => {
+          const start = new Date(
+            window.start.getTime() + slots[kind] * SEGMENT_MS,
+          );
+          return {
+            teamId,
+            round: window.number,
+            group: pair,
+            track: TRACKS[kind][lane]!,
+            start,
+            end: new Date(start.getTime() + SEGMENT_MS),
+          };
+        })
+        .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+      schedule.push({
+        teamId,
+        round: window.number,
+        group: pair,
+        runs,
+        busy: runs.map((run) => runBusy(run.start, window.start)),
+      });
+    });
+  }
+
+  return schedule;
+}
+
+/**
+ * In line from the previous segment's start until the run ends. Teams on
+ * the first segment line up before the round opens, which is outside any
+ * interview window, so the queue is clamped to the round start.
+ */
+function runBusy(start: Date, roundStart?: Date): Interval {
+  const queueFrom = start.getTime() - QUEUE_MS;
+  return {
+    start: new Date(
+      roundStart ? Math.max(roundStart.getTime(), queueFrom) : queueFrom,
+    ),
+    end: new Date(start.getTime() + SEGMENT_MS),
+  };
+}
+
+/*
+ * First 2026 builder: groups of four running A and B back to back (8 min
+ * between tracks). Replaced by the rotation above so teams rest at least
+ * MIN_TRACK_GAP_MS between tracks. Kept for reference.
+
+export function buildTrackScheduleGroups(
   teamIds: string[],
   windows: RoundWindow[] = roundWindows(),
 ): TeamRoundSchedule[] {
@@ -184,11 +303,12 @@ export function buildTrackSchedule(
 
   return schedule;
 }
+*/
 
 /**
  * Rebuilds the schedule of one stored round (its track runs from the
- * database) so it can be checked like a freshly generated one. The queue
- * time is taken as one group before the first run.
+ * database) so it can be checked like a freshly generated one. Each run is
+ * busy from one segment before it (lining up) until it ends.
  */
 export function scheduleFromStoredRuns(
   teamId: string,
@@ -196,9 +316,6 @@ export function scheduleFromStoredRuns(
   runs: { name: string; time: Date }[],
 ): TeamRoundSchedule | null {
   if (runs.length === 0) return null;
-  const starts = runs.map((run) => new Date(run.time).getTime());
-  const first = Math.min(...starts);
-  const last = Math.max(...starts) + SEGMENT_MS;
   return {
     teamId,
     round,
@@ -214,7 +331,7 @@ export function scheduleFromStoredRuns(
         end: new Date(start.getTime() + SEGMENT_MS),
       };
     }),
-    busy: { start: new Date(first - GROUP_MS), end: new Date(last) },
+    busy: runs.map((run) => runBusy(new Date(run.time))),
   };
 }
 
@@ -226,9 +343,10 @@ export function teamBusyIntervals(
 ): Interval[] {
   return schedule
     .filter((entry) => entry.teamId === teamId)
-    .map((entry) => ({
-      start: new Date(entry.busy.start.getTime() - travelBufferMs),
-      end: new Date(entry.busy.end.getTime() + travelBufferMs),
+    .flatMap((entry) => entry.busy)
+    .map((busy) => ({
+      start: new Date(busy.start.getTime() - travelBufferMs),
+      end: new Date(busy.end.getTime() + travelBufferMs),
     }));
 }
 

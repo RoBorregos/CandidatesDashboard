@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Header from "~/app/_components/header";
-import { formatTime, GROUP_MS } from "~/lib/competition-schedule";
+import { formatTime, QUEUE_MS } from "~/lib/competition-schedule";
 import { api } from "~/trpc/react";
 
 type ScheduleChallenge = {
@@ -369,12 +369,11 @@ function MyTeamView({
                 run.track !== undefined,
             )
             .sort((a, b) => a.time.getTime() - b.time.getTime());
-          const first = runs[0];
-          // The next group must already be in line when the previous one
-          // starts, i.e. one group before this team's first run.
-          const lineUpBy = first
-            ? formatTime(new Date(first.time.getTime() - GROUP_MS))
-            : null;
+          // Runs are now far apart, so the line-up time is shown per run.
+          // const first = runs[0];
+          // const lineUpBy = first
+          //   ? formatTime(new Date(first.time.getTime() - GROUP_MS))
+          //   : null;
 
           return (
             <div key={round.number} className="overflow-hidden rounded-lg">
@@ -384,12 +383,12 @@ function MyTeamView({
                 </h2>
               </div>
               <div className="bg-gray-900 p-4">
-                {lineUpBy && (
+                {/* {lineUpBy && (
                   <p className="mb-4 text-center text-sm text-yellow-300">
                     Be in line by{" "}
                     <span className="font-mono font-semibold">{lineUpBy}</span>
                   </p>
-                )}
+                )} */}
                 <ul className="grid gap-3 sm:grid-cols-2">
                   {runs.map((run) => (
                     <li
@@ -403,6 +402,12 @@ function MyTeamView({
                         {formatTime(run.time)}
                       </p>
                       <p className="text-sm text-roboblue">Pista {run.lane}</p>
+                      <p className="mt-1 text-xs text-yellow-300">
+                        Be in line by{" "}
+                        <span className="font-mono font-semibold">
+                          {formatTime(new Date(run.time.getTime() - QUEUE_MS))}
+                        </span>
+                      </p>
                     </li>
                   ))}
                 </ul>
@@ -440,7 +445,8 @@ function ImportantInformation() {
             <li>2 tracks per round: A (Maze) and B (Levels), two of each</li>
             <li>Each team runs Track A and Track B once per round</li>
             <li>8 minutes per track: 2 of calibration + 6 of run</li>
-            <li>Teams go out in groups of four that start together</li>
+            {/* <li>Teams go out in groups of four that start together</li> */}
+            <li>At least 55 minutes of rest between your two tracks</li>
           </ul>
         </div>
         <div>
@@ -448,8 +454,8 @@ function ImportantInformation() {
           <ul className="space-y-1 text-gray-300">
             <li>All times are Mexico City time</li>
             <li>
-              Be in line when the group before yours starts: a team that is not
-              there in time loses its turn
+              Be in line 8 minutes before each run: a team that is not there in
+              time loses its turn
             </li>
             <li>Schedules may be adjusted based on availability</li>
             <li>Only currently available rounds are shown</li>

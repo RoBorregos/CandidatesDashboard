@@ -9,8 +9,10 @@ import {
   findScheduleConflicts,
   formatTime,
   INTERVIEW_MS,
+  MINUTE_MS,
   scheduleFromStoredRuns,
-  TEAMS_PER_GROUP,
+  SEGMENT_MS,
+  trackLayout,
   type Area,
   type RoundWindow,
   type TeamRoundSchedule,
@@ -70,8 +72,8 @@ const ComputeDate = ({ date }: { date: string | undefined }) => {
 export const scheduleManagementRouter = createTRPCRouter({
   /*
    * 2026 schedule (see ~/lib/competition-schedule): three rounds, each team
-   * runs Pista A and Pista B once per round, in groups of four on 2 A + 2 B
-   * tracks. The 2025 generators further down are kept but no longer used by
+   * runs Pista A and Pista B once per round on 2 A + 2 B tracks, with at
+   * least 55 min between its two tracks. The 2025 generators further down are kept but no longer used by
    * the admin dashboard.
    */
 
@@ -202,7 +204,9 @@ export const scheduleManagementRouter = createTRPCRouter({
       return {
         teamsScheduled: teamIds.length,
         rounds: selected.map((w) => w.number),
-        groupsPerRound: Math.ceil(teamIds.length / TEAMS_PER_GROUP),
+        // groupsPerRound: Math.ceil(teamIds.length / TEAMS_PER_GROUP),
+        minutesPerRound:
+          (trackLayout(teamIds.length).segments * SEGMENT_MS) / MINUTE_MS,
         interviewConflicts: conflicts.map((c) => {
           const user = byId.get(c.candidateId);
           return {

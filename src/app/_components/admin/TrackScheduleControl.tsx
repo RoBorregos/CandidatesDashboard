@@ -5,10 +5,10 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import {
   COMPETITION_DATE,
-  GROUP_MS,
+  MIN_TRACK_GAP_MS,
   MINUTE_MS,
   SEGMENT_MS,
-  TEAMS_PER_GROUP,
+  trackLayout,
 } from "~/lib/competition-schedule";
 
 interface Team {
@@ -63,7 +63,7 @@ export default function TrackScheduleControl({
   const generate = api.admin.generateTrackSchedule.useMutation({
     onSuccess(data) {
       toast.success(
-        `Round${data.rounds.length > 1 ? "s" : ""} ${data.rounds.join(", ")} scheduled for ${data.teamsScheduled} teams (${data.groupsPerRound} groups per round).`,
+        `Round${data.rounds.length > 1 ? "s" : ""} ${data.rounds.join(", ")} scheduled for ${data.teamsScheduled} teams (${data.minutesPerRound} min per round).`,
       );
       setConflicts(data.interviewConflicts);
       if (data.interviewConflicts.length > 0) {
@@ -79,8 +79,11 @@ export default function TrackScheduleControl({
     },
   });
 
-  const groups = Math.ceil(activeTeams.length / TEAMS_PER_GROUP);
-  const neededMinutes = (groups * GROUP_MS) / MINUTE_MS;
+  // const groups = Math.ceil(activeTeams.length / TEAMS_PER_GROUP);
+  // const neededMinutes = (groups * GROUP_MS) / MINUTE_MS;
+  const layout = trackLayout(activeTeams.length);
+  const neededMinutes = (layout.segments * SEGMENT_MS) / MINUTE_MS;
+  const gapMinutes = MIN_TRACK_GAP_MS / MINUTE_MS;
 
   const updateWindow = (
     number: number,
@@ -116,9 +119,10 @@ export default function TrackScheduleControl({
         </h3>
         <p className="mb-6 text-sm text-gray-400">
           All times are Mexico City time. Each team runs Pista A and Pista B
-          once per round, in groups of {TEAMS_PER_GROUP} that start together (
-          {SEGMENT_MS / MINUTE_MS} min per track, {GROUP_MS / MINUTE_MS} min per
-          group).
+          once per round ({SEGMENT_MS / MINUTE_MS} min per run). Every{" "}
+          {SEGMENT_MS / MINUTE_MS} min two teams start on A1/A2 and two on
+          B1/B2, and every team rests at least {gapMinutes} min between its two
+          tracks.
         </p>
 
         <div className="mb-6 max-w-xs">
@@ -190,8 +194,8 @@ export default function TrackScheduleControl({
                   {activeTeams.length === 0
                     ? "No active teams."
                     : fits
-                      ? `${groups} groups · last group ends ${lastEnds} · ${available - neededMinutes} min to spare`
-                      : `${groups} groups need ${neededMinutes} min, the window has ${available} min.`}
+                      ? `Last run ends ${lastEnds} · ${available - neededMinutes} min to spare`
+                      : `${activeTeams.length} teams need ${neededMinutes} min, the window has ${available} min.`}
                 </p>
 
                 <button
@@ -222,7 +226,7 @@ export default function TrackScheduleControl({
 
         <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-gray-700 p-4 text-sm md:grid-cols-4">
           <p>Active teams: {activeTeams.length}</p>
-          <p>Groups per round: {groups}</p>
+          <p>Min. rest between tracks: {gapMinutes} min</p>
           <p>Minutes per round: {neededMinutes}</p>
           <p>Rounds generated: {tables?.length ?? 0}/3</p>
         </div>
@@ -236,7 +240,7 @@ export default function TrackScheduleControl({
               moves, and it stays revealed if it already was.
             </li>
             <li>
-              • Teams keep the same order (by name), so they keep their group
+              • Teams keep the same order (by name), so they keep their slots
               and tracks; only the clock changes.
             </li>
             <li>

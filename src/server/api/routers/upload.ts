@@ -8,6 +8,15 @@ import {
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { FINAL_WEEK, isFinalWeek, MAX_UPLOAD_WEEK, MIN_UPLOAD_WEEK } from "~/lib/weeks";
+import {
+  FINAL_FILE_DELIVERABLE_KEYS,
+  FINAL_MANIFEST_FILE,
+  FINAL_REPOSITORY_FILE,
+  parseFinalManifest,
+  parseFinalRepository,
+  type FinalFileDeliverableKey,
+  type FinalManifest,
+} from "~/lib/final-deliverables";
 
 // Week numbering lives in ~/lib/weeks together with the delivery schedule
 // used for the late tag; re-exported here so existing imports keep working.
@@ -23,11 +32,11 @@ export {
  * Upload microservice.
  *
  * Handles uploads organized in folders on UploadThing with the shape:
- *   {Semana-[2-6]}/{teamName}/{userName}/{file}  -- individual weeks
+ *   {Semana-[2-7]}/{teamName}/{userName}/{file}  -- individual weeks
  *   FINAL/{teamName}/{file}                        -- final submission, team-wide
  * and persists every upload (and its folder path) in the database via Prisma.
  *
- * Weeks 2-6 are private to the user who uploaded them: only the owner sees
+ * Weeks 2-7 are private to the user who uploaded them: only the owner sees
  * their own folder. The FINAL week is shared by the whole team.
  */
 
@@ -38,6 +47,23 @@ export {
 export const COMMENTS_FILE = "COMMENTS.md";
 export const MAX_COMMENT_CHARS = 2045;
 export const MAX_COMMENT_BYTES = 2048;
+
+// Server-managed files that live next to the uploads but are not submissions.
+export const INTERNAL_FILES = [
+  COMMENTS_FILE,
+  FINAL_MANIFEST_FILE,
+  FINAL_REPOSITORY_FILE,
+];
+
+/**
+ * Rows of a team's FINAL folder (`FINAL/{team}/`). The FINAL submission is the
+ * only team-wide folder, so it is identified by having no owner rather than by
+ * its week number: files stored before Semana 7 pushed FINAL_WEEK from 7 to 8
+ * still belong to it.
+ */
+export function finalFolderWhere(teamId: string) {
+  return { teamId, userId: null };
+}
 
 // A week's folder may hold up to 256 MB in total (across all files), not a
 // per-file cap. Used to block uploads that would exceed the weekly allowance
@@ -60,13 +86,13 @@ export function sanitizeSegment(value: string): string {
     .replace(/[^\w.[\]()+-]/g, "");
 }
 
-/** First path segment for a week: "Semana-2"…"Semana-6" or "FINAL" for the final week. */
+/** First path segment for a week: "Semana-2"…"Semana-7" or "FINAL" for the final week. */
 export function weekSegment(week: number): string {
   return week === FINAL_WEEK ? "FINAL" : `Semana-${week}`;
 }
 
 /**
- * Build the folder prefix `{Semana-[2-6]|FINAL}/{teamName}` that every object
+ * Build the folder prefix `{Semana-[2-7]|FINAL}/{teamName}` that every object
  * of a week lives under. The user segment is only included for individual
  * weeks, where each member gets their own private subfolder.
  */
@@ -94,8 +120,8 @@ export function teamUploadFolderPath(
 }
 
 /**
- * Build the folder path for a user's private week (weeks 2-6):
- * `{Semana-[2-6]}/{teamName}/{userName}/{fileName}`. Used to display and to
+ * Build the folder path for a user's private week (weeks 2-7):
+ * `{Semana-[2-7]}/{teamName}/{userName}/{fileName}`. Used to display and to
  * locate older uploads of the same file.
  */
 export function userUploadFolderPath(
@@ -126,7 +152,7 @@ function folderBase(
 
 /**
  * Strip the folder prefix a renamed object carries
- * (`{Semana-[1-5]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
+ * (`{Semana-[2-7]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
  * file name. Kept deterministic so the object name on UploadThing is exactly
  * the folder path + file name.
  */
@@ -169,12 +195,20 @@ export function bustListAllFilesCache() {
 
 /** List every file currently stored on UploadThing (paginated). */
 async function listAllFiles() {
+  return (await listAllFilesSnapshot()).files;
+}
+
+/** Same listing, plus when it was taken (it may come from the cache). */
+async function listAllFilesSnapshot(): Promise<{
+  at: number;
+  files: { key: string; customId: string }[];
+}> {
   const cacheKey = "__ut_list_all_files_cache__";
   const ttlMs = 10_000;
   const cached = (globalThis as unknown as Record<string, unknown>)[cacheKey] as
     | { at: number; files: { key: string; customId: string }[] }
     | undefined;
-  if (cached && Date.now() - cached.at < ttlMs) return cached.files;
+  if (cached && Date.now() - cached.at < ttlMs) return cached;
 
   const files: { key: string; customId: string }[] = [];
   let offset = 0;
@@ -189,11 +223,9 @@ async function listAllFiles() {
     offset = files.length;
   }
 
-  (globalThis as unknown as Record<string, unknown>)[cacheKey] = {
-    at: Date.now(),
-    files,
-  };
-  return files;
+  const snapshot = { at: Date.now(), files };
+  (globalThis as unknown as Record<string, unknown>)[cacheKey] = snapshot;
+  return snapshot;
 }
 
 /**
@@ -204,24 +236,28 @@ async function listAllFiles() {
  * when clicked. Here we build the set of keys/customIds still present on
  * UploadThing and drop any DB record that no longer has a backing file, so
  * the displayed list always matches reality.
+ *
+ * A record written after the listing was taken (the listing can be a cached
+ * snapshot up to 10 s old) cannot be judged by it and is always kept —
+ * otherwise a file stored a moment ago would be deleted as "stale".
  */
 async function reconcileWithStorage<
-  T extends { id: string; fileKey: string; customId: string },
+  T extends { id: string; fileKey: string; customId: string; updatedAt?: Date },
 >(records: T[]): Promise<T[]> {
   if (records.length === 0) return records;
 
-  const stored = await listAllFiles();
+  const { at, files: stored } = await listAllFilesSnapshot();
   const liveKeys = new Set(stored.map((f) => f.key));
   const liveCustomIds = new Set(
     stored.filter((f) => f.customId).map((f) => f.customId),
   );
+  const isLive = (r: T) =>
+    liveKeys.has(r.fileKey) ||
+    liveCustomIds.has(r.customId) ||
+    (r.updatedAt != null && r.updatedAt.getTime() >= at - 5_000);
 
-  const alive = records.filter(
-    (r) => liveKeys.has(r.fileKey) || liveCustomIds.has(r.customId),
-  );
-  const stale = records.filter(
-    (r) => !liveKeys.has(r.fileKey) && !liveCustomIds.has(r.customId),
-  );
+  const alive = records.filter(isLive);
+  const stale = records.filter((r) => !isLive(r));
 
   if (stale.length > 0) {
     await db.teamUpload
@@ -285,7 +321,7 @@ export type TeamUploadRecord = {
 
 /**
  * Persist an upload record. Because the object name is deterministic
- * (`{Semana-[1-5]}/{team}/{user}/{filename}` for individual weeks,
+ * (`{Semana-[2-7]}/{team}/{user}/{filename}` for individual weeks,
  * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
  * previous record: the older DB row and storage file are freed here.
  *
@@ -334,7 +370,7 @@ async function currentTeamId(ctx: {
   return user?.teamId ?? null;
 }
 
-/** Total bytes currently stored for a week's folder (excludes COMMENTS.md). */
+/** Total bytes currently stored for a week's folder (excludes internal files). */
 export async function weekUsageBytes(
   client: typeof db,
   teamId: string,
@@ -343,12 +379,10 @@ export async function weekUsageBytes(
 ): Promise<number> {
   const rows = await client.teamUpload.findMany({
     where: {
-      teamId,
-      week,
-      NOT: { name: COMMENTS_FILE },
       // Individual weeks bill only the user's own subfolder; the FINAL week
       // counts the whole shared folder.
-      ...(isFinalWeek(week) ? {} : { userId }),
+      ...(isFinalWeek(week) ? finalFolderWhere(teamId) : { teamId, week, userId }),
+      name: { notIn: INTERNAL_FILES },
     },
     select: { fileSize: true },
   });
@@ -406,10 +440,8 @@ export async function appendCommentToFile(input: {
 
   const existing = await db.teamUpload.findFirst({
     where: {
-      teamId,
-      week,
+      ...(isFinalWeek(week) ? finalFolderWhere(teamId) : { teamId, week, userId }),
       name: COMMENTS_FILE,
-      ...(isFinalWeek(week) ? {} : { userId }),
     },
   });
 
@@ -471,7 +503,193 @@ export async function appendCommentToFile(input: {
   });
 }
 
+/** Contents of one of the server-managed JSON files in `FINAL/{team}/`. */
+async function readFinalJson(
+  client: typeof db,
+  teamId: string,
+  name: string,
+): Promise<string | null> {
+  const record = await client.teamUpload.findFirst({
+    where: { ...finalFolderWhere(teamId), name },
+  });
+  if (!record) return null;
+  try {
+    const res = await fetch(record.fileUrl, { cache: "no-store" });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Store (replace) a server-managed JSON file at `FINAL/{team}/{name}`. */
+async function writeFinalJson(
+  client: typeof db,
+  teamId: string,
+  teamName: string,
+  name: string,
+  body: unknown,
+): Promise<void> {
+  const fileName = teamUploadFolderPath(teamName, FINAL_WEEK, name);
+  const [uploaded] = await utapi.uploadFiles([
+    new File([JSON.stringify(body, null, 2)], fileName, {
+      type: "application/json",
+    }),
+  ]);
+  if (!uploaded?.data) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "No se pudo guardar la entrega final",
+    });
+  }
+
+  await recordTeamUpload({
+    teamId,
+    week: FINAL_WEEK,
+    name,
+    fileKey: uploaded.data.key,
+    customId: fileName,
+    fileUrl: uploaded.data.ufsUrl,
+    fileSize: uploaded.data.size ?? null,
+    fileType: "application/json",
+    userId: null,
+  });
+  bustListAllFilesCache();
+}
+
+/**
+ * The team's FINAL deliverables: which file fills each slot (ENTREGAS.json)
+ * and the repository link (repositorio.json, kept apart so saving the link
+ * never rewrites the slot assignments).
+ */
+export async function readFinalManifest(
+  client: typeof db,
+  teamId: string,
+): Promise<FinalManifest> {
+  const [manifestText, repositoryText] = await Promise.all([
+    readFinalJson(client, teamId, FINAL_MANIFEST_FILE),
+    readFinalJson(client, teamId, FINAL_REPOSITORY_FILE),
+  ]);
+  return {
+    files: parseFinalManifest(manifestText).files,
+    repository: parseFinalRepository(repositoryText),
+  };
+}
+
+/** Read-modify-write the slot assignments in `FINAL/{team}/ENTREGAS.json`. */
+export async function updateFinalManifest(
+  client: typeof db,
+  teamId: string,
+  teamName: string,
+  mutate: (files: FinalManifest["files"]) => void,
+): Promise<void> {
+  const { files } = parseFinalManifest(
+    await readFinalJson(client, teamId, FINAL_MANIFEST_FILE),
+  );
+  mutate(files);
+  await writeFinalJson(client, teamId, teamName, FINAL_MANIFEST_FILE, { files });
+}
+
+/**
+ * Mark a freshly uploaded FINAL file as the team's `deliverable`. Each slot
+ * holds a single file, so whatever filled it before (under another name) is
+ * deleted from storage and the DB.
+ */
+export async function assignFinalDeliverable(input: {
+  client: typeof db;
+  teamId: string;
+  teamName: string;
+  fileName: string;
+  deliverable: FinalFileDeliverableKey;
+}): Promise<void> {
+  const { client, teamId, teamName, fileName, deliverable } = input;
+  let replaced: string[] = [];
+
+  await updateFinalManifest(client, teamId, teamName, (files) => {
+    replaced = Object.entries(files)
+      .filter(([name, key]) => key === deliverable && name !== fileName)
+      .map(([name]) => name);
+    for (const name of replaced) delete files[name];
+    files[fileName] = deliverable;
+  });
+
+  if (replaced.length === 0) return;
+  const previous = await client.teamUpload.findMany({
+    where: { ...finalFolderWhere(teamId), name: { in: replaced } },
+    select: { id: true, fileKey: true },
+  });
+  if (previous.length === 0) return;
+  await utapi
+    .deleteFiles(previous.map((row) => row.fileKey))
+    .catch(() => undefined);
+  await client.teamUpload.deleteMany({
+    where: { id: { in: previous.map((row) => row.id) } },
+  });
+}
+
+export const finalDeliverableSchema = z.enum(FINAL_FILE_DELIVERABLE_KEYS);
+
 export const uploadRouter = createTRPCRouter({
+  /** Which file fills each FINAL deliverable, plus the repository link. */
+  getFinalDeliverables: protectedProcedure.query(async ({ ctx }) => {
+    const teamId = await currentTeamId(ctx);
+    if (!teamId) return parseFinalManifest(null);
+    return readFinalManifest(ctx.db, teamId);
+  }),
+
+  /** Save (or clear, with null) the FINAL repository link. */
+  saveFinalRepository: protectedProcedure
+    .input(
+      z.object({
+        url: z
+          .string()
+          .trim()
+          .url("Escribe un enlace válido")
+          .max(500)
+          .refine(
+            (url) => /^https?:\/\//i.test(url),
+            "El enlace debe empezar con http:// o https://",
+          )
+          .nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const teamId = await currentTeamId(ctx);
+      if (!teamId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Debes pertenecer a un equipo para entregar",
+        });
+      }
+      const team = await ctx.db.team.findUnique({
+        where: { id: teamId },
+        select: { name: true },
+      });
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No se encontró el equipo" });
+      }
+      // `FINAL/{team}/repositorio.json` holds only the link; clearing the
+      // link removes the file.
+      if (input.url) {
+        await writeFinalJson(ctx.db, teamId, team.name, FINAL_REPOSITORY_FILE, {
+          repository: input.url,
+        });
+      } else {
+        const existing = await ctx.db.teamUpload.findMany({
+          where: { ...finalFolderWhere(teamId), name: FINAL_REPOSITORY_FILE },
+          select: { id: true, fileKey: true },
+        });
+        if (existing.length > 0) {
+          await utapi
+            .deleteFiles(existing.map((row) => row.fileKey))
+            .catch(() => undefined);
+          await ctx.db.teamUpload.deleteMany({
+            where: { id: { in: existing.map((row) => row.id) } },
+          });
+        }
+      }
+      return { repository: input.url };
+    }),
+
   /** Every upload visible to the caller: their own individual weeks + the team-wide FINAL week. */
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const teamId = await currentTeamId(ctx);
@@ -479,28 +697,26 @@ export const uploadRouter = createTRPCRouter({
     const records = await ctx.db.teamUpload.findMany({
       where: {
         teamId,
-        // Weeks 1-5 are private (only the owner's files), the FINAL week is shared.
-        OR: [{ week: FINAL_WEEK }, { userId: ctx.session.user.id }],
+        // Weeks 2-7 are private (only the owner's files), the FINAL folder is shared.
+        OR: [{ userId: null }, { userId: ctx.session.user.id }],
       },
       orderBy: [{ week: "asc" }, { createdAt: "desc" }],
     });
     return reconcileWithStorage(records);
   }),
 
-  /** Uploads visible to the caller for a single week (1-7). */
+  /** Uploads visible to the caller for a single week (2-8, FINAL included). */
   getByWeek: protectedProcedure
     .input(z.object({ week: uploadWeekSchema }))
     .query(async ({ ctx, input }) => {
       const teamId = await currentTeamId(ctx);
       if (!teamId) return [];
       const records = await ctx.db.teamUpload.findMany({
-        where: {
-          teamId,
-          week: input.week,
-          // Individual weeks only surface the caller's own folder; the FINAL
-          // week is shared by the whole team.
-          ...(isFinalWeek(input.week) ? {} : { userId: ctx.session.user.id }),
-        },
+        // Individual weeks only surface the caller's own folder; the FINAL
+        // week is shared by the whole team.
+        where: isFinalWeek(input.week)
+          ? finalFolderWhere(teamId)
+          : { teamId, week: input.week, userId: ctx.session.user.id },
         orderBy: { createdAt: "desc" },
       });
       return reconcileWithStorage(records);
@@ -509,7 +725,7 @@ export const uploadRouter = createTRPCRouter({
   /**
    * Pre-upload gate: the client calls this BEFORE uploading to verify that the
    * target folder paths on UploadThing are clear. Any file that already lives
-   * in the caller's `{Semana-[1-5]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
+   * in the caller's `{Semana-[2-7]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
    * with the same name is freed so the upload cannot collide with a 409. Also
    * serves as a manual reconciliation when the realtime list refresh fails for
    * another account.
@@ -562,7 +778,7 @@ export const uploadRouter = createTRPCRouter({
    * The client only sends the new comment text; the server takes care of
    * reading the current COMMENTS.md, appending the comment, and re-storing the
    * file. This keeps every comment (terminated by \x04 and separated by a
-   * linebreak) inside a single per-user COMMENTS.md for weeks 1-5 (and a
+   * linebreak) inside a single per-user COMMENTS.md for weeks 2-7 (and a
    * shared one for FINAL) without the client having to download and re-upload
    * the whole file. The input is capped at MAX_COMMENT_CHARS characters and
    * MAX_COMMENT_BYTES bytes.
@@ -628,7 +844,8 @@ export const uploadRouter = createTRPCRouter({
       }
 
       // Individual weeks are private: only the owner can remove their files.
-      if (!isFinalWeek(upload.week) && upload.userId !== ctx.session.user.id) {
+      // The FINAL folder (no owner) is shared by the whole team.
+      if (upload.userId !== null && upload.userId !== ctx.session.user.id) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No puedes eliminar archivos de otra persona",
@@ -641,6 +858,19 @@ export const uploadRouter = createTRPCRouter({
       // leftover via `clearFolderConflicts`.
       await utapi.deleteFiles(upload.fileKey).catch(() => undefined);
       await ctx.db.teamUpload.delete({ where: { id: upload.id } });
+
+      // A removed FINAL file no longer fills its deliverable slot.
+      if (upload.userId === null) {
+        const team = await ctx.db.team.findUnique({
+          where: { id: teamId },
+          select: { name: true },
+        });
+        if (team) {
+          await updateFinalManifest(ctx.db, teamId, team.name, (files) => {
+            delete files[upload.name];
+          });
+        }
+      }
 
       return { success: true };
     }),

@@ -16,8 +16,12 @@ import {
 } from "~/lib/intro-meeting";
 import {
   COMMENTS_FILE,
+  finalFolderWhere,
+  INTERNAL_FILES,
+  isFinalWeek,
   MIN_UPLOAD_WEEK,
   MAX_UPLOAD_WEEK,
+  readFinalManifest,
 } from "./upload";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
@@ -429,8 +433,8 @@ export const mentorRouter = createTRPCRouter({
 
   /*
    * Fetch uploads + comments for every member of a team for a given week.
-   * Mapping: tracking week 2-6 → individual uploads, week 7 → FINAL (shared).
-   * Weeks 1 and 8+ return empty arrays (no uploads expected).
+   * Mapping: tracking weeks 2-7 → individual uploads, week 8 (FINAL_WEEK) → FINAL (shared).
+   * Weeks outside MIN_UPLOAD_WEEK..MAX_UPLOAD_WEEK are rejected by the input schema.
    */
   getTeamWeekUploads: mentorProcedure
     .input(
@@ -442,12 +446,18 @@ export const mentorRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       await assertMentorsTeam(ctx.db, ctx.session.user.id, input.teamId);
 
-      // Fetch all uploads for this team + week (excluding COMMENTS.md).
+      // The FINAL folder is matched by having no owner (see finalFolderWhere),
+      // individual weeks by their number.
+      const isFinal = isFinalWeek(input.week);
+      const weekWhere = isFinal
+        ? finalFolderWhere(input.teamId)
+        : { teamId: input.teamId, week: input.week };
+
+      // Fetch all uploads for this team + week (excluding internal files).
       const uploads = await ctx.db.teamUpload.findMany({
         where: {
-          teamId: input.teamId,
-          week: input.week,
-          NOT: { name: COMMENTS_FILE },
+          ...weekWhere,
+          name: { notIn: INTERNAL_FILES },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -465,8 +475,7 @@ export const mentorRouter = createTRPCRouter({
       // record for the FINAL week.
       const commentRecords = await ctx.db.teamUpload.findMany({
         where: {
-          teamId: input.teamId,
-          week: input.week,
+          ...weekWhere,
           name: COMMENTS_FILE,
         },
       });
@@ -520,7 +529,12 @@ export const mentorRouter = createTRPCRouter({
       const finalFiles = filesByUser.get("__final__") ?? [];
       const finalComments = commentsByUser.get("__final__") ?? [];
 
-      return { memberUploads, finalFiles, finalComments };
+      // Which file fills each hardcoded FINAL deliverable + the repo link.
+      const finalManifest = isFinal
+        ? await readFinalManifest(ctx.db, input.teamId)
+        : null;
+
+      return { memberUploads, finalFiles, finalComments, finalManifest };
     }),
 
   /*

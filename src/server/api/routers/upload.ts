@@ -32,11 +32,11 @@ export {
  * Upload microservice.
  *
  * Handles uploads organized in folders on UploadThing with the shape:
- *   {Semana-[2-7]}/{teamName}/{userName}/{file}  -- individual weeks
+ *   {Semana-[2-6]}/{teamName}/{userName}/{file}  -- individual weeks
  *   FINAL/{teamName}/{file}                        -- final submission, team-wide
  * and persists every upload (and its folder path) in the database via Prisma.
  *
- * Weeks 2-7 are private to the user who uploaded them: only the owner sees
+ * Weeks 2-6 are private to the user who uploaded them: only the owner sees
  * their own folder. The FINAL week is shared by the whole team.
  */
 
@@ -58,8 +58,8 @@ export const INTERNAL_FILES = [
 /**
  * Rows of a team's FINAL folder (`FINAL/{team}/`). The FINAL submission is the
  * only team-wide folder, so it is identified by having no owner rather than by
- * its week number: files stored before Semana 7 pushed FINAL_WEEK from 7 to 8
- * still belong to it.
+ * its week number: files stored while FINAL_WEEK was 8 (when a Semana 7
+ * briefly existed) still belong to it.
  */
 export function finalFolderWhere(teamId: string) {
   return { teamId, userId: null };
@@ -86,13 +86,13 @@ export function sanitizeSegment(value: string): string {
     .replace(/[^\w.[\]()+-]/g, "");
 }
 
-/** First path segment for a week: "Semana-2"…"Semana-7" or "FINAL" for the final week. */
+/** First path segment for a week: "Semana-2"…"Semana-6" or "FINAL" for the final week. */
 export function weekSegment(week: number): string {
   return week === FINAL_WEEK ? "FINAL" : `Semana-${week}`;
 }
 
 /**
- * Build the folder prefix `{Semana-[2-7]|FINAL}/{teamName}` that every object
+ * Build the folder prefix `{Semana-[2-6]|FINAL}/{teamName}` that every object
  * of a week lives under. The user segment is only included for individual
  * weeks, where each member gets their own private subfolder.
  */
@@ -120,8 +120,8 @@ export function teamUploadFolderPath(
 }
 
 /**
- * Build the folder path for a user's private week (weeks 2-7):
- * `{Semana-[2-7]}/{teamName}/{userName}/{fileName}`. Used to display and to
+ * Build the folder path for a user's private week (weeks 2-6):
+ * `{Semana-[2-6]}/{teamName}/{userName}/{fileName}`. Used to display and to
  * locate older uploads of the same file.
  */
 export function userUploadFolderPath(
@@ -152,7 +152,7 @@ function folderBase(
 
 /**
  * Strip the folder prefix a renamed object carries
- * (`{Semana-[2-7]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
+ * (`{Semana-[2-6]}/{team}/{user}/` or `FINAL/{team}/`) and return the original
  * file name. Kept deterministic so the object name on UploadThing is exactly
  * the folder path + file name.
  */
@@ -321,7 +321,7 @@ export type TeamUploadRecord = {
 
 /**
  * Persist an upload record. Because the object name is deterministic
- * (`{Semana-[2-7]}/{team}/{user}/{filename}` for individual weeks,
+ * (`{Semana-[2-6]}/{team}/{user}/{filename}` for individual weeks,
  * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
  * previous record: the older DB row and storage file are freed here.
  *
@@ -697,7 +697,7 @@ export const uploadRouter = createTRPCRouter({
     const records = await ctx.db.teamUpload.findMany({
       where: {
         teamId,
-        // Weeks 2-7 are private (only the owner's files), the FINAL folder is shared.
+        // Weeks 2-6 are private (only the owner's files), the FINAL folder is shared.
         OR: [{ userId: null }, { userId: ctx.session.user.id }],
       },
       orderBy: [{ week: "asc" }, { createdAt: "desc" }],
@@ -725,7 +725,7 @@ export const uploadRouter = createTRPCRouter({
   /**
    * Pre-upload gate: the client calls this BEFORE uploading to verify that the
    * target folder paths on UploadThing are clear. Any file that already lives
-   * in the caller's `{Semana-[2-7]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
+   * in the caller's `{Semana-[2-6]}/{team}/{user}/*` (or `FINAL/{team}/*`) folder
    * with the same name is freed so the upload cannot collide with a 409. Also
    * serves as a manual reconciliation when the realtime list refresh fails for
    * another account.
@@ -778,7 +778,7 @@ export const uploadRouter = createTRPCRouter({
    * The client only sends the new comment text; the server takes care of
    * reading the current COMMENTS.md, appending the comment, and re-storing the
    * file. This keeps every comment (terminated by \x04 and separated by a
-   * linebreak) inside a single per-user COMMENTS.md for weeks 2-7 (and a
+   * linebreak) inside a single per-user COMMENTS.md for weeks 2-6 (and a
    * shared one for FINAL) without the client having to download and re-upload
    * the whole file. The input is capped at MAX_COMMENT_CHARS characters and
    * MAX_COMMENT_BYTES bytes.

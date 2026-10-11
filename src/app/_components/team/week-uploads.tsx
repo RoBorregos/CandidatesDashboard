@@ -10,13 +10,18 @@ import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
   FINAL_WEEK,
+  FINAL_WEEK_VISIBLE,
   weekAssignedAt,
   weekDueAt,
 } from "~/lib/weeks";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
-const WEEKS = [2, 3, 4, 5, 6, 7, "FINAL"] as const;
-type WeekKey = (typeof WEEKS)[number];
+const ALL_WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
+type WeekKey = (typeof ALL_WEEKS)[number];
+// FINAL stays out of the tabs until it is opened in ~/lib/weeks.
+const WEEKS: readonly WeekKey[] = FINAL_WEEK_VISIBLE
+  ? ALL_WEEKS
+  : ALL_WEEKS.filter((w) => w !== "FINAL");
 
 const WEEK_LABELS: Record<WeekKey, string> = {
   2: "Semana 2",
@@ -24,7 +29,6 @@ const WEEK_LABELS: Record<WeekKey, string> = {
   4: "Semana 4",
   5: "Semana 5",
   6: "Semana 6",
-  7: "Semana 7",
   FINAL: "Final",
 };
 
@@ -36,7 +40,7 @@ const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? FINAL_WEEK :
 // always starting at week 2, which by now is mostly history.
 const DEFAULT_WEEK: WeekKey = WEEKS.includes(CURRENT_WEEK as WeekKey)
   ? (CURRENT_WEEK as WeekKey)
-  : WEEKS[0];
+  : ALL_WEEKS[0];
 
 // "sáb 12 sep 2026, 11:59 p. m." — schedule dates are hardcoded in
 // ~/lib/weeks and always shown in the event's time zone.
@@ -105,9 +109,11 @@ export default function WeekUploads({
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Las semanas 2 a 7 son personales
-        (solo tú ves tus archivos); la entrega final es compartida con todo tu
-        equipo.
+        Sube aquí los archivos de cada semana. Las semanas 2 a 6 son personales
+        (solo tú ves tus archivos)
+        {FINAL_WEEK_VISIBLE
+          ? "; la entrega final es compartida con todo tu equipo."
+          : "."}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -446,7 +452,7 @@ function WeekFiles({
     uploadedBytes + pendingFiles.reduce((sum, f) => sum + f.size, 0);
   const weeklyPct = Math.min(100, (weeklyUsageBytes / MAX_WEEK_BYTES) * 100);
 
-  // Weeks 2-7 live in the caller's private folder; the FINAL week is shared by
+  // Weeks 2-6 live in the caller's private folder; the FINAL week is shared by
   // the whole team in a single folder.
   const folderLabel =
     week === "FINAL"

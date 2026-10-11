@@ -22,13 +22,22 @@ export const CURRENT_WEEK = 6;
 export const MIN_UPLOAD_WEEK = 2;
 
 /** Last numbered week: individual (per-user) folders only go up to this. */
-export const MAX_INDIVIDUAL_WEEK = 7;
+export const MAX_INDIVIDUAL_WEEK = 6;
 
 /**
  * Reserved week number for the shared team-wide final submission. It sits
- * right after the last individual week (it was 7 until Semana 7 was added).
+ * right after the last individual week.
  */
 export const FINAL_WEEK = MAX_INDIVIDUAL_WEEK + 1;
+
+/**
+ * Whether the FINAL week is shown in the team upload tabs and the mentor's
+ * weekly tracking. Hidden for now; flip to true to open it.
+ */
+export const FINAL_WEEK_VISIBLE = false;
+
+/** Last week the UI lets people navigate to. */
+export const LAST_VISIBLE_WEEK = FINAL_WEEK_VISIBLE ? FINAL_WEEK : MAX_INDIVIDUAL_WEEK;
 
 /** Last week accepted by the upload endpoints (the final week included). */
 export const MAX_UPLOAD_WEEK = FINAL_WEEK;
@@ -51,7 +60,7 @@ export const LATE_TAG_LABEL = "Tardío";
  *
  * Sat 12 Sep 2026, 23:59:59 (America/Monterrey) gives:
  *   week 3 → Sep 19 · week 4 → Sep 26 · week 5 → Oct 3
- *   week 6 → Oct 10 · week 7 → Oct 17 · FINAL → Oct 24
+ *   week 6 → Oct 10 · FINAL → Oct 17
  *
  * The offset is written explicitly instead of relying on a zone name:
  * Monterrey has no daylight saving since 2022, so -06:00 holds all year.

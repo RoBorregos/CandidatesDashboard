@@ -1,5 +1,5 @@
 /*
- * The FINAL submission is not a free-form folder like weeks 2-7: every team
+ * The FINAL submission is not a free-form folder like weeks 2-6: every team
  * hands in exactly these four deliverables. Files keep their original name
  * inside `FINAL/{team}/` — which slot each one fills is recorded in the
  * folder's FINAL_MANIFEST_FILE, and the repository link (which is not a file

@@ -144,7 +144,7 @@ export const ourFileRouter = {
         throw new Error("La semana excedería el límite de 256 MB");
       }
 
-      // Rename each object to `{Semana-[2-7]}/{team}/{user}/{file}` for
+      // Rename each object to `{Semana-[2-6]}/{team}/{user}/{file}` for
       // individual weeks and `FINAL/{team}/{file}` for the final, so
       // UploadThing shows the file inside its per-user / team folder. We
       // deliberately do NOT set a customId: a repeated customId is what makes

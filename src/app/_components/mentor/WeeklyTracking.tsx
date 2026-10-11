@@ -11,8 +11,8 @@ import {
   type RubricCriterionKey,
 } from "~/lib/rubric";
 import {
-  FINAL_WEEK,
   isFinalWeek,
+  LAST_VISIBLE_WEEK,
   MAX_UPLOAD_WEEK,
   MIN_UPLOAD_WEEK,
 } from "~/lib/weeks";
@@ -71,7 +71,7 @@ export default function WeeklyTracking({
   teamId: string;
   initialWeek: number;
 }) {
-  const [week, setWeek] = useState(initialWeek);
+  const [week, setWeek] = useState(Math.min(initialWeek, LAST_VISIBLE_WEEK));
   const layout = weekLayout(week);
 
   const utils = api.useUtils();
@@ -80,7 +80,7 @@ export default function WeeklyTracking({
     { teamId, week },
   );
 
-  // Weeks 2-7 show each member's own uploads; FINAL_WEEK shows the team's
+  // Weeks 2-6 show each member's own uploads; FINAL_WEEK shows the team's
   // shared final submission.
   const uploadsQueryEnabled = week >= MIN_UPLOAD_WEEK && week <= MAX_UPLOAD_WEEK;
   const isFinal = isFinalWeek(week);
@@ -434,10 +434,10 @@ export default function WeeklyTracking({
             type="button"
             onClick={() =>
               setWeek((current) =>
-                Math.min(Math.min(MAX_TRACKING_WEEK, FINAL_WEEK), current + 1),
+                Math.min(Math.min(MAX_TRACKING_WEEK, LAST_VISIBLE_WEEK), current + 1),
               )
             }
-            disabled={week >= Math.min(MAX_TRACKING_WEEK, FINAL_WEEK)}
+            disabled={week >= Math.min(MAX_TRACKING_WEEK, LAST_VISIBLE_WEEK)}
             className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             →

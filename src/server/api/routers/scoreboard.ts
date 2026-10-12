@@ -18,6 +18,8 @@ import { Round } from "rbrgs/lib/round";
 import {
   compareTeams,
   countedRuns,
+  hiddenScoreRound,
+  latestByTeamAndRound,
   ROUND_NUMBERS,
   type TrackRun,
 } from "rbrgs/lib/scoring";
@@ -33,22 +35,6 @@ export type TrackTeamScores = {
   /** Seconds used in the counted runs; less wins a tie. */
   tiebreakSeconds: number;
 };
-
-/**
- * Latest run per team and round. A judge who re-submits replaces the earlier
- * evaluation instead of adding to it.
- */
-function latestByTeamAndRound<
-  T extends { teamId: string; round: number; createdAt: Date },
->(runs: T[]): Map<string, T> {
-  const latest = new Map<string, T>();
-  for (const run of runs) {
-    const key = `${run.teamId}:${run.round}`;
-    const current = latest.get(key);
-    if (!current || run.createdAt > current.createdAt) latest.set(key, run);
-  }
-  return latest;
-}
 
 export const scoreboardRouter = createTRPCRouter({
   getScoreboard: publicProcedure.query(async ({ ctx }) => {
@@ -180,11 +166,7 @@ export const scoreboardRouter = createTRPCRouter({
   getTrackScoreboard: publicProcedure.query(async ({ ctx }) => {
     const config = await ctx.db.config.findFirst();
     const isAdmin = ctx.session?.user.role == Role.ADMIN;
-    // While frozen, the last round stays hidden from everyone but admins.
-    const hiddenRound =
-      (config?.freeze ?? false) && !isAdmin
-        ? ROUND_NUMBERS[ROUND_NUMBERS.length - 1]
-        : null;
+    const hiddenRound = hiddenScoreRound(config?.freeze ?? false, isAdmin);
 
     const [teams, mazeRuns, levelsRuns] = await Promise.all([
       ctx.db.team.findMany({

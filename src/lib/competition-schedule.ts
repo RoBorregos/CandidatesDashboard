@@ -74,6 +74,28 @@ export const TRACKS = {
   B: ["Pista B1", "Pista B2"],
 } as const;
 
+export type TrackKind = keyof typeof TRACKS;
+
+/** What each track is called on the teams' pages. */
+export const TRACK_NAMES: Record<TrackKind, string> = {
+  A: "Maze",
+  B: "Levels",
+};
+
+/**
+ * "Pista A1" → { track: "A", lane: "A1" }. Older names without a lane number
+ * ("Challenge 1 - Pista B") still map to their track. 2025's Pista C runs are
+ * ignored: the 2026 edition only has tracks A and B.
+ */
+export function parseTrack(
+  name: string,
+): { track: TrackKind; lane: string } | null {
+  const match = /(?:pista|track)\s*([ab])\s*(\d)?/i.exec(name);
+  if (!match?.[1]) return null;
+  const track = match[1].toUpperCase() as TrackKind;
+  return { track, lane: `${track}${match[2] ?? ""}` };
+}
+
 /** Builds a Date for an HH:MM time on competition day, in Mexico City time. */
 export function competitionTime(
   hhmm: string,
@@ -164,9 +186,20 @@ export function trackLayout(teamCount: number): TrackLayout {
   return { pairs, cycle, offset, segments };
 }
 
+/** Fisher-Yates shuffle into a new array, so each round gets its own order. */
+export function shuffled<T>(items: T[], random: () => number = Math.random) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
+}
+
 /**
  * Lays out both runs of every team in every round (see trackLayout).
- * Teams 2j and 2j + 1 form pair j and use lanes 1 and 2.
+ * Teams 2j and 2j + 1 form pair j and use lanes 1 and 2, so the order of
+ * teamIds is the order teams run in (callers shuffle it per round).
  *
  * Throws if the runs do not fit inside a round window.
  */

@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
@@ -7,6 +8,12 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { roleAfterJoiningTeam, roleAfterLeavingTeam } from "~/lib/roles";
+import {
+  countedRuns,
+  hiddenScoreRound,
+  latestByTeamAndRound,
+  ROUND_NUMBERS,
+} from "~/lib/scoring";
 
 export const teamRouter = createTRPCRouter({
   createTeam: protectedProcedure
@@ -159,6 +166,90 @@ export const teamRouter = createTRPCRouter({
     return { success: true };
   }),
 
+  /**
+   * 2026 scores of the user's own team, one entry per round with the latest
+   * Maze and Levels evaluation (null until judged). Follows the scoreboard:
+   * the last round stays hidden while it is frozen, and `counted` marks the
+   * runs that make up the track totals.
+   */
+  getMyTrackScores: protectedProcedure.query(async ({ ctx }) => {
+    // Read from the database, like getTeam: the session can lag behind.
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { teamId: true },
+    });
+    const teamId = user?.teamId;
+    if (!teamId) return null;
+
+    const [config, mazeRuns, levelsRuns] = await Promise.all([
+      ctx.db.config.findFirst(),
+      ctx.db.mazeRun.findMany({ where: { edition: 2026, teamId } }),
+      ctx.db.levelsRun.findMany({ where: { edition: 2026, teamId } }),
+    ]);
+    const hiddenRound = hiddenScoreRound(
+      config?.freeze ?? false,
+      ctx.session.user.role === Role.ADMIN,
+    );
+
+    const maze = latestByTeamAndRound(mazeRuns);
+    const levels = latestByTeamAndRound(levelsRuns);
+    const visibleRounds = ROUND_NUMBERS.filter((n) => n !== hiddenRound);
+    const runsOf = <T extends { points: number; runSeconds: number }>(
+      latest: Map<string, T>,
+    ) =>
+      visibleRounds.flatMap((round) => {
+        const run = latest.get(`${teamId}:${round}`);
+        return run
+          ? [{ round, points: run.points, seconds: run.runSeconds }]
+          : [];
+      });
+
+    const countedMaze = countedRuns(runsOf(maze));
+    const countedLevels = countedRuns(runsOf(levels));
+    const sum = (runs: { points: number }[]) =>
+      runs.reduce((total, run) => total + run.points, 0);
+
+    return {
+      hiddenRound,
+      mazeTotal: sum(countedMaze),
+      levelsTotal: sum(countedLevels),
+      rounds: visibleRounds.map((round) => {
+        const mazeRun = maze.get(`${teamId}:${round}`);
+        const levelsRun = levels.get(`${teamId}:${round}`);
+        return {
+          round,
+          maze: mazeRun
+            ? {
+                points: mazeRun.points,
+                runSeconds: mazeRun.runSeconds,
+                lackOfProgress: mazeRun.lackOfProgress,
+                detectedColors: mazeRun.detectedColors,
+                speedbumps: mazeRun.speedbumps,
+                staircases: mazeRun.staircases,
+                crossedRamp: mazeRun.crossedRamp,
+                reachedFinalCheckpoint: mazeRun.reachedFinalCheckpoint,
+                returnBonus: mazeRun.returnBonus,
+                arucoBonus: mazeRun.arucoBonus,
+                counted: countedMaze.some((run) => run.round === round),
+              }
+            : null,
+          levels: levelsRun
+            ? {
+                points: levelsRun.points,
+                runSeconds: levelsRun.runSeconds,
+                lackOfProgress: levelsRun.lackOfProgress,
+                tookBall: levelsRun.tookBall,
+                section1: levelsRun.section1,
+                section2: levelsRun.section2,
+                section3: levelsRun.section3,
+                counted: countedLevels.some((run) => run.round === round),
+              }
+            : null,
+        };
+      }),
+    };
+  }),
+
   // Get visible schedules for all active teams (public access)
   getVisibleSchedules: publicProcedure.query(async ({ ctx }) => {
     const teams = await ctx.db.team.findMany({
@@ -187,7 +278,6 @@ export const teamRouter = createTRPCRouter({
 
     return teams;
   }),
-
 });
 
 export type TeamType =

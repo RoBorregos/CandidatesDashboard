@@ -184,3 +184,24 @@ export type RankedTeam = { total: number; tiebreakSeconds: number };
 export function compareTeams(a: RankedTeam, b: RankedTeam): number {
   return b.total - a.total || a.tiebreakSeconds - b.tiebreakSeconds;
 }
+
+/**
+ * Latest run per team and round. A judge who re-submits replaces the earlier
+ * evaluation instead of adding to it.
+ */
+export function latestByTeamAndRound<
+  T extends { teamId: string; round: number; createdAt: Date },
+>(runs: T[]): Map<string, T> {
+  const latest = new Map<string, T>();
+  for (const run of runs) {
+    const key = `${run.teamId}:${run.round}`;
+    const current = latest.get(key);
+    if (!current || run.createdAt > current.createdAt) latest.set(key, run);
+  }
+  return latest;
+}
+
+/** While the scoreboard is frozen, the last round stays hidden from all but admins. */
+export function hiddenScoreRound(frozen: boolean, isAdmin: boolean) {
+  return frozen && !isAdmin ? ROUND_NUMBERS[ROUND_NUMBERS.length - 1]! : null;
+}

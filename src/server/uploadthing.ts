@@ -4,11 +4,13 @@ import {
   UTFiles,
   type FileRouter,
 } from "uploadthing/next";
+import { UploadThingError } from "uploadthing/server";
 import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 import {
   appendCommentToFile,
   bustListAllFilesCache,
+  COMMENTS_FILE,
   finalDeliverableSchema,
   finalSlotFileName,
   finalUploadFolderPath,
@@ -25,7 +27,11 @@ import {
   weekUsageBytes,
 } from "~/server/api/routers/upload";
 import { isWeekOpen } from "~/lib/weeks";
-import { FINAL_REPOSITORY_FILE } from "~/lib/final-deliverables";
+import {
+  FINAL_REPOSITORY_FILE,
+  finalFileAccepted,
+  finalFileRejectedMessage,
+} from "~/lib/final-deliverables";
 import {
   ADVANCED_CLOSED_MESSAGE,
   advancedDueAt,
@@ -36,7 +42,18 @@ import {
 } from "~/server/api/routers/advanced-submission";
 
 const f = createUploadthing();
-const COMMENTS_FILE = "COMMENTS.md";
+
+/*
+ * Middleware rejections are thrown as UploadThingError: UploadThing hides the
+ * message of any other error from the client, which would then only see a
+ * generic code instead of the reason.
+ */
+function reject(
+  code: "BAD_REQUEST" | "FORBIDDEN" | "NOT_FOUND" | "TOO_LARGE",
+  message: string,
+): Error {
+  return new UploadThingError({ code, message });
+}
 
 /*
  * Advanced candidates hand in one bitácora and one demo video. Both routes
@@ -47,15 +64,15 @@ function advancedUploader(kind: AdvancedFileKind) {
   return async ({ files }: { files: readonly { name: string }[] }) => {
     const session = await getServerAuthSession();
     if (!session?.user?.id) {
-      throw new Error("Unauthorized");
+      throw reject("FORBIDDEN", "Inicia sesión para subir archivos");
     }
 
     const member = await findAdvancedMember(db, session.user.email);
     if (!member) {
-      throw new Error("Solo los candidatos avanzados pueden hacer esta entrega");
+      throw reject("FORBIDDEN", "Solo los candidatos avanzados pueden hacer esta entrega");
     }
     if (Date.now() > (await advancedDueAt(db)).getTime()) {
-      throw new Error(ADVANCED_CLOSED_MESSAGE);
+      throw reject("FORBIDDEN", ADVANCED_CLOSED_MESSAGE);
     }
 
     const userName = folderUserName(member.name, session.user.id);
@@ -85,12 +102,12 @@ export const ourFileRouter = {
     .middleware(async ({ files, input }) => {
       const session = await getServerAuthSession();
       if (!session?.user?.id) {
-        throw new Error("Unauthorized");
+        throw reject("FORBIDDEN", "Inicia sesión para subir archivos");
       }
 
       // Only the side an admin has open (weeks 2-6 or FINAL) takes uploads.
       if (!isWeekOpen(input.week, await finalSubmissionOpen(db))) {
-        throw new Error(weekClosedMessage(input.week));
+        throw reject("FORBIDDEN", weekClosedMessage(input.week));
       }
 
       const user = await db.user.findUnique({
@@ -98,7 +115,7 @@ export const ourFileRouter = {
         select: { teamId: true },
       });
       if (!user?.teamId) {
-        throw new Error("User isn't in a team");
+        throw reject("FORBIDDEN", "Debes pertenecer a un equipo para subir archivos");
       }
 
       const team = await db.team.findUnique({
@@ -106,7 +123,7 @@ export const ourFileRouter = {
         select: { name: true },
       });
       if (!team) {
-        throw new Error("Team not found");
+        throw reject("NOT_FOUND", "No se encontró el equipo");
       }
 
       // COMMENTS.md is managed server-side only (appendCommentToFile); block
@@ -115,7 +132,7 @@ export const ourFileRouter = {
         (f) => f.name.toUpperCase() === COMMENTS_FILE.toUpperCase(),
       );
       if (hasCommentsFile) {
-        throw new Error(`No se permite subir ${COMMENTS_FILE} directamente`);
+        throw reject("BAD_REQUEST", `No se permite subir ${COMMENTS_FILE} directamente`);
       }
       // Same for the FINAL repository link file.
       if (
@@ -123,17 +140,22 @@ export const ourFileRouter = {
           (f) => f.name.toUpperCase() === FINAL_REPOSITORY_FILE.toUpperCase(),
         )
       ) {
-        throw new Error(`No se permite subir ${FINAL_REPOSITORY_FILE} directamente`);
+        throw reject("BAD_REQUEST", `No se permite subir ${FINAL_REPOSITORY_FILE} directamente`);
       }
 
-      // The FINAL folder only takes its hardcoded deliverables, one file each.
+      // The FINAL folder only takes its hardcoded deliverables, one file each,
+      // in one of the formats the slot lists (the picker's `accept` is only a
+      // hint: drag and drop or a crafted request skip it).
       const deliverable = isFinalWeek(input.week) ? input.deliverable : undefined;
       if (isFinalWeek(input.week)) {
         if (!deliverable) {
-          throw new Error("Indica qué entrega final es este archivo");
+          throw reject("BAD_REQUEST", "Indica qué entrega final es este archivo");
         }
         if (files.length !== 1) {
-          throw new Error("Cada entrega final es un solo archivo");
+          throw reject("BAD_REQUEST", "Cada entrega final es un solo archivo");
+        }
+        if (!files.every((file) => finalFileAccepted(deliverable, file.name))) {
+          throw reject("BAD_REQUEST", finalFileRejectedMessage(deliverable));
         }
       }
 
@@ -147,10 +169,12 @@ export const ourFileRouter = {
         user.teamId,
         input.week,
         isFinalWeek(input.week) ? null : userId,
+        // A FINAL upload replaces its slot's file, which then no longer counts.
+        deliverable,
       );
       const incomingBytes = files.reduce((sum, f) => sum + (f.size ?? 0), 0);
       if (existingUsage + incomingBytes > MAX_WEEK_BYTES) {
-        throw new Error("La semana excedería el límite de 256 MB");
+        throw reject("TOO_LARGE", "La semana excedería el límite de 256 MB");
       }
 
       // Rename each object to `{Semana-[2-6]}/{team}/{user}/{file}` for
@@ -210,6 +234,7 @@ export const ourFileRouter = {
           teamId: metadata.teamId,
           fileName: name,
           deliverable: metadata.deliverable,
+          savedAt: record.updatedAt,
         });
       }
 

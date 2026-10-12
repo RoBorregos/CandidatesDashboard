@@ -5,6 +5,7 @@ import {
   finalDisplayName,
   finalSlotOf,
 } from "~/lib/final-deliverables";
+import { formatBytes } from "~/lib/uploads";
 import { FINAL_WEEK } from "~/lib/weeks";
 
 type FinalFile = {
@@ -15,16 +16,6 @@ type FinalFile = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-function formatBytes(bytes: number | null): string {
-  if (bytes == null || bytes <= 0) return "";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
 
 /**
  * Mentor view of the FINAL week: only what the team delivered — the four

@@ -7,6 +7,13 @@ import { useUploadThing } from "../uploadthing";
 import LateTag from "../late-tag";
 import FinalDeliverables from "./final-deliverables";
 import {
+  COMMENTS_FILE,
+  formatBytes,
+  MAX_COMMENT_BYTES,
+  MAX_COMMENT_CHARS,
+  MAX_WEEK_BYTES,
+} from "~/lib/uploads";
+import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
   FINAL_WEEK,
@@ -54,32 +61,12 @@ function formatScheduleDate(date: Date, withTime: boolean): string {
   });
 }
 
-// Comments for a week are accumulated into a single COMMENTS.md. A single
-// comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
-// bytes, and is terminated by \x04 so messages can be fragmented when read.
-const COMMENTS_FILE = "COMMENTS.md";
-const MAX_COMMENT_CHARS = 2045;
-const MAX_COMMENT_BYTES = 2048;
-// A week's folder may hold up to 256 MB across all files.
-const MAX_WEEK_BYTES = 256 * 1024 * 1024;
 // Show the bottom-right counter once the comment is within this many
 // characters of the limit.
 const COUNTER_THRESHOLD = 200;
 
 function byteLength(value: string): number {
   return new TextEncoder().encode(value).byteLength;
-}
-
-function formatBytes(bytes: number | null): string {
-  if (bytes == null) return "? B";
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  const value = bytes / 1024 ** i;
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 // Mirrors the server's sanitizeSegment: spaces become dashes and non-word
@@ -219,13 +206,14 @@ function WeekFiles({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadFailures, setUploadFailures] = useState<
-    { name: string; errCode: string; canceled: boolean }[]
+    { name: string; reason: string; canceled: boolean }[]
   >([]);
   const [showFailures, setShowFailures] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Holds the most recent UploadThing error code, read when a file upload
-  // settles so we can attribute it to the file that just failed.
-  const errorCodeRef = useRef("");
+  // Holds the most recent UploadThing error (the server's message, or the
+  // code when there is none), read when a file upload settles so we can
+  // attribute it to the file that just failed.
+  const errorRef = useRef("");
 
   const { startUpload, isUploading } = useUploadThing("teamUploader", {
     onBeforeUploadBegin: async (selectedFiles) => {
@@ -265,7 +253,7 @@ function WeekFiles({
     },
     onUploadError: (error) => {
       setUploadSucceeded(false);
-      errorCodeRef.current = error.code;
+      errorRef.current = error.message || error.code;
     },
   });
 
@@ -362,14 +350,14 @@ function WeekFiles({
     // codes. The comment is NOT attached here: appending it inside every
     // file's onUploadComplete made the completion handshake slow (and could
     // hang the UI at 100%). It is sent once afterwards via submitComment.
-    const failures: { name: string; errCode: string; canceled: boolean }[] = [];
+    const failures: { name: string; reason: string; canceled: boolean }[] = [];
     for (const file of attempted) {
-      errorCodeRef.current = "";
+      errorRef.current = "";
       const res = await startUpload([file], { week: weekNumber });
       if (!res || res.length === 0) {
         failures.push({
           name: file.name,
-          errCode: errorCodeRef.current || "UNKNOWN",
+          reason: errorRef.current || "error desconocido",
           canceled: false,
         });
       }
@@ -736,8 +724,8 @@ function WeekFiles({
             <ul className="mt-4 space-y-2">
               {uploadFailures.map((failure) => (
                 <li key={failure.name} className="text-sm text-red-400">
-                  El archivo {failure.name} no se pudo subir! Código de error:{" "}
-                  {failure.errCode}
+                  El archivo {failure.name} no se pudo subir:{" "}
+                  {failure.reason}
                   {failure.canceled && (
                     <span className="mt-1 block text-xs text-neutral-400">
                       La carga fue cancelada del lado del servidor.

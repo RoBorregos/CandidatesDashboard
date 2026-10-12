@@ -52,6 +52,28 @@ export const FINAL_FILE_DELIVERABLE_KEYS = FINAL_DELIVERABLES.filter(
   (d): d is Extract<FinalDeliverable, { kind: "file" }> => d.kind === "file",
 ).map((d) => d.key) as [FinalFileDeliverableKey, ...FinalFileDeliverableKey[]];
 
+/** Extensions a file slot takes, from its `accept` list (e.g. ".pdf"). */
+function acceptedExtensions(key: FinalFileDeliverableKey): string[] {
+  const deliverable = FINAL_DELIVERABLES.find((d) => d.key === key);
+  return deliverable ? deliverable.accept.split(",") : [];
+}
+
+/** Does `fileName` have one of the extensions the slot accepts? */
+export function finalFileAccepted(
+  key: FinalFileDeliverableKey,
+  fileName: string,
+): boolean {
+  const dot = fileName.lastIndexOf(".");
+  if (dot <= 0) return false;
+  return acceptedExtensions(key).includes(fileName.slice(dot).toLowerCase());
+}
+
+/** Error shown when a file doesn't match its slot's formats. */
+export function finalFileRejectedMessage(key: FinalFileDeliverableKey): string {
+  const label = FINAL_DELIVERABLES.find((d) => d.key === key)?.label ?? key;
+  return `${label} solo acepta archivos ${acceptedExtensions(key).join(", ")}`;
+}
+
 /**
  * Slot manifest older FINAL folders may still hold. Slots now come from the
  * `{slot}/` folder, so it is never read or written — only kept out of

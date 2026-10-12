@@ -52,7 +52,15 @@ export default function SubmissionPhaseControl() {
           role="switch"
           aria-checked={finalOpen}
           aria-label="Open FINAL submission"
-          onClick={() => setFinalOpen.mutate({ open: !finalOpen })}
+          onClick={() => {
+            // One click closes uploads for every team, so ask first.
+            const message = finalOpen
+              ? "Reopen weeks 2-6 and close the FINAL submission for every team?"
+              : "Open the FINAL submission and close weeks 2-6 for every team?";
+            if (window.confirm(message)) {
+              setFinalOpen.mutate({ open: !finalOpen });
+            }
+          }}
           disabled={disabled}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
             finalOpen ? "bg-roboblue" : "bg-gray-600"

@@ -18,10 +18,15 @@ import {
 import {
   FINAL_FILE_DELIVERABLE_KEYS,
   FINAL_REPOSITORY_FILE,
-  LEGACY_FINAL_MANIFEST_FILE,
   parseFinalRepository,
   type FinalFileDeliverableKey,
 } from "~/lib/final-deliverables";
+import {
+  COMMENTS_FILE,
+  INTERNAL_FILES,
+  MAX_COMMENT_BYTES,
+  MAX_COMMENT_CHARS,
+} from "~/lib/uploads";
 
 // Week numbering lives in ~/lib/weeks together with the delivery schedule
 // used for the late tag; re-exported here so existing imports keep working.
@@ -38,27 +43,23 @@ export {
  *
  * Handles uploads organized in folders on UploadThing with the shape:
  *   {Semana-[2-6]}/{teamName}/{userName}/{file}  -- individual weeks
- *   FINAL/{teamName}/{file}                        -- final submission, team-wide
+ *   FINAL/{teamName}/{slot}/{file}                 -- final submission, team-wide
  * and persists every upload (and its folder path) in the database via Prisma.
  *
  * Weeks 2-6 are private to the user who uploaded them: only the owner sees
  * their own folder. The FINAL week is shared by the whole team.
  */
 
-// Weekly comments are accumulated into a single COMMENTS.md. A single comment
-// (the "diff") is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
-// bytes, and every comment is terminated by \x04 so messages can be fragmented
-// when read back.
-export const COMMENTS_FILE = "COMMENTS.md";
-export const MAX_COMMENT_CHARS = 2045;
-export const MAX_COMMENT_BYTES = 2048;
-
-// Server-managed files that live next to the uploads but are not submissions.
-export const INTERNAL_FILES = [
+// Comment limits, the weekly size cap and the server-managed file names live
+// in ~/lib/uploads so the client screens share them; re-exported here so
+// existing imports keep working.
+export {
   COMMENTS_FILE,
-  FINAL_REPOSITORY_FILE,
-  LEGACY_FINAL_MANIFEST_FILE,
-];
+  INTERNAL_FILES,
+  MAX_COMMENT_BYTES,
+  MAX_COMMENT_CHARS,
+  MAX_WEEK_BYTES,
+} from "~/lib/uploads";
 
 /**
  * Rows of a team's FINAL folder (`FINAL/{team}/`). The FINAL submission is the
@@ -69,11 +70,6 @@ export const INTERNAL_FILES = [
 export function finalFolderWhere(teamId: string) {
   return { teamId, userId: null };
 }
-
-// A week's folder may hold up to 256 MB in total (across all files), not a
-// per-file cap. Used to block uploads that would exceed the weekly allowance
-// and to show usage in the UI.
-export const MAX_WEEK_BYTES = 256 * 1024 * 1024;
 
 export const uploadWeekSchema = z.number().int().min(MIN_UPLOAD_WEEK).max(MAX_UPLOAD_WEEK);
 
@@ -372,7 +368,7 @@ export type TeamUploadRecord = {
 /**
  * Persist an upload record. Because the object name is deterministic
  * (`{Semana-[2-6]}/{team}/{user}/{filename}` for individual weeks,
- * `FINAL/{team}/{filename}` for the final), re-uploading a file replaces the
+ * `FINAL/{team}/{slot}/{filename}` for the final), re-uploading a file replaces the
  * previous record: the older DB row and storage file are freed here.
  *
  * The record is keyed by its unique `customId` (the same deterministic path),
@@ -420,19 +416,29 @@ async function currentTeamId(ctx: {
   return user?.teamId ?? null;
 }
 
-/** Total bytes currently stored for a week's folder (excludes internal files). */
+/**
+ * Total bytes currently stored for a week's folder (excludes internal files).
+ * `replacingSlot` leaves out the FINAL slot an upload is about to replace, so
+ * swapping a file is judged by the size it ends up at, not old + new.
+ */
 export async function weekUsageBytes(
   client: typeof db,
   teamId: string,
   week: number,
   userId: string | null,
+  replacingSlot?: FinalFileDeliverableKey,
 ): Promise<number> {
   const rows = await client.teamUpload.findMany({
     where: {
       // Individual weeks bill only the user's own subfolder; the FINAL week
       // counts the whole shared folder.
       ...(isFinalWeek(week) ? finalFolderWhere(teamId) : { teamId, week, userId }),
-      name: { notIn: INTERNAL_FILES },
+      AND: [
+        { name: { notIn: INTERNAL_FILES } },
+        ...(replacingSlot
+          ? [{ NOT: { name: { startsWith: `${replacingSlot}/` } } }]
+          : []),
+      ],
     },
     select: { fileSize: true },
   });
@@ -637,18 +643,25 @@ export async function readFinalRepository(
  * A freshly uploaded FINAL file now fills its slot. Each slot holds a single
  * file, so whatever else sits in the slot's `{slot}/` folder (under another
  * name) is deleted from storage and the DB.
+ *
+ * Only rows saved before the new one (`savedAt`) are removed: when two
+ * teammates upload to the same slot at once, each cleanup would otherwise
+ * delete the other's file and leave the slot empty. This way the later
+ * upload wins.
  */
 export async function replaceFinalSlot(input: {
   client: typeof db;
   teamId: string;
   fileName: string;
   deliverable: FinalFileDeliverableKey;
+  savedAt: Date;
 }): Promise<void> {
-  const { client, teamId, fileName, deliverable } = input;
+  const { client, teamId, fileName, deliverable, savedAt } = input;
   const previous = await client.teamUpload.findMany({
     where: {
       ...finalFolderWhere(teamId),
       name: { startsWith: `${deliverable}/`, not: fileName },
+      updatedAt: { lt: savedAt },
     },
     select: { id: true, fileKey: true },
   });

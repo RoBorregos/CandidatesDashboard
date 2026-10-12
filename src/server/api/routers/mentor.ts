@@ -433,7 +433,7 @@ export const mentorRouter = createTRPCRouter({
 
   /*
    * Fetch uploads + comments for every member of a team for a given week.
-   * Mapping: tracking weeks 2-6 → individual uploads, week 7 (FINAL_WEEK) → FINAL (shared).
+   * Mapping: tracking weeks 2-6 → individual uploads, FINAL_WEEK → FINAL (shared).
    * Weeks outside MIN_UPLOAD_WEEK..MAX_UPLOAD_WEEK are rejected by the input schema.
    */
   getTeamWeekUploads: mentorProcedure

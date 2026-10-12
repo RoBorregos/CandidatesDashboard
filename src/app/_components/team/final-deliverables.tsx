@@ -14,24 +14,20 @@ import {
 } from "~/lib/weeks";
 import {
   FINAL_DELIVERABLES,
-  FINAL_REPOSITORY_FILE,
   finalDisplayName,
+  finalFileAccepted,
+  finalFileRejectedMessage,
   finalSlotOf,
-  LEGACY_FINAL_MANIFEST_FILE,
   type FinalDeliverable,
   type FinalFileDeliverableKey,
 } from "~/lib/final-deliverables";
-
-// Mirrors the limits in ~/server/api/routers/upload (server-only module).
-const COMMENTS_FILE = "COMMENTS.md";
-const INTERNAL_FILES = [
-  COMMENTS_FILE,
-  FINAL_REPOSITORY_FILE,
-  LEGACY_FINAL_MANIFEST_FILE,
-];
-const MAX_COMMENT_CHARS = 2045;
-const MAX_COMMENT_BYTES = 2048;
-const MAX_WEEK_BYTES = 256 * 1024 * 1024;
+import {
+  formatBytes,
+  INTERNAL_FILES,
+  MAX_COMMENT_BYTES,
+  MAX_COMMENT_CHARS,
+  MAX_WEEK_BYTES,
+} from "~/lib/uploads";
 
 type UploadedFile = {
   id: string;
@@ -41,17 +37,6 @@ type UploadedFile = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-function formatBytes(bytes: number | null): string {
-  if (bytes == null) return "";
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
 
 function formatScheduleDate(date: Date, withTime: boolean): string {
   return date.toLocaleString("es-MX", {
@@ -96,12 +81,14 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
 
   const [uploadingKey, setUploadingKey] = useState<FinalFileDeliverableKey | null>(null);
   const [progress, setProgress] = useState(0);
-  const errorCodeRef = useRef("");
+  const errorRef = useRef("");
 
   const { startUpload } = useUploadThing("teamUploader", {
     onUploadProgress: (value) => setProgress((prev) => Math.max(prev, value)),
     onUploadError: (error) => {
-      errorCodeRef.current = error.code;
+      // The server rejects with a readable reason (UploadThingError); fall
+      // back to the code for anything else.
+      errorRef.current = error.message || error.code;
     },
   });
 
@@ -121,18 +108,24 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
       toast.error(`No se permite subir ${file.name}`);
       return;
     }
-    if (usedBytes + file.size > MAX_WEEK_BYTES) {
+    if (!finalFileAccepted(key, file.name)) {
+      toast.error(finalFileRejectedMessage(key));
+      return;
+    }
+    // The slot's current file is replaced, so it no longer counts.
+    const replacedBytes = fileFor(key)?.fileSize ?? 0;
+    if (usedBytes - replacedBytes + file.size > MAX_WEEK_BYTES) {
       toast.error("La entrega final alcanzaría el límite de 256 MB");
       return;
     }
 
     setUploadingKey(key);
     setProgress(0);
-    errorCodeRef.current = "";
+    errorRef.current = "";
     try {
       // No prepareUpload here: it frees same-named objects across the whole
       // FINAL folder, which would delete another slot's file. Each slot has
-      // its own subfolder, and assignFinalDeliverable replaces the slot's
+      // its own subfolder, and replaceFinalSlot (server) removes the slot's
       // previous file once this one lands.
       const res = await startUpload([file], {
         week: FINAL_WEEK,
@@ -140,7 +133,7 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
       });
       if (!res || res.length === 0) {
         toast.error(
-          `No se pudo subir ${file.name}. Código de error: ${errorCodeRef.current || "UNKNOWN"}`,
+          `No se pudo subir ${file.name}: ${errorRef.current || "error desconocido"}`,
         );
       } else {
         toast.success("Entrega subida correctamente");

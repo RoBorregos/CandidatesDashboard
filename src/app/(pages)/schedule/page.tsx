@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Header from "~/app/_components/header";
-import { formatTime, QUEUE_MS } from "~/lib/competition-schedule";
+import {
+  formatTime,
+  parseTrack,
+  type TrackKind,
+} from "~/lib/competition-schedule";
 import { api } from "~/trpc/react";
 
 type ScheduleChallenge = {
@@ -22,48 +26,14 @@ type ScheduleTeam = {
   rounds: ScheduleRound[];
 };
 
-type Track = "A" | "B";
+type Track = TrackKind;
 
 /** One team on one physical track (A1, A2, B1, B2) at a given time. */
 type Entry = { lane: string; team: string; teamId?: string };
 type Cell = Record<Track, Entry[]>;
 type RoundBucket = { times: Set<string>; rows: Record<string, Cell> };
 
-type View = "all" | "mine";
-
 const TRACKS: Track[] = ["A", "B"];
-const TRACK_NAMES: Record<Track, string> = { A: "Maze", B: "Levels" };
-const VIEW_STORAGE_KEY = "schedule-view";
-
-/**
- * "Pista A1" → { track: "A", lane: "A1" }. Older names without a lane number
- * ("Challenge 1 - Pista B") still map to their track. 2025's Pista C runs are
- * ignored: the 2026 edition only has tracks A and B.
- */
-function parseTrack(name: string): { track: Track; lane: string } | null {
-  const match = /(?:pista|track)\s*([ab])\s*(\d)?/i.exec(name);
-  if (!match?.[1]) return null;
-  const track = match[1].toUpperCase() as Track;
-  return { track, lane: `${track}${match[2] ?? ""}` };
-}
-
-/** Remembers the chosen view per browser; storage can be unavailable. */
-function readStoredView(): View | null {
-  try {
-    const value = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    return value === "all" || value === "mine" ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeView(view: View) {
-  try {
-    window.localStorage.setItem(VIEW_STORAGE_KEY, view);
-  } catch {
-    // Not remembering the choice is fine.
-  }
-}
 
 export default function SchedulePage() {
   const query = api.team.getVisibleSchedules.useQuery();
@@ -72,26 +42,10 @@ export default function SchedulePage() {
     : [];
   const { isLoading } = query;
 
-  const { data: session, status } = useSession();
+  // Highlights the user's own team; their full schedule and scores are on
+  // the Team page.
+  const { data: session } = useSession();
   const myTeamId = session?.user.teamId ?? null;
-  const { data: me } = api.team.getCurrentUser.useQuery(undefined, {
-    enabled: status === "authenticated",
-  });
-
-  // Default to the user's own team when they have one; their last choice
-  // wins once the session is known.
-  const [view, setView] = useState<View>("all");
-  useEffect(() => {
-    if (status === "loading") return;
-    const stored = readStoredView();
-    if (!myTeamId) setView("all");
-    else setView(stored ?? "mine");
-  }, [status, myTeamId]);
-
-  const changeView = (next: View) => {
-    setView(next);
-    storeView(next);
-  };
 
   const roundsRevealed = new Set(
     teams.flatMap((t) => (t.rounds ?? []).map((r) => r.number)),
@@ -110,8 +64,6 @@ export default function SchedulePage() {
     );
   }
 
-  const myTeam = teams.find((team) => team.id === myTeamId) ?? null;
-
   return (
     <main className="mt-[4rem] min-h-screen bg-black text-white">
       <div className="md:pb-10">
@@ -122,72 +74,24 @@ export default function SchedulePage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <ViewSwitch
-          view={view}
-          onChange={changeView}
-          canSeeMine={Boolean(myTeamId)}
-        />
-
-        {view === "mine" && myTeamId ? (
-          <MyTeamView team={myTeam} interviewTime={me?.interviewTime ?? null} />
-        ) : (
-          <AllTeamsView teams={teams} highlightTeamId={myTeamId} />
+        {myTeamId && (
+          <p className="mb-8 text-center text-sm text-gray-300">
+            Your team&apos;s times, interview and scores are on the{" "}
+            <Link
+              href="/team"
+              className="font-semibold text-roboblue hover:underline"
+            >
+              Team page
+            </Link>
+            .
+          </p>
         )}
+
+        <AllTeamsView teams={teams} highlightTeamId={myTeamId} />
 
         <ImportantInformation />
       </div>
     </main>
-  );
-}
-
-function ViewSwitch({
-  view,
-  onChange,
-  canSeeMine,
-}: {
-  view: View;
-  onChange: (view: View) => void;
-  canSeeMine: boolean;
-}) {
-  const options: { value: View; label: string }[] = [
-    { value: "mine", label: "My team" },
-    { value: "all", label: "All teams" },
-  ];
-
-  return (
-    <div className="mb-8 flex flex-col items-center gap-2">
-      <div
-        role="tablist"
-        aria-label="Schedule view"
-        className="inline-flex rounded-full border border-gray-700 bg-gray-900 p-1"
-      >
-        {options.map((option) => {
-          const active = view === option.value;
-          const disabled = option.value === "mine" && !canSeeMine;
-          return (
-            <button
-              key={option.value}
-              role="tab"
-              aria-selected={active}
-              disabled={disabled}
-              onClick={() => onChange(option.value)}
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                active
-                  ? "bg-roboblue text-white"
-                  : "text-gray-300 hover:text-white"
-              }`}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-      {!canSeeMine && (
-        <p className="text-xs text-gray-500">
-          Sign in and join a team to see your own schedule.
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -328,95 +232,6 @@ function AllTeamsView({
         );
       })}
     </>
-  );
-}
-
-function MyTeamView({
-  team,
-  interviewTime,
-}: {
-  team: ScheduleTeam | null;
-  interviewTime: Date | string | null;
-}) {
-  // Latest revealed round first, as in the all-teams view.
-  const rounds = [...(team?.rounds ?? [])].sort((a, b) => b.number - a.number);
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="rounded-lg bg-gray-900 p-6 text-center">
-        <p className="text-sm uppercase tracking-widest text-gray-400">
-          Your team
-        </p>
-        <p className="font-jersey_25 text-4xl text-roboblue">
-          {team?.name ?? "—"}
-        </p>
-        <p className="mt-3 text-gray-300">
-          Your interview:{" "}
-          <span className="font-mono font-semibold text-white">
-            {interviewTime ? formatTime(new Date(interviewTime)) : "Pending"}
-          </span>
-        </p>
-      </div>
-
-      {rounds.length === 0 ? (
-        <NoRoundsYet />
-      ) : (
-        rounds.map((round) => {
-          const runs = (round.challenges ?? [])
-            .map((ch) => ({ ...parseTrack(ch.name), time: new Date(ch.time) }))
-            .filter(
-              (run): run is { track: Track; lane: string; time: Date } =>
-                run.track !== undefined,
-            )
-            .sort((a, b) => a.time.getTime() - b.time.getTime());
-          // Runs are now far apart, so the line-up time is shown per run.
-          // const first = runs[0];
-          // const lineUpBy = first
-          //   ? formatTime(new Date(first.time.getTime() - GROUP_MS))
-          //   : null;
-
-          return (
-            <div key={round.number} className="overflow-hidden rounded-lg">
-              <div className="bg-gradient-to-r from-roboblue to-blue-600 p-4">
-                <h2 className="text-center text-2xl font-bold">
-                  Round {round.number}
-                </h2>
-              </div>
-              <div className="bg-gray-900 p-4">
-                {/* {lineUpBy && (
-                  <p className="mb-4 text-center text-sm text-yellow-300">
-                    Be in line by{" "}
-                    <span className="font-mono font-semibold">{lineUpBy}</span>
-                  </p>
-                )} */}
-                <ul className="grid gap-3 sm:grid-cols-2">
-                  {runs.map((run) => (
-                    <li
-                      key={`${run.lane}-${run.time.getTime()}`}
-                      className="rounded-lg bg-gray-800 p-4"
-                    >
-                      <p className="text-sm text-gray-400">
-                        Track {run.track} · {TRACK_NAMES[run.track]}
-                      </p>
-                      <p className="font-mono text-3xl font-semibold">
-                        {formatTime(run.time)}
-                      </p>
-                      <p className="text-sm text-roboblue">Pista {run.lane}</p>
-                      <p className="mt-1 text-xs text-yellow-300">
-                        Be in line by{" "}
-                        <span className="font-mono font-semibold">
-                          {formatTime(new Date(run.time.getTime() - QUEUE_MS))}
-                        </span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
   );
 }
 

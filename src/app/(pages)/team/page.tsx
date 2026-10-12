@@ -3,7 +3,7 @@ import Header from "../../_components/header";
 import Footer from "../../_components/footer";
 import { getServerAuthSession } from "~/server/auth";
 import CustomLoginText from "../../_components/custom-login-text";
-import TeamInfo from "../../_components/team/team";
+import MyTeamSchedule from "../../_components/team/my-team-schedule";
 import TeamPreseason from "../../_components/team/preseason";
 import RegistrationSummary from "../../_components/team/registration-summary";
 import AdvancedSubmission from "../../_components/team/advanced-submission";
@@ -35,7 +35,6 @@ export default async function TeamPage({
 
   const team = await api.team.getTeam();
   const registration = await api.registration.getMine();
-
 
   if (!team) {
     const staffDestination =
@@ -128,7 +127,6 @@ export default async function TeamPage({
 
   const competitionStarted = await api.config.isCompetitionStarted();
 
-
   if (!competitionStarted) {
     return (
       <div className="min-h-screen bg-black text-sm text-white md:text-base">
@@ -163,8 +161,8 @@ export default async function TeamPage({
           ! <span className="pl-1 font-normal text-gray-200">/&#62;</span>
         </h1>
         <div>
-          Here you will find the schedules for your rounds and interviews as
-          well as results for each round.
+          Here you will find your track times and interview time, and the score
+          of each run as soon as the judges submit it.
           <br />
           Please make sure to be on time for rounds and interviews.
           <br />
@@ -175,7 +173,11 @@ export default async function TeamPage({
         </div>
       </div>
 
-      <TeamInfo team={team} userInterviewTime={me?.interviewTime ?? null} />
+      <MyTeamSchedule
+        teamName={team.name}
+        rounds={team.rounds}
+        interviewTime={me?.interviewTime ?? null}
+      />
 
       <Footer />
     </div>

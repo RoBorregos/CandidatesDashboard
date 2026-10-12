@@ -9,7 +9,6 @@ import FinalDeliverables from "./final-deliverables";
 import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
-  DEFAULT_FINAL_SUBMISSION_OPEN,
   FINAL_WEEK,
   weekAssignedAt,
   weekDueAt,
@@ -96,13 +95,17 @@ function dashedUserName(name: string): string {
 export default function WeekUploads({
   teamName,
   userName,
+  initialFinalOpen,
 }: {
   teamName: string;
   userName: string;
+  /** Read on the server, so the first render already shows the open side. */
+  initialFinalOpen: boolean;
 }) {
-  // Weeks 2-6 until an admin opens FINAL (also if the switch can't be read).
-  const { data: finalOpenData } = api.uploads.getFinalSubmissionOpen.useQuery();
-  const finalOpen = finalOpenData ?? DEFAULT_FINAL_SUBMISSION_OPEN;
+  const { data: finalOpen = initialFinalOpen } =
+    api.uploads.getFinalSubmissionOpen.useQuery(undefined, {
+      initialData: initialFinalOpen,
+    });
   const weeks = finalOpen ? FINAL_ONLY : INDIVIDUAL_WEEKS;
   const [selectedWeek, setWeek] = useState<WeekKey | null>(null);
   // Fall back to the default tab when nothing was picked yet or the admin

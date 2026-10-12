@@ -73,10 +73,15 @@ export default function WeeklyTracking({
   initialWeek: number;
 }) {
   // FINAL is only reachable once an admin opens it (Team Management).
-  const { data: finalOpen } = api.uploads.getFinalSubmissionOpen.useQuery();
+  // Until the switch is known the week isn't capped, so opening on FINAL
+  // doesn't flash Semana 6 first.
+  const { data: finalOpen, isPending: finalOpenPending } =
+    api.uploads.getFinalSubmissionOpen.useQuery();
   const lastWeek = Math.min(
     MAX_TRACKING_WEEK,
-    lastVisibleWeek(finalOpen ?? DEFAULT_FINAL_SUBMISSION_OPEN),
+    finalOpenPending
+      ? MAX_TRACKING_WEEK
+      : lastVisibleWeek(finalOpen ?? DEFAULT_FINAL_SUBMISSION_OPEN),
   );
   const [selectedWeek, setWeek] = useState(initialWeek);
   const week = Math.min(selectedWeek, lastWeek);

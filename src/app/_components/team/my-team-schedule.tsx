@@ -9,7 +9,6 @@ import {
 } from "~/lib/competition-schedule";
 import {
   CHECKPOINT_RESULTS,
-  COUNTED_ROUNDS_PER_TRACK,
   LEVELS_MAX_POINTS,
   MAZE_LIMITS,
   MAZE_MAX_POINTS,
@@ -86,11 +85,6 @@ export default function MyTeamSchedule({
               value={scores.mazeTotal + scores.levelsTotal}
               strong
             />
-            <p className="col-span-3 text-xs text-gray-500">
-              Your best {COUNTED_ROUNDS_PER_TRACK} runs of each track count.
-              {scores.hiddenRound !== null &&
-                ` Round ${scores.hiddenRound} scores stay hidden until the results are announced.`}
-            </p>
           </div>
         )}
       </div>

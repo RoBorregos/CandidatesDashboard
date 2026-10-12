@@ -3,7 +3,7 @@ import LateTag from "../../late-tag";
 import {
   FINAL_DELIVERABLES,
   finalDisplayName,
-  type FinalManifest,
+  finalSlotOf,
 } from "~/lib/final-deliverables";
 import { FINAL_WEEK } from "~/lib/weeks";
 
@@ -33,14 +33,14 @@ function formatBytes(bytes: number | null): string {
 export default function FinalSubmission({
   files,
   comments,
-  manifest,
+  repository,
 }: {
   files: FinalFile[];
   comments: string[];
-  manifest: FinalManifest | null;
+  repository: string | null;
 }) {
   const fileFor = (key: string) =>
-    files.find((file) => manifest?.files[file.name] === key);
+    files.find((file) => finalSlotOf(file.name) === key);
 
   return (
     <>
@@ -54,7 +54,7 @@ export default function FinalSubmission({
             const file =
               deliverable.kind === "file" ? fileFor(deliverable.key) : undefined;
             const link =
-              deliverable.kind === "link" ? manifest?.repository ?? null : null;
+              deliverable.kind === "link" ? repository : null;
             const done = file != null || link != null;
 
             return (

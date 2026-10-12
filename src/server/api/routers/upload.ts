@@ -17,12 +17,10 @@ import {
 } from "~/lib/weeks";
 import {
   FINAL_FILE_DELIVERABLE_KEYS,
-  FINAL_MANIFEST_FILE,
   FINAL_REPOSITORY_FILE,
-  parseFinalManifest,
+  LEGACY_FINAL_MANIFEST_FILE,
   parseFinalRepository,
   type FinalFileDeliverableKey,
-  type FinalManifest,
 } from "~/lib/final-deliverables";
 
 // Week numbering lives in ~/lib/weeks together with the delivery schedule
@@ -58,8 +56,8 @@ export const MAX_COMMENT_BYTES = 2048;
 // Server-managed files that live next to the uploads but are not submissions.
 export const INTERNAL_FILES = [
   COMMENTS_FILE,
-  FINAL_MANIFEST_FILE,
   FINAL_REPOSITORY_FILE,
+  LEGACY_FINAL_MANIFEST_FILE,
 ];
 
 /**
@@ -154,7 +152,7 @@ export function teamUploadFolderPath(
  * Name a FINAL file is stored under: its slot's subfolder plus the file name,
  * e.g. `LOGBOOK/Final.pdf`. Keying by slot keeps two deliverables that share a
  * file name (a `Final.pdf` logbook and a `Final.pdf` schematic) from replacing
- * each other's record and manifest entry.
+ * each other's record, and is how the UI knows which slot a file fills.
  */
 export function finalSlotFileName(
   deliverable: FinalFileDeliverableKey,
@@ -558,10 +556,9 @@ export async function appendCommentToFile(input: {
 /**
  * Contents of one of the server-managed JSON files in `FINAL/{team}/`.
  *
- * Null only when the file was never written. A failed fetch throws instead:
- * read as "no file yet", it would make updateFinalManifest write an empty
- * manifest back and wipe the team's slots whenever UploadThing is briefly
- * unavailable.
+ * Null only when the file was never written. A failed fetch throws instead
+ * of passing for "no file yet", so a brief UploadThing outage shows as an
+ * error rather than as a missing repository link.
  */
 async function readFinalJson(
   client: typeof db,
@@ -626,65 +623,33 @@ async function writeFinalJson(
   bustListAllFilesCache();
 }
 
-/**
- * The team's FINAL deliverables: which file fills each slot (ENTREGAS.json)
- * and the repository link (repositorio.json, kept apart so saving the link
- * never rewrites the slot assignments).
- */
-export async function readFinalManifest(
+/** The team's FINAL repository link (`FINAL/{team}/repositorio.json`). */
+export async function readFinalRepository(
   client: typeof db,
   teamId: string,
-): Promise<FinalManifest> {
-  const [manifestText, repositoryText] = await Promise.all([
-    readFinalJson(client, teamId, FINAL_MANIFEST_FILE),
-    readFinalJson(client, teamId, FINAL_REPOSITORY_FILE),
-  ]);
-  return {
-    files: parseFinalManifest(manifestText).files,
-    repository: parseFinalRepository(repositoryText),
-  };
-}
-
-/** Read-modify-write the slot assignments in `FINAL/{team}/ENTREGAS.json`. */
-export async function updateFinalManifest(
-  client: typeof db,
-  teamId: string,
-  teamName: string,
-  mutate: (files: FinalManifest["files"]) => void,
-): Promise<void> {
-  const { files } = parseFinalManifest(
-    await readFinalJson(client, teamId, FINAL_MANIFEST_FILE),
+): Promise<string | null> {
+  return parseFinalRepository(
+    await readFinalJson(client, teamId, FINAL_REPOSITORY_FILE),
   );
-  mutate(files);
-  await writeFinalJson(client, teamId, teamName, FINAL_MANIFEST_FILE, { files });
 }
 
 /**
- * Mark a freshly uploaded FINAL file as the team's `deliverable`. Each slot
- * holds a single file, so whatever filled it before (under another name) is
- * deleted from storage and the DB.
+ * A freshly uploaded FINAL file now fills its slot. Each slot holds a single
+ * file, so whatever else sits in the slot's `{slot}/` folder (under another
+ * name) is deleted from storage and the DB.
  */
-export async function assignFinalDeliverable(input: {
+export async function replaceFinalSlot(input: {
   client: typeof db;
   teamId: string;
-  teamName: string;
   fileName: string;
   deliverable: FinalFileDeliverableKey;
 }): Promise<void> {
-  const { client, teamId, teamName, fileName, deliverable } = input;
-  let replaced: string[] = [];
-
-  await updateFinalManifest(client, teamId, teamName, (files) => {
-    replaced = Object.entries(files)
-      .filter(([name, key]) => key === deliverable && name !== fileName)
-      .map(([name]) => name);
-    for (const name of replaced) delete files[name];
-    files[fileName] = deliverable;
-  });
-
-  if (replaced.length === 0) return;
+  const { client, teamId, fileName, deliverable } = input;
   const previous = await client.teamUpload.findMany({
-    where: { ...finalFolderWhere(teamId), name: { in: replaced } },
+    where: {
+      ...finalFolderWhere(teamId),
+      name: { startsWith: `${deliverable}/`, not: fileName },
+    },
     select: { id: true, fileKey: true },
   });
   if (previous.length === 0) return;
@@ -704,11 +669,10 @@ export const uploadRouter = createTRPCRouter({
     finalSubmissionOpen(ctx.db),
   ),
 
-  /** Which file fills each FINAL deliverable, plus the repository link. */
+  /** The FINAL repository link (files find their slot by their folder). */
   getFinalDeliverables: protectedProcedure.query(async ({ ctx }) => {
     const teamId = await currentTeamId(ctx);
-    if (!teamId) return parseFinalManifest(null);
-    return readFinalManifest(ctx.db, teamId);
+    return { repository: teamId ? await readFinalRepository(ctx.db, teamId) : null };
   }),
 
   /** Save (or clear, with null) the FINAL repository link. */
@@ -943,19 +907,6 @@ export const uploadRouter = createTRPCRouter({
       // leftover via `clearFolderConflicts`.
       await utapi.deleteFiles(upload.fileKey).catch(() => undefined);
       await ctx.db.teamUpload.delete({ where: { id: upload.id } });
-
-      // A removed FINAL file no longer fills its deliverable slot.
-      if (upload.userId === null) {
-        const team = await ctx.db.team.findUnique({
-          where: { id: teamId },
-          select: { name: true },
-        });
-        if (team) {
-          await updateFinalManifest(ctx.db, teamId, team.name, (files) => {
-            delete files[upload.name];
-          });
-        }
-      }
 
       return { success: true };
     }),

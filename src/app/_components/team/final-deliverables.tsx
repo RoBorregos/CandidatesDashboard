@@ -14,16 +14,21 @@ import {
 } from "~/lib/weeks";
 import {
   FINAL_DELIVERABLES,
-  FINAL_MANIFEST_FILE,
   FINAL_REPOSITORY_FILE,
   finalDisplayName,
+  finalSlotOf,
+  LEGACY_FINAL_MANIFEST_FILE,
   type FinalDeliverable,
   type FinalFileDeliverableKey,
 } from "~/lib/final-deliverables";
 
 // Mirrors the limits in ~/server/api/routers/upload (server-only module).
 const COMMENTS_FILE = "COMMENTS.md";
-const INTERNAL_FILES = [COMMENTS_FILE, FINAL_MANIFEST_FILE, FINAL_REPOSITORY_FILE];
+const INTERNAL_FILES = [
+  COMMENTS_FILE,
+  FINAL_REPOSITORY_FILE,
+  LEGACY_FINAL_MANIFEST_FILE,
+];
 const MAX_COMMENT_CHARS = 2045;
 const MAX_COMMENT_BYTES = 2048;
 const MAX_WEEK_BYTES = 256 * 1024 * 1024;
@@ -69,7 +74,7 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
     { week: FINAL_WEEK },
     { refetchOnWindowFocus: false, refetchOnMount: true },
   );
-  const { data: manifest } = api.uploads.getFinalDeliverables.useQuery(
+  const { data: deliverables } = api.uploads.getFinalDeliverables.useQuery(
     undefined,
     { refetchOnWindowFocus: false, refetchOnMount: true },
   );
@@ -105,9 +110,9 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
   );
   const usedBytes = visibleFiles.reduce((sum, f) => sum + (f.fileSize ?? 0), 0);
 
-  // Which stored file fills each slot, according to the manifest.
+  // Which stored file fills each slot: the one in its `{slot}/` folder.
   const fileFor = (key: FinalFileDeliverableKey) =>
-    visibleFiles.find((file) => manifest?.files[file.name] === key);
+    visibleFiles.find((file) => finalSlotOf(file.name) === key);
 
   const uploadDeliverable = async (key: FinalFileDeliverableKey, file: File) => {
     if (uploadingKey) return;
@@ -191,7 +196,7 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
             <RepositoryCard
               key={deliverable.key}
               deliverable={deliverable}
-              saved={manifest?.repository ?? null}
+              saved={deliverables?.repository ?? null}
               onSaved={refresh}
             />
           ) : (

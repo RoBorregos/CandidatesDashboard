@@ -21,7 +21,7 @@ import {
   isFinalWeek,
   MIN_UPLOAD_WEEK,
   MAX_UPLOAD_WEEK,
-  readFinalManifest,
+  readFinalRepository,
 } from "./upload";
 
 type Contact = { phone: string; interviewArea: InterviewArea | null };
@@ -529,12 +529,12 @@ export const mentorRouter = createTRPCRouter({
       const finalFiles = filesByUser.get("__final__") ?? [];
       const finalComments = commentsByUser.get("__final__") ?? [];
 
-      // Which file fills each hardcoded FINAL deliverable + the repo link.
-      const finalManifest = isFinal
-        ? await readFinalManifest(ctx.db, input.teamId)
+      // The FINAL repo link (files find their slot by their `{slot}/` folder).
+      const finalRepository = isFinal
+        ? await readFinalRepository(ctx.db, input.teamId)
         : null;
 
-      return { memberUploads, finalFiles, finalComments, finalManifest };
+      return { memberUploads, finalFiles, finalComments, finalRepository };
     }),
 
   /*

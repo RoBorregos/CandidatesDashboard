@@ -1,9 +1,9 @@
 /*
  * The FINAL submission is not a free-form folder like weeks 2-6: every team
  * hands in exactly these four deliverables. Each file is stored under its
- * slot's subfolder, `FINAL/{team}/{slot}/{file}` — which slot each one fills is recorded in the
- * folder's FINAL_MANIFEST_FILE, and the repository link (which is not a file
- * at all) in FINAL_REPOSITORY_FILE.
+ * slot's subfolder, `FINAL/{team}/{slot}/{file}`, so the path alone says which
+ * slot it fills. The repository link (which is not a file at all) lives in
+ * FINAL_REPOSITORY_FILE.
  */
 
 export const FINAL_DELIVERABLES = [
@@ -53,28 +53,18 @@ export const FINAL_FILE_DELIVERABLE_KEYS = FINAL_DELIVERABLES.filter(
 ).map((d) => d.key) as [FinalFileDeliverableKey, ...FinalFileDeliverableKey[]];
 
 /**
- * Internal file in `FINAL/{team}/` mapping each uploaded file to its slot.
- * Like COMMENTS.md it is managed server-side only and hidden from listings.
+ * Slot manifest older FINAL folders may still hold. Slots now come from the
+ * `{slot}/` folder, so it is never read or written — only kept out of
+ * listings and size totals.
  */
-export const FINAL_MANIFEST_FILE = "ENTREGAS.json";
+export const LEGACY_FINAL_MANIFEST_FILE = "ENTREGAS.json";
 
 /**
  * Internal file in `FINAL/{team}/` holding the repository link:
- * `{ "repository": "https://github.com/…" }`. Kept apart from the manifest so
- * saving the link never touches the uploaded files' slots.
+ * `{ "repository": "https://github.com/…" }`. Like COMMENTS.md it is managed
+ * server-side only and hidden from listings.
  */
 export const FINAL_REPOSITORY_FILE = "repositorio.json";
-
-export type FinalManifest = {
-  repository: string | null;
-  /** Stored file name → the deliverable it fills. */
-  files: Record<string, FinalFileDeliverableKey>;
-};
-
-export const EMPTY_FINAL_MANIFEST = (): FinalManifest => ({
-  repository: null,
-  files: {},
-});
 
 /**
  * Name shown to people for a FINAL file. Records carry their slot folder
@@ -83,6 +73,14 @@ export const EMPTY_FINAL_MANIFEST = (): FinalManifest => ({
  */
 export function finalDisplayName(name: string): string {
   return name.slice(name.lastIndexOf("/") + 1) || name;
+}
+
+/** The slot a stored FINAL file (`{slot}/{file}`) fills, from its folder. */
+export function finalSlotOf(name: string): FinalFileDeliverableKey | undefined {
+  const folder = name.slice(0, name.indexOf("/"));
+  return (FINAL_FILE_DELIVERABLE_KEYS as string[]).includes(folder)
+    ? (folder as FinalFileDeliverableKey)
+    : undefined;
 }
 
 /** Parse a stored repositorio.json, tolerating a missing or malformed file. */
@@ -96,29 +94,4 @@ export function parseFinalRepository(text: string | null | undefined): string | 
   } catch {
     return null;
   }
-}
-
-/** Parse a stored manifest, tolerating a missing or malformed file. */
-export function parseFinalManifest(text: string | null | undefined): FinalManifest {
-  const manifest = EMPTY_FINAL_MANIFEST();
-  if (!text) return manifest;
-  try {
-    const raw = JSON.parse(text) as Partial<{
-      repository: unknown;
-      files: unknown;
-    }>;
-    if (typeof raw.repository === "string" && raw.repository.length > 0) {
-      manifest.repository = raw.repository;
-    }
-    if (raw.files && typeof raw.files === "object") {
-      for (const [name, key] of Object.entries(raw.files)) {
-        if ((FINAL_FILE_DELIVERABLE_KEYS as string[]).includes(key as string)) {
-          manifest.files[name] = key as FinalFileDeliverableKey;
-        }
-      }
-    }
-  } catch {
-    // A corrupt manifest just means no slot is filled yet.
-  }
-  return manifest;
 }

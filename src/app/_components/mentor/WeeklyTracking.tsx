@@ -463,7 +463,7 @@ export default function WeeklyTracking({
         <FinalSubmission
           files={weekUploads?.finalFiles ?? []}
           comments={weekUploads?.finalComments ?? []}
-          manifest={weekUploads?.finalManifest ?? null}
+          repository={weekUploads?.finalRepository ?? null}
         />
       ) : (
         <>

@@ -8,7 +8,6 @@ import { getServerAuthSession } from "./auth";
 import { db } from "./db";
 import {
   appendCommentToFile,
-  assignFinalDeliverable,
   bustListAllFilesCache,
   finalDeliverableSchema,
   finalSlotFileName,
@@ -17,6 +16,7 @@ import {
   isFinalWeek,
   MAX_WEEK_BYTES,
   recordTeamUpload,
+  replaceFinalSlot,
   finalSubmissionOpen,
   stripFolderPrefix,
   uploadWeekSchema,
@@ -25,10 +25,7 @@ import {
   weekUsageBytes,
 } from "~/server/api/routers/upload";
 import { isWeekOpen } from "~/lib/weeks";
-import {
-  FINAL_MANIFEST_FILE,
-  FINAL_REPOSITORY_FILE,
-} from "~/lib/final-deliverables";
+import { FINAL_REPOSITORY_FILE } from "~/lib/final-deliverables";
 import {
   ADVANCED_CLOSED_MESSAGE,
   advancedDueAt,
@@ -120,11 +117,13 @@ export const ourFileRouter = {
       if (hasCommentsFile) {
         throw new Error(`No se permite subir ${COMMENTS_FILE} directamente`);
       }
-      // Same for the FINAL manifest and repository link files.
-      for (const internal of [FINAL_MANIFEST_FILE, FINAL_REPOSITORY_FILE]) {
-        if (files.some((f) => f.name.toUpperCase() === internal.toUpperCase())) {
-          throw new Error(`No se permite subir ${internal} directamente`);
-        }
+      // Same for the FINAL repository link file.
+      if (
+        files.some(
+          (f) => f.name.toUpperCase() === FINAL_REPOSITORY_FILE.toUpperCase(),
+        )
+      ) {
+        throw new Error(`No se permite subir ${FINAL_REPOSITORY_FILE} directamente`);
       }
 
       // The FINAL folder only takes its hardcoded deliverables, one file each.
@@ -206,10 +205,9 @@ export const ourFileRouter = {
 
       // A FINAL file takes over its deliverable slot (replacing the old one).
       if (isFinalWeek(metadata.week) && metadata.deliverable) {
-        await assignFinalDeliverable({
+        await replaceFinalSlot({
           client: db,
           teamId: metadata.teamId,
-          teamName: metadata.teamName,
           fileName: name,
           deliverable: metadata.deliverable,
         });

@@ -24,8 +24,31 @@ export const MIN_UPLOAD_WEEK = 2;
 /** Last numbered week: individual (per-user) folders only go up to this. */
 export const MAX_INDIVIDUAL_WEEK = 6;
 
-/** Reserved week number for the shared team-wide final submission. */
-export const FINAL_WEEK = 7;
+/**
+ * Reserved week number for the shared team-wide final submission. It sits
+ * right after the last individual week.
+ */
+export const FINAL_WEEK = MAX_INDIVIDUAL_WEEK + 1;
+
+/*
+ * Which uploads are open is a single switch an admin flips from Team
+ * Management (`Config.finalSubmissionOpen`): false opens the individual weeks
+ * 2-6, true opens the shared FINAL submission — never both, never neither.
+ * The server rejects uploads to the closed side.
+ */
+
+/** Assumed until the config has loaded / when no config row exists. */
+export const DEFAULT_FINAL_SUBMISSION_OPEN = false;
+
+/** Does the current switch accept uploads to `week`? */
+export function isWeekOpen(week: number, finalOpen: boolean): boolean {
+  return finalOpen ? isFinalWeek(week) : !isFinalWeek(week);
+}
+
+/** Last week the mentor's tracking lets people navigate to. */
+export function lastVisibleWeek(finalOpen: boolean): number {
+  return finalOpen ? FINAL_WEEK : MAX_INDIVIDUAL_WEEK;
+}
 
 /** Last week accepted by the upload endpoints (the final week included). */
 export const MAX_UPLOAD_WEEK = FINAL_WEEK;

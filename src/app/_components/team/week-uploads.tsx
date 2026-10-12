@@ -5,16 +5,29 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { useUploadThing } from "../uploadthing";
 import LateTag from "../late-tag";
+import FinalDeliverables from "./final-deliverables";
+import {
+  COMMENTS_FILE,
+  formatBytes,
+  MAX_COMMENT_BYTES,
+  MAX_COMMENT_CHARS,
+  MAX_WEEK_BYTES,
+} from "~/lib/uploads";
 import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
+  FINAL_WEEK,
   weekAssignedAt,
   weekDueAt,
 } from "~/lib/weeks";
 
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
-const WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
-type WeekKey = (typeof WEEKS)[number];
+const ALL_WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
+type WeekKey = (typeof ALL_WEEKS)[number];
+// An admin opens either the individual weeks or FINAL (Team Management);
+// only the open side gets tabs.
+const INDIVIDUAL_WEEKS: readonly WeekKey[] = ALL_WEEKS.filter((w) => w !== "FINAL");
+const FINAL_ONLY: readonly WeekKey[] = ["FINAL"];
 
 const WEEK_LABELS: Record<WeekKey, string> = {
   2: "Semana 2",
@@ -27,13 +40,15 @@ const WEEK_LABELS: Record<WeekKey, string> = {
 
 // The server stores weeks as plain integers; "FINAL" is folded into a
 // reserved number so the rest of the pipeline stays numeric.
-const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? 7 : week);
+const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? FINAL_WEEK : week);
 
 // Open on the week the competition is on right now (~/lib/weeks) instead of
 // always starting at week 2, which by now is mostly history.
-const DEFAULT_WEEK: WeekKey = WEEKS.includes(CURRENT_WEEK as WeekKey)
-  ? (CURRENT_WEEK as WeekKey)
-  : WEEKS[0];
+function defaultWeek(weeks: readonly WeekKey[]): WeekKey {
+  return weeks.includes(CURRENT_WEEK as WeekKey)
+    ? (CURRENT_WEEK as WeekKey)
+    : (weeks[0] ?? ALL_WEEKS[0]);
+}
 
 // "sáb 12 sep 2026, 11:59 p. m." — schedule dates are hardcoded in
 // ~/lib/weeks and always shown in the event's time zone.
@@ -46,32 +61,12 @@ function formatScheduleDate(date: Date, withTime: boolean): string {
   });
 }
 
-// Comments for a week are accumulated into a single COMMENTS.md. A single
-// comment is capped at MAX_COMMENT_CHARS characters and MAX_COMMENT_BYTES
-// bytes, and is terminated by \x04 so messages can be fragmented when read.
-const COMMENTS_FILE = "COMMENTS.md";
-const MAX_COMMENT_CHARS = 2045;
-const MAX_COMMENT_BYTES = 2048;
-// A week's folder may hold up to 256 MB across all files.
-const MAX_WEEK_BYTES = 256 * 1024 * 1024;
 // Show the bottom-right counter once the comment is within this many
 // characters of the limit.
 const COUNTER_THRESHOLD = 200;
 
 function byteLength(value: string): number {
   return new TextEncoder().encode(value).byteLength;
-}
-
-function formatBytes(bytes: number | null): string {
-  if (bytes == null) return "? B";
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  const value = bytes / 1024 ** i;
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 // Mirrors the server's sanitizeSegment: spaces become dashes and non-word
@@ -87,11 +82,25 @@ function dashedUserName(name: string): string {
 export default function WeekUploads({
   teamName,
   userName,
+  initialFinalOpen,
 }: {
   teamName: string;
   userName: string;
+  /** Read on the server, so the first render already shows the open side. */
+  initialFinalOpen: boolean;
 }) {
-  const [week, setWeek] = useState<WeekKey>(DEFAULT_WEEK);
+  const { data: finalOpen = initialFinalOpen } =
+    api.uploads.getFinalSubmissionOpen.useQuery(undefined, {
+      initialData: initialFinalOpen,
+    });
+  const weeks = finalOpen ? FINAL_ONLY : INDIVIDUAL_WEEKS;
+  const [selectedWeek, setWeek] = useState<WeekKey | null>(null);
+  // Fall back to the default tab when nothing was picked yet or the admin
+  // flipped the switch and the picked week is no longer open.
+  const week =
+    selectedWeek != null && weeks.includes(selectedWeek)
+      ? selectedWeek
+      : defaultWeek(weeks);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
@@ -102,13 +111,13 @@ export default function WeekUploads({
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Las semanas 1 a 5 son personales
-        (solo tú ves tus archivos); la entrega final es compartida con todo tu
-        equipo.
+        {finalOpen
+          ? "Sube aquí la entrega final. Es compartida con todo tu equipo."
+          : "Sube aquí los archivos de cada semana. Las semanas 2 a 6 son personales (solo tú ves tus archivos)."}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {WEEKS.map((w) => (
+        {weeks.map((w) => (
           <button
             key={w}
             type="button"
@@ -124,7 +133,12 @@ export default function WeekUploads({
         ))}
       </div>
 
-      <WeekFiles teamName={teamName} userName={userName} week={week} />
+      {/* FINAL has its own hardcoded deliverables instead of a free folder. */}
+      {week === "FINAL" ? (
+        <FinalDeliverables teamName={teamName} />
+      ) : (
+        <WeekFiles teamName={teamName} userName={userName} week={week} />
+      )}
     </div>
   );
 }
@@ -192,13 +206,14 @@ function WeekFiles({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadFailures, setUploadFailures] = useState<
-    { name: string; errCode: string; canceled: boolean }[]
+    { name: string; reason: string; canceled: boolean }[]
   >([]);
   const [showFailures, setShowFailures] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Holds the most recent UploadThing error code, read when a file upload
-  // settles so we can attribute it to the file that just failed.
-  const errorCodeRef = useRef("");
+  // Holds the most recent UploadThing error (the server's message, or the
+  // code when there is none), read when a file upload settles so we can
+  // attribute it to the file that just failed.
+  const errorRef = useRef("");
 
   const { startUpload, isUploading } = useUploadThing("teamUploader", {
     onBeforeUploadBegin: async (selectedFiles) => {
@@ -238,7 +253,7 @@ function WeekFiles({
     },
     onUploadError: (error) => {
       setUploadSucceeded(false);
-      errorCodeRef.current = error.code;
+      errorRef.current = error.message || error.code;
     },
   });
 
@@ -335,14 +350,14 @@ function WeekFiles({
     // codes. The comment is NOT attached here: appending it inside every
     // file's onUploadComplete made the completion handshake slow (and could
     // hang the UI at 100%). It is sent once afterwards via submitComment.
-    const failures: { name: string; errCode: string; canceled: boolean }[] = [];
+    const failures: { name: string; reason: string; canceled: boolean }[] = [];
     for (const file of attempted) {
-      errorCodeRef.current = "";
+      errorRef.current = "";
       const res = await startUpload([file], { week: weekNumber });
       if (!res || res.length === 0) {
         failures.push({
           name: file.name,
-          errCode: errorCodeRef.current || "UNKNOWN",
+          reason: errorRef.current || "error desconocido",
           canceled: false,
         });
       }
@@ -438,7 +453,7 @@ function WeekFiles({
     uploadedBytes + pendingFiles.reduce((sum, f) => sum + f.size, 0);
   const weeklyPct = Math.min(100, (weeklyUsageBytes / MAX_WEEK_BYTES) * 100);
 
-  // Weeks 1-5 live in the caller's private folder; the FINAL week is shared by
+  // Weeks 2-6 live in the caller's private folder; the FINAL week is shared by
   // the whole team in a single folder.
   const folderLabel =
     week === "FINAL"
@@ -709,8 +724,8 @@ function WeekFiles({
             <ul className="mt-4 space-y-2">
               {uploadFailures.map((failure) => (
                 <li key={failure.name} className="text-sm text-red-400">
-                  El archivo {failure.name} no se pudo subir! Código de error:{" "}
-                  {failure.errCode}
+                  El archivo {failure.name} no se pudo subir:{" "}
+                  {failure.reason}
                   {failure.canceled && (
                     <span className="mt-1 block text-xs text-neutral-400">
                       La carga fue cancelada del lado del servidor.

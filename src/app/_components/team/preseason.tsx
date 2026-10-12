@@ -18,11 +18,13 @@ export default function TeamPreseason({
   userName,
   members,
   registration,
+  finalSubmissionOpen,
 }: {
   teamName: string;
   userName: string;
   members: TeamMember[];
   registration: RegistrationSummaryData | null;
+  finalSubmissionOpen: boolean;
 }) {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-6 pb-20 font-archivo">
@@ -78,7 +80,11 @@ export default function TeamPreseason({
         </ul>
       </div>
 
-      <WeekUploads teamName={teamName} userName={userName} />
+      <WeekUploads
+        teamName={teamName}
+        userName={userName}
+        initialFinalOpen={finalSubmissionOpen}
+      />
 
       {registration && <RegistrationSummary registration={registration} />}
     </div>

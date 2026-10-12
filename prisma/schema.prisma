@@ -556,6 +556,10 @@ model Config {
   // DEFAULT_ADVANCED_DUE_AT in ~/lib/registration.
   advancedSubmissionDueAt DateTime?
 
+  // Which uploads the team screen offers (and the server accepts): false →
+  // the individual weeks 2-6, true → the team-wide FINAL submission. Never both.
+  finalSubmissionOpen Boolean @default(false)
+
   @@map("config")
 }
 

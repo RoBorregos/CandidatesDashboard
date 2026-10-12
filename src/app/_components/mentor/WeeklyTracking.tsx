@@ -11,6 +11,13 @@ import {
   type RubricCriterionKey,
 } from "~/lib/rubric";
 import {
+  DEFAULT_FINAL_SUBMISSION_OPEN,
+  isFinalWeek,
+  lastVisibleWeek,
+  MAX_UPLOAD_WEEK,
+  MIN_UPLOAD_WEEK,
+} from "~/lib/weeks";
+import {
   INTRO_CANDIDATE_QUESTIONS,
   INTRO_TEAM_QUESTIONS,
   type IntroCandidateQuestionKey,
@@ -23,6 +30,7 @@ import AreaObjectives, {
 import CandidateReview, { type ReviewDraft } from "./weekly/CandidateReview";
 import IntroMeetingBlock, { type TeamNoteDraft } from "./weekly/IntroMeetingBlock";
 import PreviousObjectives from "./weekly/PreviousObjectives";
+import FinalSubmission from "./weekly/FinalSubmission";
 import {
   emptyObjective,
   emptyScores,
@@ -64,7 +72,19 @@ export default function WeeklyTracking({
   teamId: string;
   initialWeek: number;
 }) {
-  const [week, setWeek] = useState(initialWeek);
+  // FINAL is only reachable once an admin opens it (Team Management).
+  // Until the switch is known the week isn't capped, so opening on FINAL
+  // doesn't flash Semana 6 first.
+  const { data: finalOpen, isPending: finalOpenPending } =
+    api.uploads.getFinalSubmissionOpen.useQuery();
+  const lastWeek = Math.min(
+    MAX_TRACKING_WEEK,
+    finalOpenPending
+      ? MAX_TRACKING_WEEK
+      : lastVisibleWeek(finalOpen ?? DEFAULT_FINAL_SUBMISSION_OPEN),
+  );
+  const [selectedWeek, setWeek] = useState(initialWeek);
+  const week = Math.min(selectedWeek, lastWeek);
   const layout = weekLayout(week);
 
   const utils = api.useUtils();
@@ -73,7 +93,11 @@ export default function WeeklyTracking({
     { teamId, week },
   );
 
-  const uploadsQueryEnabled = week >= 2 && week <= 7;
+  // Weeks 2-6 show each member's own uploads; FINAL_WEEK shows the team's
+  // shared final submission.
+  const uploadsQueryEnabled = week >= MIN_UPLOAD_WEEK && week <= MAX_UPLOAD_WEEK;
+  const isFinal = isFinalWeek(week);
+  const weekLabel = isFinal ? "FINAL" : `Semana ${week}`;
   const { data: weekUploads } = api.mentor.getTeamWeekUploads.useQuery(
     { teamId, week },
     { enabled: uploadsQueryEnabled },
@@ -408,7 +432,7 @@ export default function WeeklyTracking({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setWeek((current) => Math.max(1, current - 1))}
+            onClick={() => setWeek(Math.max(1, week - 1))}
             disabled={week <= 1}
             className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -416,15 +440,15 @@ export default function WeeklyTracking({
           </button>
 
           <span className="min-w-24 text-center text-sm font-medium text-white">
-            Semana {week}
+            {weekLabel}
           </span>
 
           <button
             type="button"
             onClick={() =>
-              setWeek((current) => Math.min(MAX_TRACKING_WEEK, current + 1))
+              setWeek(Math.min(lastWeek, week + 1))
             }
-            disabled={week >= MAX_TRACKING_WEEK}
+            disabled={week >= lastWeek}
             className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             →
@@ -439,109 +463,122 @@ export default function WeeklyTracking({
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* Week 1 only — the intro meeting's team-wide half */}
-      {/* ========================================================= */}
-
-      {layout.showIntroMeeting && (
-        <IntroMeetingBlock
-          draft={teamNote}
-          onChange={(patch) =>
-            setTeamNote((previous) => ({ ...previous, ...patch }))
-          }
-          onSave={() =>
-            saveTeamNote.mutate({
-              teamId,
-              week,
-              generalNotes: teamNote.generalNotes || undefined,
-              answers: INTRO_TEAM_QUESTIONS.flatMap((question) => {
-                const answer = teamNote.answers[question.key].trim();
-                return answer ? [{ questionKey: question.key, answer }] : [];
-              }),
-            })
-          }
-          isSaving={saveTeamNote.isPending}
+      {isFinal ? (
+        // FINAL only shows what the team delivered and their comments.
+        <FinalSubmission
+          files={weekUploads?.finalFiles ?? []}
+          comments={weekUploads?.finalComments ?? []}
+          repository={weekUploads?.finalRepository ?? null}
         />
-      )}
-
-      {/* ========================================================= */}
-      {/* Last week's objectives, the ones being evaluated now */}
-      {/* ========================================================= */}
-
-      {layout.showPreviousObjectives && (
-        <PreviousObjectives
-          week={week - 1}
-          rows={data.previousObjectives}
-          memberNames={memberNames}
-        />
-      )}
-
-      {/* ========================================================= */}
-      {/* Block 1 — objectives per area, each with its own rubric */}
-      {/* ========================================================= */}
-
-      <div className="rounded-lg bg-gray-800 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-200">
-          Objetivos de la semana {week}
-        </h3>
-
-        <div className="space-y-4">
-          {INTERVIEW_AREAS.map((area) => (
-            <AreaObjectives
-              key={area}
-              area={area}
-              drafts={objectives[area] ?? []}
-              members={data.team.members}
-              onChange={(key, patch) => patchObjective(area, key, patch)}
-              onScoreChange={(key, criterion, patch) =>
-                patchScore(area, key, criterion, patch)
-              }
-              onAdd={() => addObjective(area)}
-              onRemove={(draft) => removeObjective(area, draft)}
-              onSave={(draft) => submitObjective(area, draft)}
-              savingKey={savingKey}
-              removingKey={removingKey}
-            />
-          ))}
-        </div>
-
-        <p className="mt-3 text-xs text-gray-500">
-          Cada objetivo se guarda por separado, junto con su rúbrica.
-        </p>
-      </div>
-
-      {/* ========================================================= */}
-      {/* Block 2 — per candidate */}
-      {/* ========================================================= */}
-
-      {data.team.members.length === 0 ? (
-        <p className="rounded-lg bg-gray-800 p-4 text-sm text-gray-400">
-          Este equipo todavía no tiene integrantes.
-        </p>
       ) : (
-        data.team.members.map((member) => (
-          <CandidateReview
-            key={member.id}
-            member={member}
-            draft={reviews[member.id] ?? EMPTY_REVIEW()}
-            layout={layout}
-            week={week}
-            onChange={(patch) =>
-              setReviews((previous) => ({
-                ...previous,
-                [member.id]: {
-                  ...(previous[member.id] ?? EMPTY_REVIEW()),
-                  ...patch,
-                },
-              }))
-            }
-            onSave={() =>
-              submitReview(member.id, reviews[member.id] ?? EMPTY_REVIEW())
-            }
-            isSaving={savingMemberId === member.id}
-            uploads={weekUploads?.memberUploads[member.id]}
-          />
-        ))
+        <>
+          {/* ========================================================= */}
+          {/* Week 1 only — the intro meeting's team-wide half */}
+          {/* ========================================================= */}
+
+          {layout.showIntroMeeting && (
+            <IntroMeetingBlock
+              draft={teamNote}
+              onChange={(patch) =>
+                setTeamNote((previous) => ({ ...previous, ...patch }))
+              }
+              onSave={() =>
+                saveTeamNote.mutate({
+                  teamId,
+                  week,
+                  generalNotes: teamNote.generalNotes || undefined,
+                  answers: INTRO_TEAM_QUESTIONS.flatMap((question) => {
+                    const answer = teamNote.answers[question.key].trim();
+                    return answer
+                      ? [{ questionKey: question.key, answer }]
+                      : [];
+                  }),
+                })
+              }
+              isSaving={saveTeamNote.isPending}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* Last week's objectives, the ones being evaluated now */}
+          {/* ========================================================= */}
+
+          {layout.showPreviousObjectives && (
+            <PreviousObjectives
+              week={week - 1}
+              rows={data.previousObjectives}
+              memberNames={memberNames}
+            />
+          )}
+
+          {/* ========================================================= */}
+          {/* Block 1 — objectives per area, each with its own rubric */}
+          {/* ========================================================= */}
+
+          <div className="rounded-lg bg-gray-800 p-4">
+            <h3 className="mb-3 text-sm font-semibold text-gray-200">
+              Objetivos de la semana {week}
+            </h3>
+
+            <div className="space-y-4">
+              {INTERVIEW_AREAS.map((area) => (
+                <AreaObjectives
+                  key={area}
+                  area={area}
+                  drafts={objectives[area] ?? []}
+                  members={data.team.members}
+                  onChange={(key, patch) => patchObjective(area, key, patch)}
+                  onScoreChange={(key, criterion, patch) =>
+                    patchScore(area, key, criterion, patch)
+                  }
+                  onAdd={() => addObjective(area)}
+                  onRemove={(draft) => removeObjective(area, draft)}
+                  onSave={(draft) => submitObjective(area, draft)}
+                  savingKey={savingKey}
+                  removingKey={removingKey}
+                />
+              ))}
+            </div>
+
+            <p className="mt-3 text-xs text-gray-500">
+              Cada objetivo se guarda por separado, junto con su rúbrica.
+            </p>
+          </div>
+
+          {/* ========================================================= */}
+          {/* Block 2 — per candidate */}
+          {/* ========================================================= */}
+
+          {data.team.members.length === 0 ? (
+            <p className="rounded-lg bg-gray-800 p-4 text-sm text-gray-400">
+              Este equipo todavía no tiene integrantes.
+            </p>
+          ) : (
+            data.team.members.map((member) => (
+              <CandidateReview
+                key={member.id}
+                member={member}
+                draft={reviews[member.id] ?? EMPTY_REVIEW()}
+                layout={layout}
+                week={week}
+                onChange={(patch) =>
+                  setReviews((previous) => ({
+                    ...previous,
+                    [member.id]: {
+                      ...(previous[member.id] ?? EMPTY_REVIEW()),
+                      ...patch,
+                    },
+                  }))
+                }
+                onSave={() =>
+                  submitReview(member.id, reviews[member.id] ?? EMPTY_REVIEW())
+                }
+                isSaving={savingMemberId === member.id}
+                uploads={weekUploads?.memberUploads[member.id]}
+              />
+            ))
+          )}
+        </>
       )}
     </div>
   );

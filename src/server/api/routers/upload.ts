@@ -120,6 +120,27 @@ export function teamUploadFolderPath(
 }
 
 /**
+ * Name a FINAL file is stored under: its slot's subfolder plus the file name,
+ * e.g. `LOGBOOK/Final.pdf`. Keying by slot keeps two deliverables that share a
+ * file name (a `Final.pdf` logbook and a `Final.pdf` schematic) from replacing
+ * each other's record and manifest entry.
+ */
+export function finalSlotFileName(
+  deliverable: FinalFileDeliverableKey,
+  fileName: string,
+): string {
+  return `${deliverable}/${sanitizeSegment(fileName)}`;
+}
+
+/** Object path of a FINAL file: `FINAL/{teamName}/{slot}/{fileName}`. */
+export function finalUploadFolderPath(
+  teamName: string,
+  slotFileName: string,
+): string {
+  return `${folderPrefix(teamName, FINAL_WEEK)}/${slotFileName}`;
+}
+
+/**
  * Build the folder path for a user's private week (weeks 2-6):
  * `{Semana-[2-6]}/{teamName}/{userName}/{fileName}`. Used to display and to
  * locate older uploads of the same file.

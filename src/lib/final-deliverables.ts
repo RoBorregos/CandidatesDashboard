@@ -1,7 +1,7 @@
 /*
  * The FINAL submission is not a free-form folder like weeks 2-6: every team
- * hands in exactly these four deliverables. Files keep their original name
- * inside `FINAL/{team}/` — which slot each one fills is recorded in the
+ * hands in exactly these four deliverables. Each file is stored under its
+ * slot's subfolder, `FINAL/{team}/{slot}/{file}` — which slot each one fills is recorded in the
  * folder's FINAL_MANIFEST_FILE, and the repository link (which is not a file
  * at all) in FINAL_REPOSITORY_FILE.
  */
@@ -77,9 +77,9 @@ export const EMPTY_FINAL_MANIFEST = (): FinalManifest => ({
 });
 
 /**
- * Name shown to people for a FINAL file. Records may carry the UploadThing
- * object path (`FINAL/{team}/{file}`) as their name; storage keeps that path,
- * but the UI only shows `{file}`, like any other delivery.
+ * Name shown to people for a FINAL file. Records carry their slot folder
+ * (`{slot}/{file}`), or for older uploads the whole object path
+ * (`FINAL/{team}/{file}`); the UI only shows `{file}`, like any other delivery.
  */
 export function finalDisplayName(name: string): string {
   return name.slice(name.lastIndexOf("/") + 1) || name;

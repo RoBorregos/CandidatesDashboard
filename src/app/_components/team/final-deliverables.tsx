@@ -60,7 +60,7 @@ function formatScheduleDate(date: Date, withTime: boolean): string {
 /**
  * The FINAL submission: the four hardcoded deliverables (CAD, schematic,
  * repository link, unified logbook) in a 2x2 grid, plus the team's shared
- * comments. Files keep their own name inside `FINAL/{team}/`.
+ * comments. Each file is stored under its slot's subfolder, `FINAL/{team}/{slot}/`.
  */
 export default function FinalDeliverables({ teamName }: { teamName: string }) {
   const utils = api.useUtils();
@@ -81,7 +81,6 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
     ]);
   };
 
-  const prepareUpload = api.uploads.prepareUpload.useMutation();
   const remove = api.uploads.remove.useMutation({
     onSuccess: async () => {
       await refresh();
@@ -126,10 +125,10 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
     setProgress(0);
     errorCodeRef.current = "";
     try {
-      // Free a same-named object first so the upload can't collide (409).
-      await prepareUpload
-        .mutateAsync({ week: FINAL_WEEK, fileNames: [file.name] })
-        .catch(() => undefined);
+      // No prepareUpload here: it frees same-named objects across the whole
+      // FINAL folder, which would delete another slot's file. Each slot has
+      // its own subfolder, and assignFinalDeliverable replaces the slot's
+      // previous file once this one lands.
       const res = await startUpload([file], {
         week: FINAL_WEEK,
         deliverable: key,

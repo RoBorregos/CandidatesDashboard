@@ -11,12 +11,13 @@ import {
   assignFinalDeliverable,
   bustListAllFilesCache,
   finalDeliverableSchema,
+  finalSlotFileName,
+  finalUploadFolderPath,
   folderUserName,
   isFinalWeek,
   MAX_WEEK_BYTES,
   recordTeamUpload,
   stripFolderPrefix,
-  teamUploadFolderPath,
   uploadWeekSchema,
   userUploadFolderPath,
   weekUsageBytes,
@@ -119,8 +120,9 @@ export const ourFileRouter = {
       }
 
       // The FINAL folder only takes its hardcoded deliverables, one file each.
+      const deliverable = isFinalWeek(input.week) ? input.deliverable : undefined;
       if (isFinalWeek(input.week)) {
-        if (!input.deliverable) {
+        if (!deliverable) {
           throw new Error("Indica qué entrega final es este archivo");
         }
         if (files.length !== 1) {
@@ -145,8 +147,9 @@ export const ourFileRouter = {
       }
 
       // Rename each object to `{Semana-[2-6]}/{team}/{user}/{file}` for
-      // individual weeks and `FINAL/{team}/{file}` for the final, so
-      // UploadThing shows the file inside its per-user / team folder. We
+      // individual weeks and `FINAL/{team}/{slot}/{file}` for the final, so
+      // UploadThing shows the file inside its per-user / team folder (and two
+      // FINAL slots never share a path even when their files share a name). We
       // deliberately do NOT set a customId: a repeated customId is what makes
       // UploadThing reject the upload with a "file already exists" 409.
       return {
@@ -154,23 +157,24 @@ export const ourFileRouter = {
         teamName: team.name,
         week: input.week,
         comment: input.comment,
-        deliverable: isFinalWeek(input.week) ? input.deliverable : undefined,
+        deliverable,
         userId,
         userName,
         [UTFiles]: files.map((file) => ({
           ...file,
-          name: isFinalWeek(input.week)
-            ? teamUploadFolderPath(team.name, input.week, file.name)
+          name: deliverable
+            ? finalUploadFolderPath(team.name, finalSlotFileName(deliverable, file.name))
             : userUploadFolderPath(team.name, input.week, userName, file.name),
         })),
       };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // The object name carries the folder prefix; store the plain file name.
+      // The object name carries the folder prefix; store the plain file name
+      // (`{slot}/{file}` for FINAL, whose folder has no user segment).
       const name = stripFolderPrefix(
         metadata.teamName,
         metadata.week,
-        metadata.userName,
+        isFinalWeek(metadata.week) ? null : metadata.userName,
         file.name,
       );
       const record = await recordTeamUpload({
@@ -179,7 +183,7 @@ export const ourFileRouter = {
         name,
         fileKey: file.key,
         customId: isFinalWeek(metadata.week)
-          ? teamUploadFolderPath(metadata.teamName, metadata.week, name)
+          ? finalUploadFolderPath(metadata.teamName, name)
           : userUploadFolderPath(
               metadata.teamName,
               metadata.week,

@@ -11,8 +11,9 @@ import {
   type RubricCriterionKey,
 } from "~/lib/rubric";
 import {
+  DEFAULT_FINAL_SUBMISSION_OPEN,
   isFinalWeek,
-  LAST_VISIBLE_WEEK,
+  lastVisibleWeek,
   MAX_UPLOAD_WEEK,
   MIN_UPLOAD_WEEK,
 } from "~/lib/weeks";
@@ -71,7 +72,14 @@ export default function WeeklyTracking({
   teamId: string;
   initialWeek: number;
 }) {
-  const [week, setWeek] = useState(Math.min(initialWeek, LAST_VISIBLE_WEEK));
+  // FINAL is only reachable once an admin opens it (Team Management).
+  const { data: finalOpen } = api.uploads.getFinalSubmissionOpen.useQuery();
+  const lastWeek = Math.min(
+    MAX_TRACKING_WEEK,
+    lastVisibleWeek(finalOpen ?? DEFAULT_FINAL_SUBMISSION_OPEN),
+  );
+  const [selectedWeek, setWeek] = useState(initialWeek);
+  const week = Math.min(selectedWeek, lastWeek);
   const layout = weekLayout(week);
 
   const utils = api.useUtils();
@@ -419,7 +427,7 @@ export default function WeeklyTracking({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setWeek((current) => Math.max(1, current - 1))}
+            onClick={() => setWeek(Math.max(1, week - 1))}
             disabled={week <= 1}
             className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -433,11 +441,9 @@ export default function WeeklyTracking({
           <button
             type="button"
             onClick={() =>
-              setWeek((current) =>
-                Math.min(Math.min(MAX_TRACKING_WEEK, LAST_VISIBLE_WEEK), current + 1),
-              )
+              setWeek(Math.min(lastWeek, week + 1))
             }
-            disabled={week >= Math.min(MAX_TRACKING_WEEK, LAST_VISIBLE_WEEK)}
+            disabled={week >= lastWeek}
             className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             →

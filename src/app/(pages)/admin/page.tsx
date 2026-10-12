@@ -4,6 +4,7 @@ import Header from "~/app/_components/header";
 import { api } from "~/trpc/react";
 import { useState } from "react";
 import TeamManagement from "~/app/_components/admin/TeamManagement";
+import SubmissionPhaseControl from "~/app/_components/admin/SubmissionPhaseControl";
 import TeamStatusManagement from "~/app/_components/admin/TeamStatusManagement";
 import ScheduleControl from "~/app/_components/admin/ScheduleControl";
 import RoundControl from "~/app/_components/admin/RoundControl";
@@ -88,11 +89,14 @@ export default function AdminPage() {
 
       <div className="container mx-auto max-w-6xl space-y-6 p-4">
         {selectedTab === "management" && (
-          <TeamManagement
-            users={users}
-            teams={teams}
-            refetchAll={refetchAll}
-          />
+          <>
+            <SubmissionPhaseControl />
+            <TeamManagement
+              users={users}
+              teams={teams}
+              refetchAll={refetchAll}
+            />
+          </>
         )}
 
         {selectedTab === "registrations" && <RegistrationManagement />}

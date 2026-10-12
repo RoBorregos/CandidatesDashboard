@@ -9,8 +9,8 @@ import FinalDeliverables from "./final-deliverables";
 import {
   CURRENT_WEEK,
   DEADLINE_TIME_ZONE,
+  DEFAULT_FINAL_SUBMISSION_OPEN,
   FINAL_WEEK,
-  FINAL_WEEK_VISIBLE,
   weekAssignedAt,
   weekDueAt,
 } from "~/lib/weeks";
@@ -18,10 +18,10 @@ import {
 // MAX_UPLOAD_WEEK is defined on src\server\api\routers\upload.ts
 const ALL_WEEKS = [2, 3, 4, 5, 6, "FINAL"] as const;
 type WeekKey = (typeof ALL_WEEKS)[number];
-// FINAL stays out of the tabs until it is opened in ~/lib/weeks.
-const WEEKS: readonly WeekKey[] = FINAL_WEEK_VISIBLE
-  ? ALL_WEEKS
-  : ALL_WEEKS.filter((w) => w !== "FINAL");
+// An admin opens either the individual weeks or FINAL (Team Management);
+// only the open side gets tabs.
+const INDIVIDUAL_WEEKS: readonly WeekKey[] = ALL_WEEKS.filter((w) => w !== "FINAL");
+const FINAL_ONLY: readonly WeekKey[] = ["FINAL"];
 
 const WEEK_LABELS: Record<WeekKey, string> = {
   2: "Semana 2",
@@ -38,9 +38,11 @@ const toWeekNumber = (week: WeekKey): number => (week === "FINAL" ? FINAL_WEEK :
 
 // Open on the week the competition is on right now (~/lib/weeks) instead of
 // always starting at week 2, which by now is mostly history.
-const DEFAULT_WEEK: WeekKey = WEEKS.includes(CURRENT_WEEK as WeekKey)
-  ? (CURRENT_WEEK as WeekKey)
-  : ALL_WEEKS[0];
+function defaultWeek(weeks: readonly WeekKey[]): WeekKey {
+  return weeks.includes(CURRENT_WEEK as WeekKey)
+    ? (CURRENT_WEEK as WeekKey)
+    : (weeks[0] ?? ALL_WEEKS[0]);
+}
 
 // "sáb 12 sep 2026, 11:59 p. m." — schedule dates are hardcoded in
 // ~/lib/weeks and always shown in the event's time zone.
@@ -98,7 +100,17 @@ export default function WeekUploads({
   teamName: string;
   userName: string;
 }) {
-  const [week, setWeek] = useState<WeekKey>(DEFAULT_WEEK);
+  // Weeks 2-6 until an admin opens FINAL (also if the switch can't be read).
+  const { data: finalOpenData } = api.uploads.getFinalSubmissionOpen.useQuery();
+  const finalOpen = finalOpenData ?? DEFAULT_FINAL_SUBMISSION_OPEN;
+  const weeks = finalOpen ? FINAL_ONLY : INDIVIDUAL_WEEKS;
+  const [selectedWeek, setWeek] = useState<WeekKey | null>(null);
+  // Fall back to the default tab when nothing was picked yet or the admin
+  // flipped the switch and the picked week is no longer open.
+  const week =
+    selectedWeek != null && weeks.includes(selectedWeek)
+      ? selectedWeek
+      : defaultWeek(weeks);
 
   return (
     <div className="rounded-xl bg-gradient-to-tr from-neutral-950 to-neutral-800 p-6 lg:p-8">
@@ -109,15 +121,13 @@ export default function WeekUploads({
         <span className="text-sm text-neutral-400">{teamName}</span>
       </div>
       <p className="mt-2 text-sm text-neutral-300">
-        Sube aquí los archivos de cada semana. Las semanas 2 a 6 son personales
-        (solo tú ves tus archivos)
-        {FINAL_WEEK_VISIBLE
-          ? "; la entrega final es compartida con todo tu equipo."
-          : "."}
+        {finalOpen
+          ? "Sube aquí la entrega final. Es compartida con todo tu equipo."
+          : "Sube aquí los archivos de cada semana. Las semanas 2 a 6 son personales (solo tú ves tus archivos)."}
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {WEEKS.map((w) => (
+        {weeks.map((w) => (
           <button
             key={w}
             type="button"

@@ -17,11 +17,14 @@ import {
   isFinalWeek,
   MAX_WEEK_BYTES,
   recordTeamUpload,
+  finalSubmissionOpen,
   stripFolderPrefix,
   uploadWeekSchema,
   userUploadFolderPath,
+  weekClosedMessage,
   weekUsageBytes,
 } from "~/server/api/routers/upload";
+import { isWeekOpen } from "~/lib/weeks";
 import {
   FINAL_MANIFEST_FILE,
   FINAL_REPOSITORY_FILE,
@@ -86,6 +89,11 @@ export const ourFileRouter = {
       const session = await getServerAuthSession();
       if (!session?.user?.id) {
         throw new Error("Unauthorized");
+      }
+
+      // Only the side an admin has open (weeks 2-6 or FINAL) takes uploads.
+      if (!isWeekOpen(input.week, await finalSubmissionOpen(db))) {
+        throw new Error(weekClosedMessage(input.week));
       }
 
       const user = await db.user.findUnique({

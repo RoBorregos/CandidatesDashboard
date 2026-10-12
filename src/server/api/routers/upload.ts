@@ -7,7 +7,14 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
-import { FINAL_WEEK, isFinalWeek, MAX_UPLOAD_WEEK, MIN_UPLOAD_WEEK } from "~/lib/weeks";
+import {
+  DEFAULT_FINAL_SUBMISSION_OPEN,
+  FINAL_WEEK,
+  isFinalWeek,
+  isWeekOpen,
+  MAX_UPLOAD_WEEK,
+  MIN_UPLOAD_WEEK,
+} from "~/lib/weeks";
 import {
   FINAL_FILE_DELIVERABLE_KEYS,
   FINAL_MANIFEST_FILE,
@@ -71,6 +78,30 @@ export function finalFolderWhere(teamId: string) {
 export const MAX_WEEK_BYTES = 256 * 1024 * 1024;
 
 export const uploadWeekSchema = z.number().int().min(MIN_UPLOAD_WEEK).max(MAX_UPLOAD_WEEK);
+
+/** True when an admin has opened FINAL (and closed the weeks) in Team Management. */
+export async function finalSubmissionOpen(client: typeof db): Promise<boolean> {
+  const config = await client.config.findFirst({
+    select: { finalSubmissionOpen: true },
+  });
+  return config?.finalSubmissionOpen ?? DEFAULT_FINAL_SUBMISSION_OPEN;
+}
+
+export function weekClosedMessage(week: number): string {
+  return isFinalWeek(week)
+    ? "La entrega final todavía no está abierta"
+    : "Las entregas semanales están cerradas; ahora solo se recibe la entrega final";
+}
+
+/**
+ * Reject any change (upload, comment, delete, repository link) to a week the
+ * current phase has closed: with FINAL open the weeks are frozen, and vice versa.
+ */
+export async function assertWeekOpen(client: typeof db, week: number) {
+  if (!isWeekOpen(week, await finalSubmissionOpen(client))) {
+    throw new TRPCError({ code: "FORBIDDEN", message: weekClosedMessage(week) });
+  }
+}
 
 const utapi = new UTApi();
 
@@ -668,6 +699,11 @@ export async function assignFinalDeliverable(input: {
 export const finalDeliverableSchema = z.enum(FINAL_FILE_DELIVERABLE_KEYS);
 
 export const uploadRouter = createTRPCRouter({
+  /** True when FINAL is open (and the individual weeks closed). */
+  getFinalSubmissionOpen: protectedProcedure.query(({ ctx }) =>
+    finalSubmissionOpen(ctx.db),
+  ),
+
   /** Which file fills each FINAL deliverable, plus the repository link. */
   getFinalDeliverables: protectedProcedure.query(async ({ ctx }) => {
     const teamId = await currentTeamId(ctx);
@@ -692,6 +728,7 @@ export const uploadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertWeekOpen(ctx.db, FINAL_WEEK);
       const teamId = await currentTeamId(ctx);
       if (!teamId) {
         throw new TRPCError({
@@ -777,6 +814,7 @@ export const uploadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertWeekOpen(ctx.db, input.week);
       const teamId = await currentTeamId(ctx);
       if (!teamId) {
         throw new TRPCError({
@@ -830,6 +868,7 @@ export const uploadRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertWeekOpen(ctx.db, input.week);
       const teamId = await currentTeamId(ctx);
       if (!teamId) {
         throw new TRPCError({
@@ -881,6 +920,13 @@ export const uploadRouter = createTRPCRouter({
           message: "El archivo no existe",
         });
       }
+
+      // A FINAL file is the one without an owner (see finalFolderWhere), even
+      // if it was stored under an older FINAL_WEEK number.
+      await assertWeekOpen(
+        ctx.db,
+        upload.userId === null ? FINAL_WEEK : upload.week,
+      );
 
       // Individual weeks are private: only the owner can remove their files.
       // The FINAL folder (no owner) is shared by the whole team.

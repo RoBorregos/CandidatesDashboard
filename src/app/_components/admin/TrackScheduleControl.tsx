@@ -45,8 +45,9 @@ type Conflict = { name: string; team: string; time: string; reason: string };
 
 /**
  * 2026 schedule generator: three round windows, each team runs Pista A and
- * Pista B once per round in groups of four. Re-generating a round only
- * replaces that round's times, so a delayed round can be shifted on the day.
+ * Pista B once per round, in a random order per round. Updating a stored
+ * round only shifts its times, so a delayed round can be moved on the day
+ * without reshuffling teams; rebuilding draws a new order.
  */
 export default function TrackScheduleControl({
   activeTeams,
@@ -62,9 +63,23 @@ export default function TrackScheduleControl({
 
   const generate = api.admin.generateTrackSchedule.useMutation({
     onSuccess(data) {
-      toast.success(
-        `Round${data.rounds.length > 1 ? "s" : ""} ${data.rounds.join(", ")} scheduled for ${data.teamsScheduled} teams (${data.minutesPerRound} min per round).`,
-      );
+      for (const { round, minutes } of data.shifted) {
+        toast.success(
+          minutes === 0
+            ? `Round ${round} already starts at that time; nothing moved.`
+            : `Round ${round} moved ${minutes > 0 ? "later" : "earlier"} by ${Math.abs(minutes)} min. Teams kept their slots.`,
+        );
+      }
+      if (data.rebuilt.length > 0) {
+        toast.success(
+          `Round${data.rebuilt.length > 1 ? "s" : ""} ${data.rebuilt.join(", ")} generated for ${data.teamsScheduled} teams in random order (${data.minutesPerRound} min per round).`,
+        );
+      }
+      if (data.unscheduledTeams.length > 0) {
+        toast.warning(
+          `No slot in the shifted rounds for: ${data.unscheduledTeams.join(", ")}. Only a rebuild gives them one.`,
+        );
+      }
       setConflicts(data.interviewConflicts);
       if (data.interviewConflicts.length > 0) {
         toast.warning(
@@ -94,20 +109,25 @@ export default function TrackScheduleControl({
       current.map((w) => (w.number === number ? { ...w, [field]: value } : w)),
     );
 
-  const run = (rounds: number[]) => {
+  const run = (rounds: number[], rebuild = false) => {
     const existing = rounds.filter((n) =>
       tables?.some((table) => table.number === n),
     );
-    if (
-      existing.length > 0 &&
-      !window.confirm(
-        `This replaces the current times of round ${existing.join(", ")} for every active team. Revealed rounds stay revealed. Continue?`,
-      )
-    ) {
-      return;
-    }
-    generate.mutate({ date, windows, rounds });
+    const revealed = existing.filter(
+      (n) => tables?.find((table) => table.number === n)?.visible,
+    );
+    const message = rebuild
+      ? `This throws away round ${existing.join(", ")} and draws a new random order for the active teams, so every team gets a new slot and track.${
+          revealed.length > 0
+            ? ` Round ${revealed.join(", ")} is already revealed: teams will see their times change.`
+            : ""
+        } Continue?`
+      : `This moves every run of round ${existing.join(", ")} to the new start time. Teams keep their slots and tracks. Continue?`;
+    if (existing.length > 0 && !window.confirm(message)) return;
+    generate.mutate({ date, windows, rounds, rebuild });
   };
+
+  const anyStored = (tables?.length ?? 0) > 0;
 
   const table = tables?.find((t) => t.number === selectedRound);
 
@@ -140,10 +160,12 @@ export default function TrackScheduleControl({
 
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           {windows.map((w) => {
-            const available = toMinutes(w.end) - toMinutes(w.start);
-            const fits = available >= neededMinutes;
-            const lastEnds = fromMinutes(toMinutes(w.start) + neededMinutes);
             const stored = tables?.find((t) => t.number === w.number);
+            // A stored round is only shifted, so its own length counts.
+            const roundMinutes = stored?.spanMinutes ?? neededMinutes;
+            const available = toMinutes(w.end) - toMinutes(w.start);
+            const fits = available >= roundMinutes;
+            const lastEnds = fromMinutes(toMinutes(w.start) + roundMinutes);
             const pending =
               generate.isPending &&
               generate.variables?.rounds.includes(w.number);
@@ -191,17 +213,21 @@ export default function TrackScheduleControl({
                 <p
                   className={`mb-3 text-xs ${fits ? "text-green-300" : "text-red-300"}`}
                 >
-                  {activeTeams.length === 0
+                  {!stored && activeTeams.length === 0
                     ? "No active teams."
                     : fits
-                      ? `Last run ends ${lastEnds} · ${available - neededMinutes} min to spare`
-                      : `${activeTeams.length} teams need ${neededMinutes} min, the window has ${available} min.`}
+                      ? `Last run ends ${lastEnds} · ${available - roundMinutes} min to spare`
+                      : stored
+                        ? `This round takes ${roundMinutes} min, the window has ${available} min.`
+                        : `${activeTeams.length} teams need ${neededMinutes} min, the window has ${available} min.`}
                 </p>
 
                 <button
                   onClick={() => run([w.number])}
                   disabled={
-                    generate.isPending || activeTeams.length === 0 || !fits
+                    generate.isPending ||
+                    (!stored && activeTeams.length === 0) ||
+                    !fits
                   }
                   className="w-full rounded bg-blue-600 px-3 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
                 >
@@ -216,13 +242,33 @@ export default function TrackScheduleControl({
           })}
         </div>
 
-        <button
-          onClick={() => run(windows.map((w) => w.number))}
-          disabled={generate.isPending || activeTeams.length === 0}
-          className="rounded bg-green-600 px-6 py-2 hover:bg-green-700 disabled:opacity-50"
-        >
-          {generate.isPending ? "Saving..." : "Generate all 3 rounds"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => run(windows.map((w) => w.number))}
+            disabled={generate.isPending || activeTeams.length === 0}
+            className="rounded bg-green-600 px-6 py-2 hover:bg-green-700 disabled:opacity-50"
+          >
+            {generate.isPending
+              ? "Saving..."
+              : anyStored
+                ? "Update all 3 rounds"
+                : "Generate all 3 rounds"}
+          </button>
+          {anyStored && (
+            <button
+              onClick={() =>
+                run(
+                  windows.map((w) => w.number),
+                  true,
+                )
+              }
+              disabled={generate.isPending || activeTeams.length === 0}
+              className="rounded bg-red-700 px-6 py-2 hover:bg-red-800 disabled:opacity-50"
+            >
+              Rebuild all 3 rounds (new random order)
+            </button>
+          )}
+        </div>
 
         <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-gray-700 p-4 text-sm md:grid-cols-4">
           <p>Active teams: {activeTeams.length}</p>
@@ -240,8 +286,13 @@ export default function TrackScheduleControl({
               moves, and it stays revealed if it already was.
             </li>
             <li>
-              • Teams keep the same order (by name), so they keep their slots
-              and tracks; only the clock changes.
+              • Updating only shifts the stored times: every team keeps its slot
+              and track. If a team drops out, deactivate it and its lane stays
+              empty; nothing needs to be regenerated.
+            </li>
+            <li>
+              • <strong>Rebuild</strong> draws a new random order. Use it before
+              the event (e.g. to add a team), not on a revealed round.
             </li>
             <li>
               • After every update, interviews that now clash with a team&apos;s

@@ -6,18 +6,31 @@
 // Particles that appear in many surnames and would otherwise match for free.
 const PARTICLES = new Set(["de", "del", "la", "las", "los", "y"]);
 
-/** Lowercase, strip accents and anything that isn't a letter. */
+/** Lowercase, strip accents and anything that isn't a letter or digit. */
 export function normalize(s: string): string {
   return s
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
+// Speech-to-text writes small numbers either way ("equipo tres", "team 3").
+const NUMBER_WORDS = new Map<string, string>(
+  [
+    "cero uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince dieciseis diecisiete dieciocho diecinueve veinte",
+    "zero one two three four five six seven eight nine ten",
+  ].flatMap((list) =>
+    list.split(" ").map((word, n): [string, string] => [word, String(n)]),
+  ),
+);
+
 function tokens(normalized: string): string[] {
-  return normalized.split(" ").filter((t) => t && !PARTICLES.has(t));
+  return normalized
+    .split(" ")
+    .filter((t) => t && !PARTICLES.has(t))
+    .map((t) => NUMBER_WORDS.get(t) ?? t);
 }
 
 /** Folds letters that sound the same in Spanish, so STT spellings agree. */
@@ -63,7 +76,8 @@ function similarity(a: string, b: string): number {
 function trigrams(s: string): string[] {
   const padded = `  ${s} `;
   const grams: string[] = [];
-  for (let i = 0; i < padded.length - 2; i++) grams.push(padded.slice(i, i + 3));
+  for (let i = 0; i < padded.length - 2; i++)
+    grams.push(padded.slice(i, i + 3));
   return grams;
 }
 
@@ -95,8 +109,10 @@ export function scoreName(query: string, name: string): number {
   if (q.length === 0 || n.length === 0) return 0;
 
   const aligned =
-    q.reduce((sum, qt) => sum + Math.max(...n.map((nt) => similarity(qt, nt))), 0) /
-    q.length;
+    q.reduce(
+      (sum, qt) => sum + Math.max(...n.map((nt) => similarity(qt, nt))),
+      0,
+    ) / q.length;
   const overlap = dice(q.join(""), n.join(""));
   return Math.max(aligned, overlap);
 }
@@ -126,7 +142,10 @@ export function rankNames<T extends { name: string }>(
   }
 
   const matches = candidates
-    .map((c) => ({ ...c, score: Math.round(scoreName(query, c.name) * 100) / 100 }))
+    .map((c) => ({
+      ...c,
+      score: Math.round(scoreName(query, c.name) * 100) / 100,
+    }))
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
     .slice(0, limit);
   return { exact: false, matches };

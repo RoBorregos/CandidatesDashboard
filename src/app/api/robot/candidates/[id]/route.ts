@@ -4,30 +4,16 @@ import { EVENT_TIME_ZONE } from "~/lib/registration";
 import { db } from "~/server/db";
 import {
   editionParam,
+  interviewSelect,
+  langParam,
   rejectUnlessRobot,
   robotJson,
-  robotTime,
+  serializeInterview,
+  serializeRounds,
+  teamScheduleSelect,
 } from "~/server/robot";
 
 export const dynamic = "force-dynamic";
-
-const teamSchedule = {
-  select: {
-    name: true,
-    // Same rule as the candidate's /team page: unrevealed rounds stay hidden.
-    rounds: {
-      where: { isVisible: true },
-      orderBy: { number: "asc" as const },
-      select: {
-        number: true,
-        challenges: {
-          orderBy: { time: "asc" as const },
-          select: { name: true, time: true },
-        },
-      },
-    },
-  },
-};
 
 /**
  * GET /api/robot/candidates/{id}
@@ -42,21 +28,25 @@ export async function GET(
   const denied = rejectUnlessRobot(req);
   if (denied) return denied;
 
-  const edition = editionParam(req.nextUrl.searchParams);
+  const search = req.nextUrl.searchParams;
+  const edition = editionParam(search);
+  const lang = langParam(search);
   const member = await db.registrationMember.findFirst({
     where: { id: params.id, edition },
     select: {
       name: true,
-      interviewArea: true,
+      ...interviewSelect,
       registration: {
-        select: { track: true, challenge: true, team: teamSchedule },
+        select: {
+          track: true,
+          challenge: true,
+          team: { select: teamScheduleSelect },
+        },
       },
       user: {
         select: {
-          interviewTime: true,
-          interviewArea: true,
-          interviewer: { select: { name: true } },
-          team: teamSchedule,
+          ...interviewSelect.user.select,
+          team: { select: teamScheduleSelect },
         },
       },
     },
@@ -65,29 +55,16 @@ export async function GET(
     return robotJson({ error: "Candidate not found" }, { status: 404 });
   }
 
-  const user = member.user;
-  const team = user?.team ?? member.registration.team;
+  const team = member.user?.team ?? member.registration.team;
 
   return robotJson({
     timezone: EVENT_TIME_ZONE,
     name: member.name,
     track: member.registration.track,
     challenge: member.registration.challenge,
+    teamId: team?.id ?? null,
     team: team?.name ?? null,
-    interview: user?.interviewTime
-      ? {
-          ...robotTime(user.interviewTime),
-          area: user.interviewArea ?? member.interviewArea,
-          interviewer: user.interviewer?.name ?? null,
-        }
-      : null,
-    rounds:
-      team?.rounds.map((round) => ({
-        round: round.number,
-        challenges: round.challenges.map((c) => ({
-          track: c.name,
-          ...robotTime(c.time),
-        })),
-      })) ?? [],
+    interview: serializeInterview(member, lang),
+    rounds: serializeRounds(team?.rounds ?? [], lang),
   });
 }

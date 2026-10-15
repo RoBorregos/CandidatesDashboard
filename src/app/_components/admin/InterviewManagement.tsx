@@ -15,7 +15,6 @@ export default function InterviewManagement({
     "MECHANICS" | "ELECTRONICS" | "PROGRAMMING"
   >("MECHANICS");
   const [interviewerName, setInterviewerName] = useState("");
-  const [interviewerEmail, setInterviewerEmail] = useState("");
   const [autoScheduleStart, setAutoScheduleStart] = useState("09:00");
   const [autoScheduleEnd, setAutoScheduleEnd] = useState("17:00");
 
@@ -29,7 +28,6 @@ export default function InterviewManagement({
     onSuccess() {
       toast.success("Interviewer created successfully!");
       setInterviewerName("");
-      setInterviewerEmail("");
       void refetchInterviewers();
     },
     onError(error) {
@@ -82,13 +80,12 @@ export default function InterviewManagement({
   });
 
   const handleCreateInterviewer = () => {
-    if (!interviewerName.trim() || !interviewerEmail.trim()) {
+    if (!interviewerName.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
     createInterviewer.mutate({
       name: interviewerName.trim(),
-      email: interviewerEmail.trim(),
       area: selectedArea,
     });
   };
@@ -227,13 +224,6 @@ export default function InterviewManagement({
             placeholder="Interviewer name"
             value={interviewerName}
             onChange={(e) => setInterviewerName(e.target.value)}
-            className="rounded border border-gray-600 bg-gray-700 p-2"
-          />
-          <input
-            type="email"
-            placeholder="Interviewer email"
-            value={interviewerEmail}
-            onChange={(e) => setInterviewerEmail(e.target.value)}
             className="rounded border border-gray-600 bg-gray-700 p-2"
           />
           <select

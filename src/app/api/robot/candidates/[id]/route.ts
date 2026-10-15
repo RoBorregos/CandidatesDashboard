@@ -6,6 +6,7 @@ import {
   editionParam,
   interviewSelect,
   langParam,
+  notRejected,
   rejectUnlessRobot,
   robotJson,
   serializeInterview,
@@ -32,17 +33,11 @@ export async function GET(
   const edition = editionParam(search);
   const lang = langParam(search);
   const member = await db.registrationMember.findFirst({
-    where: { id: params.id, edition },
+    where: { id: params.id, edition, registration: notRejected },
     select: {
       name: true,
       ...interviewSelect,
-      registration: {
-        select: {
-          track: true,
-          challenge: true,
-          team: { select: teamScheduleSelect },
-        },
-      },
+      registration: { select: { track: true, challenge: true } },
       user: {
         select: {
           ...interviewSelect.user.select,
@@ -55,7 +50,8 @@ export async function GET(
     return robotJson({ error: "Candidate not found" }, { status: 404 });
   }
 
-  const team = member.user?.team ?? member.registration.team;
+  // Same source as the candidate's /team page and teamMembersWhere.
+  const team = member.user?.team;
 
   return robotJson({
     timezone: EVENT_TIME_ZONE,

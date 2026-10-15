@@ -6,9 +6,10 @@ import {
   editionParam,
   editionTeams,
   MIN_MATCH_SCORE,
+  notRejected,
+  rankRobotNames,
   rejectUnlessRobot,
   robotJson,
-  teamMembersWhere,
 } from "~/server/robot";
 
 export const dynamic = "force-dynamic";
@@ -55,26 +56,26 @@ export async function GET(req: NextRequest) {
 
   const members = await db.registrationMember.findMany({
     where: {
-      ...(teamMatch ? teamMembersWhere(teamMatch.id, edition) : { edition }),
-      registration: { edition, ...(track ? { track } : {}) },
+      ...(teamMatch ? { user: { teamId: teamMatch.id } } : {}),
+      edition,
+      registration: { edition, ...notRejected, ...(track ? { track } : {}) },
     },
     select: {
       id: true,
       name: true,
       user: { select: { team: { select: { name: true } } } },
-      registration: { select: { team: { select: { name: true } } } },
     },
   });
 
   const candidates = members.map((m) => ({
     id: m.id,
     name: m.name,
-    team: m.user?.team?.name ?? m.registration.team?.name ?? null,
+    team: m.user?.team?.name ?? null,
   }));
 
   return robotJson({
     query: name,
     ...(teamQuery ? { team: teamMatch } : {}),
-    ...rankNames(name, candidates, limit),
+    ...rankRobotNames(name, candidates, limit),
   });
 }

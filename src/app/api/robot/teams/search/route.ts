@@ -1,10 +1,10 @@
 import { type NextRequest } from "next/server";
 
-import { rankNames } from "~/lib/name-match";
 import { db } from "~/server/db";
 import {
   editionParam,
   editionTeams,
+  rankRobotNames,
   rejectUnlessRobot,
   robotJson,
   teamMembersWhere,
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Math.max(Number(params.get("limit")) || 3, 1), 10);
   const edition = editionParam(params);
 
-  const { exact, matches } = rankNames(
+  const { exact, matches } = rankRobotNames(
     name,
     await editionTeams(edition),
     limit,

@@ -1,8 +1,9 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import type { InterviewArea } from "@prisma/client";
+import { type InterviewArea, RegistrationStatus } from "@prisma/client";
 
 import { env } from "rbrgs/env";
+import { rankNames } from "~/lib/name-match";
 import {
   AREA_LABELS,
   CURRENT_EDITION,
@@ -162,27 +163,43 @@ export function serializeInterview(member: InterviewSource, lang: RobotLang) {
   };
 }
 
+/** Rejected candidates are invisible to the robot. */
+export const notRejected = { status: { not: RegistrationStatus.REJECTED } };
+
 /**
- * Members of a team in an edition: whoever registered with it, plus whoever
- * joined it from the dashboard after registering.
+ * Members of a team in an edition. `User.team` is the only source, the same
+ * one the candidate's /team page reads, so every endpoint agrees.
  */
 export function teamMembersWhere(teamId: string, edition: number) {
-  return {
-    edition,
-    OR: [{ registration: { teamId } }, { user: { teamId } }],
-  };
+  return { edition, user: { teamId }, registration: notRejected };
 }
 
-/** Active teams with at least one member registered in the edition. */
+/** Active teams with at least one non-rejected member in the edition. */
 export async function editionTeams(edition: number) {
   return db.team.findMany({
     where: {
       isActive: true,
-      OR: [
-        { registrations: { some: { edition } } },
-        { members: { some: { registrationMembers: { some: { edition } } } } },
-      ],
+      members: {
+        some: {
+          registrationMembers: {
+            some: { edition, registration: notRejected },
+          },
+        },
+      },
     },
     select: { id: true, name: true },
   });
+}
+
+/** rankNames without the matches too far off to read out. */
+export function rankRobotNames<T extends { name: string }>(
+  query: string,
+  candidates: T[],
+  limit: number,
+) {
+  const { exact, matches } = rankNames(query, candidates, limit);
+  return {
+    exact,
+    matches: matches.filter((m) => m.score >= MIN_MATCH_SCORE),
+  };
 }

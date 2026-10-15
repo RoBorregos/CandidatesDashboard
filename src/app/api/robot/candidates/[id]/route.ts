@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server";
 import { EVENT_TIME_ZONE } from "~/lib/registration";
 import { db } from "~/server/db";
 import {
+  activeTeam,
   editionParam,
   interviewSelect,
   langParam,
@@ -51,7 +52,7 @@ export async function GET(
   }
 
   // Same source as the candidate's /team page and teamMembersWhere.
-  const team = member.user?.team;
+  const team = activeTeam(member.user?.team);
 
   return robotJson({
     timezone: EVENT_TIME_ZONE,

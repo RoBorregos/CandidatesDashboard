@@ -32,7 +32,7 @@ The key lives in Vercel → Project → Settings → Environment Variables
 1. At startup, call `GET /ping` to check the URL and the key.
 2. Transcribe the name and call `GET /candidates/search?name=<text>`.
 3. If `exact` is `true`, use `matches[0].id` and go to step 6.
-4. If `matches[0].score < 0.6`, the name wasn't understood. Ask the person to repeat it.
+4. If `matches` is empty, the name wasn't understood. Ask the person to repeat it.
 5. Otherwise, ask for the team and repeat the search with `&team=<text>`. If there's still more than one match, show `matches` (name + team) and let the person pick.
 6. Call `GET /candidates/{id}` and give the JSON to the LLM along with the question.
 
@@ -48,7 +48,8 @@ Shared by every `search` endpoint:
 - Partial names and word order are fine. "Luis Rosales" matches "Luis Ángel Rosales Salazar".
 - Words the transcription split or merged still match. "Delagarza" matches "de la Garza".
 - `score` runs from 0 to 1, rounded to 2 decimals. Results are sorted best first.
-- `exact` is `true` only when every word said appears, accents aside, in exactly one name. In that case `matches` holds just that one result, with `score: 1`. If several names contain the words (e.g. only "Luis"), `exact` is `false` and you get the `limit` closest.
+- Results scoring below `0.6` are dropped, so `matches` can be `[]`. Never read `matches[0]` without checking.
+- `exact` is `true` only when every word said appears, accents aside, in exactly one name. In that case `matches` holds just that one result, with `score: 1`. If several names contain the words (e.g. only "Luis"), `exact` is `false` and you get up to `limit` of the closest.
 
 ---
 
@@ -132,7 +133,7 @@ Response `200` (`lang=en`):
 
 - `track`: `BEGINNER` | `ADVANCED`.
 - `challenge`: string or `null`. The challenge chosen on the advanced track, usually `null` for beginners.
-- `teamId`, `team`: `null` if the person has no team. `teamId` works with `/teams/{id}`.
+- `teamId`, `team`: the team on the person's dashboard account (`/team` page). `null` if they have no team, never signed into the dashboard, or their team was deactivated by an admin. `teamId` works with `/teams/{id}`.
 - `interview`: `null` if no interview is scheduled yet, or if the candidate never signed into the dashboard.
   - `at`: ISO 8601 UTC.
   - `local`: already in `timezone`, ready to say. With `lang=es` it looks like `"jueves 15 de oct, 10:30"`.
@@ -149,7 +150,7 @@ Errors: `404 {"error":"Candidate not found"}`.
 ## `GET /teams/search`
 
 Query parameters: `name` (required), `limit` (default `3`, 1–10), `edition`.
-It only searches active teams that have members in the edition.
+It only searches active teams that have non-rejected members in the edition.
 
 Response `200`:
 
@@ -188,7 +189,7 @@ Response `200`:
 - `members[].id` works with `/candidates/{id}`. `interview` has the same shape as there.
 - `rounds` has the same shape and visibility rules as in `/candidates/{id}`.
 
-Errors: `404 {"error":"Team not found"}` (also returned when the team has no members in that edition).
+Errors: `404 {"error":"Team not found"}` (also returned when the team is inactive or has no members in that edition).
 
 ---
 
@@ -197,6 +198,7 @@ Errors: `404 {"error":"Team not found"}` (also returned when the team has no mem
 - Answer only from the JSON. If `interview` is `null`, say it isn't scheduled yet. If `rounds` is `[]`, say the rounds haven't been published. Never make up times or places.
 - Use `local` exactly as it comes. It's already in Monterrey time and in the requested language.
 - No email or phone numbers are returned.
+- Rejected candidates are never returned: searches skip them and `/candidates/{id}` answers `404`.
 
 ## Pending
 

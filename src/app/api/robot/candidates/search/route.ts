@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server";
 import { rankNames } from "~/lib/name-match";
 import { db } from "~/server/db";
 import {
+  activeTeam,
   editionParam,
   editionTeams,
   MIN_MATCH_SCORE,
@@ -63,14 +64,14 @@ export async function GET(req: NextRequest) {
     select: {
       id: true,
       name: true,
-      user: { select: { team: { select: { name: true } } } },
+      user: { select: { team: { select: { name: true, isActive: true } } } },
     },
   });
 
   const candidates = members.map((m) => ({
     id: m.id,
     name: m.name,
-    team: m.user?.team?.name ?? null,
+    team: activeTeam(m.user?.team)?.name ?? null,
   }));
 
   return robotJson({

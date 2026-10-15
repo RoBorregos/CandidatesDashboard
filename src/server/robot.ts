@@ -97,6 +97,7 @@ function trackLabel(name: string, lang: RobotLang) {
 export const teamScheduleSelect = {
   id: true,
   name: true,
+  isActive: true,
   // Same rule as the candidate's /team page: unrevealed rounds stay hidden.
   rounds: {
     where: { isVisible: true },
@@ -161,6 +162,13 @@ export function serializeInterview(member: InterviewSource, lang: RobotLang) {
     // No room is stored per interview yet.
     location: null,
   };
+}
+
+/** Inactive teams are invisible to the robot: their members hear no team. */
+export function activeTeam<T extends { isActive: boolean }>(
+  team: T | null | undefined,
+): T | null {
+  return team?.isActive ? team : null;
 }
 
 /** Rejected candidates are invisible to the robot. */

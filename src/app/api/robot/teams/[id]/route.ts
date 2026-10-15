@@ -34,8 +34,8 @@ export async function GET(
   const lang = langParam(search);
 
   const [team, members] = await Promise.all([
-    db.team.findUnique({
-      where: { id: params.id },
+    db.team.findFirst({
+      where: { id: params.id, isActive: true },
       select: teamScheduleSelect,
     }),
     db.registrationMember.findMany({

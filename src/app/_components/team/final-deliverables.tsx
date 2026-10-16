@@ -26,7 +26,7 @@ import {
   INTERNAL_FILES,
   MAX_COMMENT_BYTES,
   MAX_COMMENT_CHARS,
-  MAX_WEEK_BYTES,
+  MAX_FINAL_BYTES,
 } from "~/lib/uploads";
 
 type UploadedFile = {
@@ -114,8 +114,8 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
     }
     // The slot's current file is replaced, so it no longer counts.
     const replacedBytes = fileFor(key)?.fileSize ?? 0;
-    if (usedBytes - replacedBytes + file.size > MAX_WEEK_BYTES) {
-      toast.error("La entrega final alcanzaría el límite de 256 MB");
+    if (usedBytes - replacedBytes + file.size > MAX_FINAL_BYTES) {
+      toast.error("La entrega final alcanzaría el límite de 50 MB");
       return;
     }
 
@@ -155,7 +155,7 @@ export default function FinalDeliverables({ teamName }: { teamName: string }) {
           Carpeta: <code className="text-roboblue">{`FINAL/${teamName}/`}</code>
         </p>
         <p className="shrink-0 text-right text-xs text-neutral-400">
-          {formatBytes(usedBytes) || "0 B"} de 256 MB
+          {formatBytes(usedBytes) || "0 B"} de 50 MB
         </p>
       </div>
 

@@ -16,7 +16,6 @@ import {
   finalUploadFolderPath,
   folderUserName,
   isFinalWeek,
-  MAX_WEEK_BYTES,
   recordTeamUpload,
   replaceFinalSlot,
   finalSubmissionOpen,
@@ -27,6 +26,7 @@ import {
   weekUsageBytes,
 } from "~/server/api/routers/upload";
 import { isWeekOpen } from "~/lib/weeks";
+import { MAX_FINAL_BYTES, MAX_WEEK_BYTES } from "~/lib/uploads";
 import {
   FINAL_REPOSITORY_FILE,
   finalFileAccepted,
@@ -159,9 +159,10 @@ export const ourFileRouter = {
         }
       }
 
-      // The week's folder is capped at 256 MB total (not per file): reject the
-      // upload up front if adding these files would exceed the allowance. For
-      // individual weeks the cap is per user; for FINAL it is per team.
+      // The week's folder is capped at 256 MB total (50 MB for FINAL), not per
+      // file: reject the upload up front if adding these files would exceed the
+      // allowance. For individual weeks the cap is per user; for FINAL it is
+      // per team.
       const userId = session.user.id;
       const userName = folderUserName(session.user.name, userId);
       const existingUsage = await weekUsageBytes(
@@ -173,7 +174,11 @@ export const ourFileRouter = {
         deliverable,
       );
       const incomingBytes = files.reduce((sum, f) => sum + (f.size ?? 0), 0);
-      if (existingUsage + incomingBytes > MAX_WEEK_BYTES) {
+      if (isFinalWeek(input.week)) {
+        if (existingUsage + incomingBytes > MAX_FINAL_BYTES) {
+          throw reject("TOO_LARGE", "La entrega final excedería el límite de 50 MB");
+        }
+      } else if (existingUsage + incomingBytes > MAX_WEEK_BYTES) {
         throw reject("TOO_LARGE", "La semana excedería el límite de 256 MB");
       }
 

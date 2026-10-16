@@ -71,12 +71,19 @@ export const LATE_TAG_LABEL = "Tardío";
  *
  * Sat 12 Sep 2026, 23:59:59 (America/Monterrey) gives:
  *   week 3 → Sep 19 · week 4 → Sep 26 · week 5 → Oct 3
- *   week 6 → Oct 10 · FINAL → Oct 17
+ *   week 6 → Oct 10 · FINAL → pinned separately (FINAL_DUE_AT)
  *
  * The offset is written explicitly instead of relying on a zone name:
  * Monterrey has no daylight saving since 2022, so -06:00 holds all year.
  */
 export const WEEK_2_DUE_AT = "2026-09-12T23:59:59-06:00";
+
+/**
+ * Deadline of the FINAL submission: Fri 16 Oct 2026, 23:59 (CDMX). It is
+ * pinned instead of derived from the 7-day cadence, which would give Oct 17.
+ * Mexico City has no daylight saving since 2022, so -06:00 holds all year.
+ */
+export const FINAL_DUE_AT = "2026-10-16T23:59:00-06:00";
 
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -84,6 +91,10 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 export function weekDueAt(week: number): Date | null {
   if (!Number.isFinite(week)) return null;
   if (week < MIN_UPLOAD_WEEK || week > MAX_UPLOAD_WEEK) return null;
+  if (isFinalWeek(week)) {
+    const finalDue = new Date(FINAL_DUE_AT);
+    return Number.isNaN(finalDue.getTime()) ? null : finalDue;
+  }
   const anchor = new Date(WEEK_2_DUE_AT);
   if (Number.isNaN(anchor.getTime())) return null;
   return new Date(anchor.getTime() + (week - MIN_UPLOAD_WEEK) * MS_PER_WEEK);
@@ -94,6 +105,8 @@ export function weekDueAt(week: number): Date | null {
  * i.e. exactly one week before its own deadline.
  */
 export function weekAssignedAt(week: number): Date | null {
+  // The final deadline is pinned, so it opens when the last numbered week closes.
+  if (isFinalWeek(week)) return weekDueAt(MAX_INDIVIDUAL_WEEK);
   const due = weekDueAt(week);
   return due ? new Date(due.getTime() - MS_PER_WEEK) : null;
 }

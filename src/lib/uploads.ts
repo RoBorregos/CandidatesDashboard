@@ -21,6 +21,10 @@ export const MAX_COMMENT_BYTES = 2048;
 // per-file cap.
 export const MAX_WEEK_BYTES = 256 * 1024 * 1024;
 
+// The FINAL folder (the team's four deliverables) is capped lower: 50 MB in
+// total.
+export const MAX_FINAL_BYTES = 50 * 1024 * 1024;
+
 // Server-managed files that live next to the uploads but are not submissions.
 export const INTERNAL_FILES = [
   COMMENTS_FILE,

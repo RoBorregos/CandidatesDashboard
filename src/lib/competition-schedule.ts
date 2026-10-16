@@ -248,7 +248,7 @@ export function buildTrackSchedule(
         round: window.number,
         group: pair,
         runs,
-        busy: runs.map((run) => runBusy(run.start, window.start)),
+        busy: runs.map((run) => runBusy(run.start)),
       });
     });
   }
@@ -257,16 +257,14 @@ export function buildTrackSchedule(
 }
 
 /**
- * In line from the previous segment's start until the run ends. Teams on
- * the first segment line up before the round opens, which is outside any
- * interview window, so the queue is clamped to the round start.
+ * In line from the previous segment's start until the run ends. The queue
+ * is not clamped to the round start: rounds 2 and 3 are back to back, so a
+ * team on round 3's first segment lines up while round 2 interviews still
+ * run. Generated and stored schedules share this rule.
  */
-function runBusy(start: Date, roundStart?: Date): Interval {
-  const queueFrom = start.getTime() - QUEUE_MS;
+function runBusy(start: Date): Interval {
   return {
-    start: new Date(
-      roundStart ? Math.max(roundStart.getTime(), queueFrom) : queueFrom,
-    ),
+    start: new Date(start.getTime() - QUEUE_MS),
     end: new Date(start.getTime() + SEGMENT_MS),
   };
 }
@@ -341,7 +339,7 @@ export function buildTrackScheduleGroups(
 /**
  * Rebuilds the schedule of one stored round (its track runs from the
  * database) so it can be checked like a freshly generated one. Each run is
- * busy from one segment before it (lining up) until it ends.
+ * busy from one segment before it (lining up) until it ends (see runBusy).
  */
 export function scheduleFromStoredRuns(
   teamId: string,

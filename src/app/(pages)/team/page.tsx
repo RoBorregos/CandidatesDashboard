@@ -138,6 +138,7 @@ export default async function TeamPage({
           userName={session.user.name ?? ""}
           members={team.members}
           registration={registration}
+          finalSubmissionOpen={await api.uploads.getFinalSubmissionOpen()}
         />
         <Footer />
       </div>

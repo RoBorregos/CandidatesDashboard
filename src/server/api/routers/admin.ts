@@ -11,6 +11,7 @@ import { mentorManagementRouter } from "./admin/mentor-management";
 import { mentorPairManagementRouter } from "./admin/mentor-pair-management";
 import { registrationWindowRouter } from "./admin/registration-window";
 import { advancedDeadlineRouter } from "./admin/advanced-deadline";
+import { finalSubmissionRouter } from "./admin/final-submission";
 import { challengeMentorManagementRouter } from "./admin/challenge-mentor-management";
 
 export const adminRouter = createTRPCRouter({
@@ -26,6 +27,8 @@ export const adminRouter = createTRPCRouter({
   createTeam: teamManagementRouter.createTeam,
   getTeams: teamManagementRouter.getTeams,
   toggleTeamStatus: teamManagementRouter.toggleTeamStatus,
+  getFinalSubmissionOpen: finalSubmissionRouter.getFinalSubmissionOpen,
+  setFinalSubmissionOpen: finalSubmissionRouter.setFinalSubmissionOpen,
 
   // Schedule Management
   uploadTeamData: scheduleManagementRouter.uploadTeamData,

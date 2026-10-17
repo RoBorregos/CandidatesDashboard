@@ -59,6 +59,8 @@ export const adminRouter = createTRPCRouter({
   // Interview Management
   getInterviewers: interviewManagementRouter.getInterviewers,
   createInterviewer: interviewManagementRouter.createInterviewer,
+  setInterviewerAreas: interviewManagementRouter.setInterviewerAreas,
+  deleteInterviewer: interviewManagementRouter.deleteInterviewer,
   getInterviewSchedule: interviewManagementRouter.getInterviewSchedule,
   scheduleInterview: interviewManagementRouter.scheduleInterview,
   clearInterview: interviewManagementRouter.clearInterview,

@@ -359,10 +359,11 @@ model MentorPairTeamConflict {
 }
 
 model Interviewer {
-  id    String        @id @default(cuid())
+  id    String          @id @default(cuid())
   name  String
-  email String        @unique
-  area  InterviewArea
+  email String          @unique
+  // A mentor can interview for several areas (e.g. programming + electronics).
+  areas InterviewArea[]
   users User[]
 }
 

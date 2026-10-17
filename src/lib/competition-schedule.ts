@@ -60,11 +60,14 @@ export const GAP_SEGMENTS = Math.ceil(
 /** A team has to be in line when the run before its own starts. */
 export const QUEUE_MS = SEGMENT_MS;
 
-/** Length of an individual interview. */
-export const INTERVIEW_MS = 15 * MINUTE_MS;
+/** Length of an individual interview (hard maximum). */
+export const INTERVIEW_MS = 10 * MINUTE_MS;
 
-/** Interviews start on this grid (quarter hours). */
-export const INTERVIEW_SLOT_MS = 15 * MINUTE_MS;
+/** Tolerance between one interview and the interviewer's next one. */
+export const INTERVIEW_BUFFER_MS = 2 * MINUTE_MS;
+
+/** Interviews start on this grid: interview plus tolerance (12 minutes). */
+export const INTERVIEW_SLOT_MS = INTERVIEW_MS + INTERVIEW_BUFFER_MS;
 
 /** Time to walk from the track back to the interview room. */
 export const TRAVEL_BUFFER_MS = 5 * MINUTE_MS;
@@ -384,7 +387,12 @@ export function teamBusyIntervals(
 export type Area = "MECHANICS" | "ELECTRONICS" | "PROGRAMMING";
 
 export type Candidate = { id: string; teamId: string; area: Area | null };
-export type InterviewerSlot = { id: string; area: Area };
+export type InterviewerSlot = {
+  id: string;
+  areas: Area[];
+  /** Interviews already booked, each blocking a full INTERVIEW_SLOT_MS. */
+  booked?: Date[];
+};
 
 export type InterviewAssignment = {
   candidateId: string;
@@ -393,7 +401,7 @@ export type InterviewAssignment = {
   end: Date;
 };
 
-/** Quarter-hour interview start times that fit inside the round windows. */
+/** Interview start times (every INTERVIEW_SLOT_MS) that fit inside the round windows. */
 export function interviewSlots(
   windows: RoundWindow[] = roundWindows(),
 ): Date[] {
@@ -410,17 +418,45 @@ export function interviewSlots(
   return slots;
 }
 
+/** Assignment costs: lower is better. */
+const AREA_MATCH_COST = 0;
+const NO_AREA_COST = 1;
+const CROSS_AREA_COST = 20;
+const UNASSIGNED_COST = 10_000;
+const INFEASIBLE_COST = 1_000_000;
+/** Tiny nudge so ties go to the earlier slot. */
+const SLOT_ORDER_COST = 0.001;
+
 /**
- * Greedy, chronological assignment: at every slot each free interviewer takes
- * the first waiting candidate of their area (or one with no area) whose team
- * is not queued or on a track.
+ * Optimal assignment (Hungarian algorithm) of candidates to
+ * (interviewer, slot) pairs. A pair is only allowed when the candidate's team
+ * is free by the same rule findScheduleConflicts uses (queue + track + travel
+ * buffer) and the interviewer has no booking within a slot of it. Among
+ * conflict-free schedules it places as many candidates as possible, then
+ * prefers an interviewer of the candidate's area, then earlier slots.
  */
 export function assignInterviews(
   candidates: Candidate[],
   interviewers: InterviewerSlot[],
   schedule: TeamRoundSchedule[],
-  windows: RoundWindow[] = roundWindows(),
+  slots: Date[],
 ): { assignments: InterviewAssignment[]; unassigned: Candidate[] } {
+  const columns = interviewers.flatMap((interviewer) =>
+    slots
+      .map((start, order) => ({ interviewer, start, order }))
+      .filter(
+        ({ start }) =>
+          !(interviewer.booked ?? []).some(
+            (booked) =>
+              Math.abs(booked.getTime() - start.getTime()) < INTERVIEW_SLOT_MS,
+          ),
+      ),
+  );
+
+  const n = candidates.length;
+  const m = columns.length;
+  if (n === 0) return { assignments: [], unassigned: [] };
+
   const busyByTeam = new Map<string, Interval[]>();
   const busyFor = (teamId: string) => {
     let busy = busyByTeam.get(teamId);
@@ -431,33 +467,105 @@ export function assignInterviews(
     return busy;
   };
 
-  const waiting = [...candidates];
-  const assignments: InterviewAssignment[] = [];
-
-  for (const slotStart of interviewSlots(windows)) {
-    const slot = {
-      start: slotStart,
-      end: new Date(slotStart.getTime() + INTERVIEW_MS),
-    };
-
-    for (const interviewer of interviewers) {
-      const index = waiting.findIndex(
-        (candidate) =>
-          (candidate.area === interviewer.area || candidate.area === null) &&
-          !busyFor(candidate.teamId).some((busy) => overlaps(slot, busy)),
-      );
-      if (index === -1) continue;
-
-      const [candidate] = waiting.splice(index, 1);
-      assignments.push({
-        candidateId: candidate!.id,
-        interviewerId: interviewer.id,
-        ...slot,
-      });
+  // One "not scheduled" column per candidate keeps the problem solvable.
+  const width = m + n;
+  const cost = new Float64Array(n * width);
+  candidates.forEach((candidate, i) => {
+    const busy = busyFor(candidate.teamId);
+    columns.forEach(({ interviewer, start, order }, j) => {
+      const interview = {
+        start,
+        end: new Date(start.getTime() + INTERVIEW_MS),
+      };
+      let c: number;
+      if (busy.some((b) => overlaps(interview, b))) c = INFEASIBLE_COST;
+      else if (candidate.area === null) c = NO_AREA_COST;
+      else if (interviewer.areas.includes(candidate.area)) c = AREA_MATCH_COST;
+      else c = CROSS_AREA_COST;
+      cost[i * width + j] = c + order * SLOT_ORDER_COST;
+    });
+    for (let j = m; j < width; j++) {
+      cost[i * width + j] = j - m === i ? UNASSIGNED_COST : INFEASIBLE_COST;
     }
+  });
+
+  const columnOf = hungarian(cost, n, width);
+
+  const assignments: InterviewAssignment[] = [];
+  const unassigned: Candidate[] = [];
+  candidates.forEach((candidate, i) => {
+    const j = columnOf[i]!;
+    if (j >= m || cost[i * width + j]! >= INFEASIBLE_COST) {
+      unassigned.push(candidate);
+      return;
+    }
+    const { interviewer, start } = columns[j]!;
+    assignments.push({
+      candidateId: candidate.id,
+      interviewerId: interviewer.id,
+      start,
+      end: new Date(start.getTime() + INTERVIEW_MS),
+    });
+  });
+
+  return { assignments, unassigned };
+}
+
+/**
+ * Min-cost assignment of every row to a distinct column (rows <= columns).
+ * `cost` is row-major, rows x cols. Returns the chosen column per row.
+ */
+function hungarian(cost: Float64Array, rows: number, cols: number): number[] {
+  const u = new Float64Array(rows + 1);
+  const v = new Float64Array(cols + 1);
+  const p = new Int32Array(cols + 1); // row matched to column j (1-based)
+  const way = new Int32Array(cols + 1);
+
+  for (let i = 1; i <= rows; i++) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Float64Array(cols + 1).fill(Infinity);
+    const used = new Uint8Array(cols + 1);
+    do {
+      used[j0] = 1;
+      const i0 = p[j0]!;
+      let delta = Infinity;
+      let j1 = 0;
+      for (let j = 1; j <= cols; j++) {
+        if (used[j]) continue;
+        const cur = cost[(i0 - 1) * cols + (j - 1)]! - u[i0]! - v[j]!;
+        if (cur < minv[j]!) {
+          minv[j] = cur;
+          way[j] = j0;
+        }
+        if (minv[j]! < delta) {
+          delta = minv[j]!;
+          j1 = j;
+        }
+      }
+      for (let j = 0; j <= cols; j++) {
+        if (used[j]) {
+          const row = p[j]!;
+          u[row] = u[row]! + delta;
+          v[j] = v[j]! - delta;
+        } else {
+          minv[j] = minv[j]! - delta;
+        }
+      }
+      j0 = j1;
+    } while (p[j0] !== 0);
+    do {
+      const j1 = way[j0]!;
+      p[j0] = p[j1]!;
+      j0 = j1;
+    } while (j0 !== 0);
   }
 
-  return { assignments, unassigned: waiting };
+  const columnOf = new Array<number>(rows).fill(-1);
+  for (let j = 1; j <= cols; j++) {
+    if (p[j]! > 0) columnOf[p[j]! - 1] = j - 1;
+  }
+  return columnOf;
 }
 
 export type ScheduleConflict = { candidateId: string; reason: string };

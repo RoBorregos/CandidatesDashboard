@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
 import type {
   FieldValues,
@@ -125,10 +125,25 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
   const clock = () => Date.now() + offset;
   const now = new Date(useClock(offset));
 
-  const runs = lineup.data?.runs ?? [];
-  const laneRuns = runs
-    .filter((run) => run.lane === lane)
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  const runs = useMemo(() => lineup.data?.runs ?? [], [lineup.data]);
+  const nowMs = now.getTime();
+  const laneRuns = useMemo(
+    () =>
+      runs
+        .filter((run) => run.lane === lane)
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [runs, lane],
+  );
+  /*
+   * Runs stored without a lane number ("Pista A" instead of "Pista A1"), as
+   * the CSV importer and the test seeder write them. No lane button can ever
+   * select them, so the judge is told to pick the team by hand rather than
+   * left looking at an empty lane.
+   */
+  const unlanedOnTrack = useMemo(
+    () => runs.filter((run) => run.lane === lane.charAt(0)).length,
+    [runs, lane],
+  );
   const [submitted, setSubmitted] = useState<string[]>([]);
 
   const current = currentOnLane(runs, lane, now);
@@ -136,19 +151,6 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     current && !submitted.includes(runKey(current))
       ? current
       : nextOnLane(runs, lane, now);
-
-  // Per the stored schedule (Schedule Control): the team's run on this track
-  // in that round, on either lane, is over and is not the one on this lane
-  // now. Evaluations don't count, so test or duplicate ones never flag a team.
-  const alreadyRan = (teamId: string, round: number) =>
-    runs.some(
-      (run) =>
-        run.teamId === teamId &&
-        run.round === round &&
-        run.lane.startsWith(lane.charAt(0)) &&
-        run.start.getTime() + SEGMENT_MS <= now.getTime() &&
-        runKey(run) !== runKey(current),
-    );
 
   const values = form.watch();
   const defaults = (form.formState.defaultValues ?? {}) as Record<
@@ -161,15 +163,41 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
       (values as Record<string, unknown>)[key] !== value,
   );
 
-  // Follow the schedule until the judge scores something, then stay put.
+  /*
+   * Follow the schedule until the judge commits to this run, then stay put.
+   * Starting or stopping the clock counts as committing: without it a timer
+   * running on an unscored form is wiped when the next segment begins.
+   */
+  const [engaged, setEngaged] = useState(false);
+  const frozen = touched || engaged;
   const [pinned, setPinned] = useState<LaneRun | null>(null);
-  if (!touched && runKey(pinned) !== runKey(live)) setPinned(live);
+  if (!frozen && runKey(pinned) !== runKey(live)) setPinned(live);
 
   const [manual, setManual] = useState(false);
   // A run reached with the previous/next buttons, instead of the clock's.
   const [chosen, setChosen] = useState<LaneRun | null>(null);
   const target = manual ? null : (chosen ?? pinned);
   const targetKey = runKey(target);
+
+  /*
+   * Per the stored schedule (Schedule Control): the team's run on this track
+   * in that round, on either lane, is over and is not the run being judged
+   * right now. Compared against the target rather than whatever the clock
+   * says, so browsing back to a late submission does not flag itself.
+   * Evaluations don't count, so test or duplicate ones never flag a team.
+   */
+  const ranKeys = useMemo(() => {
+    const over = new Set<string>();
+    for (const run of runs) {
+      if (!run.lane.startsWith(lane.charAt(0))) continue;
+      if (run.start.getTime() + SEGMENT_MS > nowMs) continue;
+      if (runKey(run) === targetKey) continue;
+      over.add(`${run.teamId}:${run.round}`);
+    }
+    return over;
+  }, [runs, lane, nowMs, targetKey]);
+  const alreadyRan = (teamId: string, round: number) =>
+    ranKeys.has(`${teamId}:${round}`);
 
   const index = laneRuns.findIndex((run) => runKey(run) === targetKey);
   const previous =
@@ -240,6 +268,29 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     /** Run time to submit, in whole seconds. */
     runSeconds: () =>
       timer.overrideSeconds ?? Math.floor(elapsedAt(clock()) / 1000),
+    /** No clock ever ran and no time was typed: submitting would store 0s. */
+    timeMissing:
+      timer.overrideSeconds === null && Math.floor(elapsedAt(nowMs) / 1000) <= 0,
+    /*
+     * The run time to save, or null when the judge backed out. Time is the
+     * tiebreaker and the scoreboard sorts seconds ascending, so a 0-second
+     * run beats every other run it ties with on points. That is occasionally
+     * right (a team that never ran) but never something to save silently.
+     */
+    confirmRunSeconds: () => {
+      const seconds =
+        timer.overrideSeconds ?? Math.floor(elapsedAt(clock()) / 1000);
+      if (seconds > 0) return seconds;
+      return window.confirm(
+        "The run clock never started, so this evaluation would be saved with a run time of 0 seconds.\n\n" +
+          "Time is the tiebreaker, so a 0-second run wins every tie on points.\n\n" +
+          "Save it as 0 seconds anyway?",
+      )
+        ? seconds
+        : null;
+    },
+    /** Runs on this track stored without a lane number; see unlanedOnTrack. */
+    unlanedOnTrack,
 
     pickTeam: (teamId: string) => {
       setManual(true);
@@ -251,12 +302,14 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     followSchedule: () => {
       setManual(false);
       setChosen(null);
+      setEngaged(false);
     },
     goPrevious: () => browse(previous),
     goNext: () => browse(following),
 
     /** Starts a segment now: 2 min of calibration, then the run clock. */
     startTimer: () => {
+      setEngaged(true);
       setTimer((t) => ({
         ...t,
         startedAt: clock(),
@@ -266,13 +319,29 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     },
     /** Starts the run clock now, skipping (the rest of) calibration. */
     startRunNow: () => {
+      setEngaged(true);
       setTimer((t) => ({ ...t, runStartedAt: clock(), stoppedAt: null }));
     },
     stopTimer: () => {
+      setEngaged(true);
       setTimer((t) => ({ ...t, stoppedAt: clock() }));
     },
+    /*
+     * Picks the run clock up where it stopped: the anchor moves forward by
+     * however long the judge was paused, so deliberating between "Stop" and
+     * "Resume" is not billed to the team as run time.
+     */
     resumeTimer: () => {
-      setTimer((t) => ({ ...t, stoppedAt: null }));
+      setTimer((t) => {
+        if (t.stoppedAt === null || anchor === null) {
+          return { ...t, stoppedAt: null };
+        }
+        return {
+          ...t,
+          stoppedAt: null,
+          runStartedAt: anchor + (clock() - t.stoppedAt),
+        };
+      });
     },
     resetTimer: () => {
       setTimer((t) => ({
@@ -293,6 +362,7 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
       form.reset();
       setManual(false);
       setChosen(null);
+      setEngaged(false);
       void utils.judge.getTrackLineup.invalidate();
       setTimer(freshTimer(key));
       setResets((count) => count + 1);
@@ -405,6 +475,15 @@ export function RunHeader({
       <RunTimer run={run} />
 
       <div className="mt-2 space-y-0.5 text-xs text-neutral-400">
+        {!run.loading && !target && run.unlanedOnTrack > 0 && (
+          <p className="text-amber-400">
+            ⚠ This schedule has {run.unlanedOnTrack} run
+            {run.unlanedOnTrack === 1 ? "" : "s"} on Pista {run.lane[0]} stored
+            without a lane number, so they cannot be matched to {run.lane}. Pick
+            the team by hand below, and ask an admin to re-generate the schedule
+            with lanes.
+          </p>
+        )}
         {judged && (
           <p className="text-amber-400">
             ⚠ This team already ran Pista {run.lane[0]} in round {run.round}{" "}
@@ -747,21 +826,29 @@ export function SubmitRunButton({
   const judged = !!run.teamId && run.alreadyRan(run.teamId, run.round);
 
   return (
-    <button
-      type="submit"
-      disabled={!run.teamId || pending}
-      className={cn(
-        "h-16 w-full rounded-lg px-4 text-lg font-semibold transition active:scale-[0.99] disabled:opacity-40",
-        judged
-          ? "bg-amber-500 text-black hover:bg-amber-500/80"
-          : "bg-roboblue hover:bg-roboblue/80",
+    <div className="space-y-2">
+      {run.teamId && run.timeMissing && (
+        <p className="text-xs text-amber-400">
+          ⚠ No run time yet. Start and stop the clock, or type the seconds by
+          hand above, or this is saved as 0 seconds — which wins every tie.
+        </p>
       )}
-    >
-      {pending
-        ? "Saving…"
-        : run.teamId
-          ? `${judged ? "⚠ Submit" : "Submit"} ${run.teamName ?? "team"} · Round ${run.round} · ${points} pts`
-          : "Pick a team to submit"}
-    </button>
+      <button
+        type="submit"
+        disabled={!run.teamId || pending}
+        className={cn(
+          "h-16 w-full rounded-lg px-4 text-lg font-semibold transition active:scale-[0.99] disabled:opacity-40",
+          judged
+            ? "bg-amber-500 text-black hover:bg-amber-500/80"
+            : "bg-roboblue hover:bg-roboblue/80",
+        )}
+      >
+        {pending
+          ? "Saving…"
+          : run.teamId
+            ? `${judged ? "⚠ Submit" : "Submit"} ${run.teamName ?? "team"} · Round ${run.round} · ${points} pts`
+            : "Pick a team to submit"}
+      </button>
+    </div>
   );
 }

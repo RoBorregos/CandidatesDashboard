@@ -10,6 +10,7 @@ import {
 } from "rbrgs/lib/schemas";
 import { computeLevelsPoints, computeMazePoints } from "rbrgs/lib/scoring";
 import { type LaneRun, parseTrack } from "rbrgs/lib/competition-schedule";
+import { CURRENT_EDITION } from "rbrgs/lib/registration";
 
 const computePointsLOP = (lackOfProgress: number) => {
   switch (lackOfProgress) {
@@ -125,24 +126,44 @@ export const judgeRouter = createTRPCRouter({
   mazeRun: judgeProcedure
     .input(mazeRunSchema)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.mazeRun.create({
-        data: {
-          ...input,
-          judgeId: ctx.session.user.id,
-          points: computeMazePoints(input),
+      const data = {
+        ...input,
+        judgeId: ctx.session.user.id,
+        points: computeMazePoints(input),
+      };
+      // Re-submitting a team's round replaces its evaluation rather than
+      // stacking a second row that only the scoreboard knows to ignore.
+      return await ctx.db.mazeRun.upsert({
+        where: {
+          teamId_edition_round: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            round: input.round,
+          },
         },
+        create: data,
+        update: data,
       });
     }),
 
   levelsRun: judgeProcedure
     .input(levelsRunSchema)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.levelsRun.create({
-        data: {
-          ...input,
-          judgeId: ctx.session.user.id,
-          points: computeLevelsPoints(input),
+      const data = {
+        ...input,
+        judgeId: ctx.session.user.id,
+        points: computeLevelsPoints(input),
+      };
+      return await ctx.db.levelsRun.upsert({
+        where: {
+          teamId_edition_round: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            round: input.round,
+          },
         },
+        create: data,
+        update: data,
       });
     }),
 

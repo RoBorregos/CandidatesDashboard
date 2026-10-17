@@ -87,7 +87,12 @@ export const FormLevels = ({ lane }: { lane: string }) => {
   return (
     <form
       onSubmit={form.handleSubmit(
-        (data) => createRun.mutate({ ...data, runSeconds: run.runSeconds() }),
+        (data) => {
+          // Backs out when the judge declines to save a 0-second run time.
+          const runSeconds = run.confirmRunSeconds();
+          if (runSeconds === null) return;
+          createRun.mutate({ ...data, runSeconds });
+        },
         (errors) =>
           toast(
             Object.values(errors)[0]?.message?.toString() ??

@@ -9,6 +9,7 @@ import {
   mazeRunSchema,
 } from "rbrgs/lib/schemas";
 import { computeLevelsPoints, computeMazePoints } from "rbrgs/lib/scoring";
+import { type LaneRun, parseTrack } from "rbrgs/lib/competition-schedule";
 
 const computePointsLOP = (lackOfProgress: number) => {
   switch (lackOfProgress) {
@@ -156,6 +157,40 @@ export const judgeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.levelsRun.delete({ where: { id: input.id } });
     }),
+
+  /**
+   * Every stored 2026 run of the active teams, revealed or not, so each lane
+   * can pick its team from the clock. serverNow lets the client correct its
+   * own clock before running the timers.
+   */
+  getTrackLineup: judgeProcedure.query(async ({ ctx }) => {
+    const rounds = await ctx.db.round.findMany({
+      where: { team: { isActive: true } },
+      select: {
+        number: true,
+        team: { select: { id: true, name: true } },
+        challenges: { select: { name: true, time: true } },
+      },
+    });
+
+    const runs: LaneRun[] = rounds.flatMap((round) =>
+      round.challenges.flatMap((challenge) => {
+        const parsed = parseTrack(challenge.name);
+        if (!round.team || !parsed) return [];
+        return [
+          {
+            teamId: round.team.id,
+            teamName: round.team.name,
+            round: round.number,
+            lane: parsed.lane,
+            start: challenge.time,
+          },
+        ];
+      }),
+    );
+
+    return { serverNow: new Date(), runs };
+  }),
 
   getTeamIds: judgeProcedure.query(async ({ ctx }) => {
     const team = await ctx.db.team.findMany({

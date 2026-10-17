@@ -54,8 +54,9 @@ export const interviewManagementRouter = createTRPCRouter({
 
   getInterviewSchedule: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.user.findMany({
+      // Dropped teams are marked inactive; their students aren't interviewed.
       where: {
-        teamId: { not: null },
+        team: { isActive: true },
         role: { not: "ADMIN" },
       },
       include: {
@@ -223,7 +224,7 @@ export const interviewManagementRouter = createTRPCRouter({
 
       const users = await ctx.db.user.findMany({
         where: {
-          teamId: { not: null },
+          team: { isActive: true },
           role: { not: "ADMIN" },
           interviewTime: null,
         },

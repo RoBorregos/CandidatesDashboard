@@ -1,8 +1,12 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { parse } from "csv-parse";
+import { parse as parseCsv } from "csv-parse/sync";
 import fs from "fs";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { normalize } from "~/lib/name-match";
+import { detectDelimiter, scheduleFromCsvRows } from "~/lib/schedule-csv";
 import {
   buildTrackSchedule,
   competitionTime,
@@ -48,6 +52,121 @@ function toRoundWindows(
       });
     }
     return { number: w.number, start, end };
+  });
+}
+
+/**
+ * Swaps the stored rounds for these entries in four queries, however many
+ * teams there are. Every team's old row goes, including deactivated teams,
+ * so nothing stale is left behind if a team is reactivated; a round that
+ * was revealed stays revealed.
+ */
+async function replaceRounds(
+  tx: Prisma.TransactionClient,
+  rounds: number[],
+  entries: {
+    teamId: string;
+    round: number;
+    runs: { track: string; start: Date }[];
+  }[],
+) {
+  const revealed = new Set(
+    (
+      await tx.round.findMany({
+        where: { number: { in: rounds }, isVisible: true },
+        select: { number: true },
+        distinct: ["number"],
+      })
+    ).map((round) => round.number),
+  );
+
+  await tx.round.deleteMany({ where: { number: { in: rounds } } });
+
+  const created = await tx.round.createManyAndReturn({
+    data: entries.map((entry) => ({
+      teamId: entry.teamId,
+      number: entry.round,
+      isVisible: revealed.has(entry.round),
+    })),
+    select: { id: true, teamId: true, number: true },
+  });
+  const idOf = new Map(
+    created.map((round) => [`${round.number}|${round.teamId}`, round.id]),
+  );
+
+  await tx.challenge.createMany({
+    data: entries.flatMap((entry) =>
+      entry.runs.map((run) => ({
+        roundId: idOf.get(`${entry.round}|${entry.teamId}`)!,
+        name: run.track,
+        time: run.start,
+      })),
+    ),
+  });
+}
+
+/**
+ * Checks the interviews already booked for these teams against their whole
+ * stored schedule, as rows for the admin page.
+ */
+async function findInterviewConflicts(
+  db: PrismaClient,
+  teamIds: string[],
+  windows: RoundWindow[],
+) {
+  const stored = await db.round.findMany({
+    where: { teamId: { in: teamIds } },
+    select: { teamId: true, number: true, challenges: true },
+  });
+  const fullSchedule = stored
+    .map((round) =>
+      round.teamId
+        ? scheduleFromStoredRuns(round.teamId, round.number, round.challenges)
+        : null,
+    )
+    .filter((entry): entry is TeamRoundSchedule => entry !== null);
+
+  const interviewed = await db.user.findMany({
+    where: {
+      teamId: { in: teamIds },
+      interviewTime: { not: null },
+      interviewerId: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      teamId: true,
+      interviewArea: true,
+      interviewTime: true,
+      interviewerId: true,
+      team: { select: { name: true } },
+    },
+  });
+  const conflicts = findScheduleConflicts(
+    interviewed.map((u) => ({
+      id: u.id,
+      teamId: u.teamId!,
+      area: (u.interviewArea as Area | null) ?? null,
+    })),
+    interviewed.map((u) => ({
+      candidateId: u.id,
+      interviewerId: u.interviewerId!,
+      start: u.interviewTime!,
+      end: new Date(u.interviewTime!.getTime() + INTERVIEW_MS),
+    })),
+    fullSchedule,
+    windows,
+  );
+  const byId = new Map(interviewed.map((u) => [u.id, u]));
+
+  return conflicts.map((c) => {
+    const user = byId.get(c.candidateId);
+    return {
+      name: user?.name ?? c.candidateId,
+      team: user?.team?.name ?? "",
+      time: user?.interviewTime ? formatTime(user.interviewTime) : "",
+      reason: c.reason,
+    };
   });
 }
 
@@ -167,87 +286,22 @@ export const scheduleManagementRouter = createTRPCRouter({
               WHERE "roundId" IN (SELECT "id" FROM "Round" WHERE "number" = ${window.number})`;
           }
 
-          for (const window of toBuild) {
-            const wasVisible =
-              (await tx.round.count({
-                where: { number: window.number, isVisible: true },
-              })) > 0;
-
-            // Every team's old row goes, including deactivated teams, so
-            // nothing stale is left behind if a team is reactivated.
-            await tx.round.deleteMany({ where: { number: window.number } });
-
-            for (const entry of schedule.filter(
-              (e) => e.round === window.number,
-            )) {
-              await tx.round.create({
-                data: {
-                  teamId: entry.teamId,
-                  number: entry.round,
-                  isVisible: wasVisible,
-                  challenges: {
-                    create: entry.runs.map((run) => ({
-                      name: run.track,
-                      time: run.start,
-                    })),
-                  },
-                },
-              });
-            }
+          if (toBuild.length > 0) {
+            await replaceRounds(
+              tx,
+              toBuild.map((w) => w.number),
+              schedule,
+            );
           }
         },
         { timeout: 60_000 },
       );
 
-      // Check the interviews already booked against the whole new schedule.
-      const stored = await ctx.db.round.findMany({
-        where: { teamId: { in: teamIds } },
-        select: { teamId: true, number: true, challenges: true },
-      });
-      const fullSchedule = stored
-        .map((round) =>
-          round.teamId
-            ? scheduleFromStoredRuns(
-                round.teamId,
-                round.number,
-                round.challenges,
-              )
-            : null,
-        )
-        .filter((entry): entry is TeamRoundSchedule => entry !== null);
-
-      const interviewed = await ctx.db.user.findMany({
-        where: {
-          teamId: { in: teamIds },
-          interviewTime: { not: null },
-          interviewerId: { not: null },
-        },
-        select: {
-          id: true,
-          name: true,
-          teamId: true,
-          interviewArea: true,
-          interviewTime: true,
-          interviewerId: true,
-          team: { select: { name: true } },
-        },
-      });
-      const conflicts = findScheduleConflicts(
-        interviewed.map((u) => ({
-          id: u.id,
-          teamId: u.teamId!,
-          area: (u.interviewArea as Area | null) ?? null,
-        })),
-        interviewed.map((u) => ({
-          candidateId: u.id,
-          interviewerId: u.interviewerId!,
-          start: u.interviewTime!,
-          end: new Date(u.interviewTime!.getTime() + INTERVIEW_MS),
-        })),
-        fullSchedule,
+      const interviewConflicts = await findInterviewConflicts(
+        ctx.db,
+        teamIds,
         windows,
       );
-      const byId = new Map(interviewed.map((u) => [u.id, u]));
 
       // Active teams with no slot in a shifted round (e.g. activated after it
       // was generated). Only a rebuild can give them one.
@@ -277,16 +331,177 @@ export const scheduleManagementRouter = createTRPCRouter({
         // groupsPerRound: Math.ceil(teamIds.length / TEAMS_PER_GROUP),
         minutesPerRound:
           (trackLayout(teamIds.length).segments * SEGMENT_MS) / MINUTE_MS,
-        interviewConflicts: conflicts.map((c) => {
-          const user = byId.get(c.candidateId);
-          return {
-            name: user?.name ?? c.candidateId,
-            team: user?.team?.name ?? "",
-            time: user?.interviewTime ? formatTime(user.interviewTime) : "",
-            reason: c.reason,
-          };
-        }),
+        interviewConflicts,
       };
+    }),
+
+  /**
+   * Replaces the rounds that appear in an uploaded CSV (see ~/lib/schedule-csv)
+   * with the times and tracks written in it. Rounds missing from the file are
+   * left alone, and a revealed round stays revealed. The whole file is
+   * rejected if any row breaks the format or names an unknown team.
+   */
+  importTrackScheduleCsv: adminProcedure
+    .input(trackScheduleInput.extend({ csv: z.string().min(1).max(500_000) }))
+    .mutation(async ({ ctx, input }) => {
+      const formWindows = toRoundWindows(input);
+
+      // The page decodes the file (see decodeCsvBytes); a replacement
+      // character means it still lost letters, so names would not match.
+      const garbled = input.csv
+        .split(/\r?\n/)
+        .findIndex((line) => line.includes("\uFFFD"));
+      if (garbled !== -1) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Line ${garbled + 1} has unreadable characters. In Excel use Save As → "CSV UTF-8 (Comma delimited)" and upload again.`,
+        });
+      }
+
+      let rows: string[][];
+      try {
+        rows = parseCsv(input.csv.replace(/^\uFEFF/, ""), {
+          delimiter: detectDelimiter(input.csv),
+          relax_column_count: true,
+          skip_empty_lines: true,
+        }) as string[][];
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Could not read the CSV: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+
+      const { runs, errors, warnings } = scheduleFromCsvRows(rows, input.date);
+
+      // Names are matched ignoring case, accents and punctuation.
+      const teams = await ctx.db.team.findMany({
+        select: { id: true, name: true, isActive: true },
+      });
+      const byName = new Map<string, (typeof teams)[number] | null>();
+      for (const team of teams) {
+        const key = normalize(team.name);
+        byName.set(key, byName.has(key) ? null : team);
+      }
+      const teamOf = new Map<string, (typeof teams)[number]>();
+      const unknown = new Set<string>();
+      for (const run of runs) {
+        const team =
+          teams.find((t) => t.name.trim() === run.team) ??
+          byName.get(normalize(run.team));
+        if (team) teamOf.set(run.team, team);
+        else unknown.add(run.team);
+      }
+      if (unknown.size > 0) {
+        errors.push(
+          `Unknown teams (create them or fix the spelling): ${[...unknown].join(", ")}.`,
+        );
+      }
+
+      if (errors.length > 0) {
+        const shown = errors.slice(0, 10);
+        if (errors.length > shown.length) {
+          shown.push(`…and ${errors.length - shown.length} more.`);
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: shown.join("\n") });
+      }
+
+      const rounds = [...new Set(runs.map((run) => run.round))].sort(
+        (a, b) => a - b,
+      );
+      const byRoundTeam = new Map<string, typeof runs>();
+      for (const run of runs) {
+        const key = `${run.round}|${teamOf.get(run.team)!.id}`;
+        byRoundTeam.set(key, [...(byRoundTeam.get(key) ?? []), run]);
+      }
+
+      await ctx.db.$transaction(
+        (tx) =>
+          replaceRounds(
+            tx,
+            rounds,
+            [...byRoundTeam.values()].map((teamRuns) => ({
+              teamId: teamOf.get(teamRuns[0]!.team)!.id,
+              round: teamRuns[0]!.round,
+              runs: teamRuns.sort(
+                (a, b) => a.start.getTime() - b.start.getTime(),
+              ),
+            })),
+          ),
+        { timeout: 60_000 },
+      );
+
+      const csvTeams = new Set([...teamOf.values()].map((team) => team.id));
+      const inactive = teams.filter(
+        (team) => !team.isActive && csvTeams.has(team.id),
+      );
+      if (inactive.length > 0) {
+        warnings.push(
+          `Inactive teams in the file (hidden until reactivated): ${inactive.map((t) => t.name).join(", ")}.`,
+        );
+      }
+      const missing = teams.filter(
+        (team) => team.isActive && !csvTeams.has(team.id),
+      );
+      if (missing.length > 0) {
+        warnings.push(
+          `Active teams with no slot in the file: ${missing.map((t) => t.name).join(", ")}.`,
+        );
+      }
+
+      // Each imported round's window starts at its first run, so "Update
+      // Round N times" does not move it, and ends no earlier than its last run.
+      const windows = formWindows.map((window) => {
+        const times = runs
+          .filter((run) => run.round === window.number)
+          .map((run) => run.start.getTime());
+        if (times.length === 0) return window;
+        return {
+          number: window.number,
+          start: new Date(Math.min(...times)),
+          end: new Date(
+            Math.max(window.end.getTime(), Math.max(...times) + SEGMENT_MS),
+          ),
+        };
+      });
+
+      const activeIds = teams
+        .filter((team) => team.isActive)
+        .map((team) => team.id);
+
+      return {
+        rounds: rounds.map((round) => ({
+          round,
+          teams: [...byRoundTeam.keys()].filter((k) =>
+            k.startsWith(`${round}|`),
+          ).length,
+        })),
+        windows: windows.map((w) => ({
+          number: w.number,
+          start: formatTime(w.start),
+          end: formatTime(w.end),
+        })),
+        warnings,
+        interviewConflicts: await findInterviewConflicts(
+          ctx.db,
+          activeIds,
+          windows,
+        ),
+      };
+    }),
+
+  /**
+   * Deletes every run time of the given rounds. The Round rows stay, so a
+   * revealed round stays revealed (with no times) until it is generated or
+   * uploaded again.
+   */
+  deleteTrackScheduleTimes: adminProcedure
+    .input(z.object({ rounds: z.array(z.number().int().min(1).max(3)).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const { count } = await ctx.db.challenge.deleteMany({
+        where: { round: { number: { in: input.rounds } } },
+      });
+      return { rounds: input.rounds, deleted: count };
     }),
 
   /** Stored 2026 schedule as admin tables: one row per group start time. */

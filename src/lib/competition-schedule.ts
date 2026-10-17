@@ -533,6 +533,53 @@ export function findScheduleConflicts(
   return conflicts;
 }
 
+/** Calibration at the start of every segment, before the run clock starts. */
+export const CALIBRATION_MS = 2 * MINUTE_MS;
+
+/** One scheduled run on one lane ("A1", "B2"...), as the judges see it. */
+export type LaneRun = {
+  teamId: string;
+  teamName: string;
+  round: number;
+  lane: string;
+  start: Date;
+};
+
+/**
+ * The lane's latest run that has started by `now`. It stays current for one
+ * segment after it ends, so the judge can still submit it, unless the next
+ * run starts first (see nextOnLane).
+ */
+export function currentOnLane(
+  runs: LaneRun[],
+  lane: string,
+  now: Date,
+): LaneRun | null {
+  let current: LaneRun | null = null;
+  for (const run of runs) {
+    if (run.lane !== lane || run.start > now) continue;
+    if (!current || run.start > current.start) current = run;
+  }
+  if (!current) return null;
+  return now.getTime() < current.start.getTime() + 2 * SEGMENT_MS
+    ? current
+    : null;
+}
+
+/** The lane's first run that starts strictly after `after`. */
+export function nextOnLane(
+  runs: LaneRun[],
+  lane: string,
+  after: Date,
+): LaneRun | null {
+  let next: LaneRun | null = null;
+  for (const run of runs) {
+    if (run.lane !== lane || run.start <= after) continue;
+    if (!next || run.start < next.start) next = run;
+  }
+  return next;
+}
+
 /** "10:45" in Mexico City time. */
 export function formatTime(date: Date): string {
   return date.toLocaleTimeString("en-GB", {

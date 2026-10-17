@@ -9,6 +9,8 @@ import {
   mazeRunSchema,
 } from "rbrgs/lib/schemas";
 import { computeLevelsPoints, computeMazePoints } from "rbrgs/lib/scoring";
+import { type LaneRun, parseTrack } from "rbrgs/lib/competition-schedule";
+import { CURRENT_EDITION } from "rbrgs/lib/registration";
 
 const computePointsLOP = (lackOfProgress: number) => {
   switch (lackOfProgress) {
@@ -124,24 +126,44 @@ export const judgeRouter = createTRPCRouter({
   mazeRun: judgeProcedure
     .input(mazeRunSchema)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.mazeRun.create({
-        data: {
-          ...input,
-          judgeId: ctx.session.user.id,
-          points: computeMazePoints(input),
+      const data = {
+        ...input,
+        judgeId: ctx.session.user.id,
+        points: computeMazePoints(input),
+      };
+      // Re-submitting a team's round replaces its evaluation rather than
+      // stacking a second row that only the scoreboard knows to ignore.
+      return await ctx.db.mazeRun.upsert({
+        where: {
+          teamId_edition_round: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            round: input.round,
+          },
         },
+        create: data,
+        update: data,
       });
     }),
 
   levelsRun: judgeProcedure
     .input(levelsRunSchema)
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.levelsRun.create({
-        data: {
-          ...input,
-          judgeId: ctx.session.user.id,
-          points: computeLevelsPoints(input),
+      const data = {
+        ...input,
+        judgeId: ctx.session.user.id,
+        points: computeLevelsPoints(input),
+      };
+      return await ctx.db.levelsRun.upsert({
+        where: {
+          teamId_edition_round: {
+            teamId: input.teamId,
+            edition: CURRENT_EDITION,
+            round: input.round,
+          },
         },
+        create: data,
+        update: data,
       });
     }),
 
@@ -156,6 +178,40 @@ export const judgeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return await ctx.db.levelsRun.delete({ where: { id: input.id } });
     }),
+
+  /**
+   * Every stored 2026 run of the active teams, revealed or not, so each lane
+   * can pick its team from the clock. serverNow lets the client correct its
+   * own clock before running the timers.
+   */
+  getTrackLineup: judgeProcedure.query(async ({ ctx }) => {
+    const rounds = await ctx.db.round.findMany({
+      where: { team: { isActive: true } },
+      select: {
+        number: true,
+        team: { select: { id: true, name: true } },
+        challenges: { select: { name: true, time: true } },
+      },
+    });
+
+    const runs: LaneRun[] = rounds.flatMap((round) =>
+      round.challenges.flatMap((challenge) => {
+        const parsed = parseTrack(challenge.name);
+        if (!round.team || !parsed) return [];
+        return [
+          {
+            teamId: round.team.id,
+            teamName: round.team.name,
+            round: round.number,
+            lane: parsed.lane,
+            start: challenge.time,
+          },
+        ];
+      }),
+    );
+
+    return { serverNow: new Date(), runs };
+  }),
 
   getTeamIds: judgeProcedure.query(async ({ ctx }) => {
     const team = await ctx.db.team.findMany({

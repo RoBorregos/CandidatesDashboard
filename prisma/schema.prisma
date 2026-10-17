@@ -572,6 +572,9 @@ model MazeRun {
 
   createdAt DateTime @default(now())
 
+  // One stored evaluation per team per round per track: a judge who
+  // re-submits replaces the earlier one instead of adding a duplicate.
+  @@unique([teamId, edition, round])
   @@index([teamId, edition, round])
 }
 
@@ -598,6 +601,9 @@ model LevelsRun {
 
   createdAt DateTime @default(now())
 
+  // One stored evaluation per team per round per track: a judge who
+  // re-submits replaces the earlier one instead of adding a duplicate.
+  @@unique([teamId, edition, round])
   @@index([teamId, edition, round])
 }
 

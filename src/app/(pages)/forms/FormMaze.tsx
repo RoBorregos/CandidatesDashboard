@@ -5,18 +5,6 @@ import { useForm } from "react-hook-form";
 import { type z } from "zod";
 import { toast } from "sonner";
 
-import { Button } from "~/app/_components/shadcn/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "rbrgs/app/_components/shadcn/ui/form";
-import { Checkbox } from "rbrgs/app/_components/shadcn/ui/checkbox";
-import { Input } from "rbrgs/app/_components/shadcn/ui/input";
 import { mazeRunSchema } from "rbrgs/lib/schemas";
 import {
   computeMazePoints,
@@ -25,7 +13,13 @@ import {
   MAZE_POINTS,
 } from "rbrgs/lib/scoring";
 import { api } from "~/trpc/react";
-import { PointsPreview, TrackRunFields } from "./TrackRunFields";
+import { CounterButton, ToggleButton } from "./ScoreButtons";
+import {
+  ManualRunFields,
+  RunHeader,
+  SubmitRunButton,
+  useTrackRun,
+} from "./TrackRunFields";
 
 type FormData = z.infer<typeof mazeRunSchema>;
 
@@ -51,12 +45,20 @@ const COUNT_FIELDS = [
 ] as const;
 
 const CHECK_FIELDS = [
-  { name: "reachedFinalCheckpoint", label: "Reached the final checkpoint", points: MAZE_POINTS.finalCheckpoint },
-  { name: "returnBonus", label: "BONUS 1: returned along the same path to the start", points: MAZE_POINTS.returnBonus },
+  {
+    name: "reachedFinalCheckpoint",
+    label: "Reached the final checkpoint",
+    points: MAZE_POINTS.finalCheckpoint,
+  },
+  {
+    name: "returnBonus",
+    label: "BONUS 1: returned along the same path to the start",
+    points: MAZE_POINTS.returnBonus,
+  },
 ] as const;
 
 /** Judge form for Pista A (MAZE), 2026 rubric. */
-export const FormMaze = () => {
+export const FormMaze = ({ lane }: { lane: string }) => {
   const form = useForm<FormData>({
     resolver: zodResolver(mazeRunSchema),
     defaultValues: {
@@ -71,18 +73,16 @@ export const FormMaze = () => {
       arucoMarkers: 0,
     },
   });
+  const run = useTrackRun(form, lane);
 
   const values = form.watch();
-  const subtotal = computeMazePoints({
-    detectedColors: Number(values.detectedColors) || 0,
-    speedbumps: Number(values.speedbumps) || 0,
-    reachedFinalCheckpoint: values.reachedFinalCheckpoint,
-    returnBonus: values.returnBonus,
-    arucoMarkers: Number(values.arucoMarkers) || 0,
-  });
+  const subtotal = computeMazePoints(values);
 
   const deleteRun = api.judge.mazeRunDelete.useMutation({
-    onSuccess: () => toast("The evaluation was deleted."),
+    onSuccess: () => {
+      toast("The evaluation was deleted.");
+      run.refreshLineup();
+    },
     onError(error) {
       toast("Could not delete the evaluation, check the console.");
       console.error(error);
@@ -91,11 +91,15 @@ export const FormMaze = () => {
 
   const createRun = api.judge.mazeRun.useMutation({
     onSuccess(data) {
+      const key = run.markSubmitted();
       toast("Evaluation saved!", {
         description: <p>Points: {data.points}</p>,
         action: {
           label: "Undo",
-          onClick: () => deleteRun.mutate({ id: data.id }),
+          onClick: () => {
+            deleteRun.mutate({ id: data.id });
+            run.unmarkSubmitted(key);
+          },
         },
       });
     },
@@ -106,66 +110,73 @@ export const FormMaze = () => {
   });
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => createRun.mutate(data))}
-        className="space-y-6 text-white"
-      >
-        <PointsPreview points={subtotal} max={MAZE_MAX_POINTS} />
+    <form
+      onSubmit={form.handleSubmit(
+        (data) => {
+          // Backs out when the judge declines to save a 0-second run time.
+          const runSeconds = run.confirmRunSeconds();
+          if (runSeconds === null) return;
+          createRun.mutate({ ...data, runSeconds });
+        },
+        (errors) =>
+          toast(
+            Object.values(errors)[0]?.message?.toString() ??
+              "Check the evaluation before submitting.",
+          ),
+      )}
+      className="space-y-6 text-white"
+    >
+      <RunHeader run={run} points={subtotal} max={MAZE_MAX_POINTS} />
 
+      <div className="grid gap-3 sm:grid-cols-2">
         {COUNT_FIELDS.map(({ name, label, max, points }) => (
-          <FormField
+          <CounterButton
             key={name}
-            control={form.control}
-            name={name}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{label}</FormLabel>
-                <FormDescription>
-                  {points} points each, up to {max}.
-                </FormDescription>
-                <FormControl>
-                  <Input type="number" min={0} max={max} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label={label}
+            count={values[name]}
+            max={max}
+            points={points}
+            onChange={(count) => form.setValue(name, count)}
           />
         ))}
-
-        {CHECK_FIELDS.map(({ name, label, points }) => (
-          <FormField
-            key={name}
-            control={form.control}
-            name={name}
-            render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center gap-3">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel>
-                    {label} <span className="text-neutral-400">(+{points})</span>
-                  </FormLabel>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ))}
-
-        <TrackRunFields
-          control={form.control}
-          onTeamChange={(teamId) => form.setValue("teamId", teamId)}
+        <CounterButton
+          label="Lack of progress (reference only, no points)"
+          count={values.lackOfProgress}
+          onChange={(count) => form.setValue("lackOfProgress", count)}
         />
+      </div>
 
-        <Button type="submit" disabled={createRun.isPending}>
-          Submit
-        </Button>
-      </form>
-    </Form>
+      <div className="space-y-3">
+        {CHECK_FIELDS.map(({ name, label, points }) => {
+          // The return trip starts at the final checkpoint (see the schema).
+          const locked =
+            name === "returnBonus" && !values.reachedFinalCheckpoint;
+          return (
+            <ToggleButton
+              key={name}
+              label={label}
+              points={points}
+              checked={values[name]}
+              disabled={locked}
+              hint={locked ? "Needs the final checkpoint first" : undefined}
+              onChange={(checked) => {
+                form.setValue(name, checked);
+                if (name === "reachedFinalCheckpoint" && !checked) {
+                  form.setValue("returnBonus", false);
+                }
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <ManualRunFields run={run} />
+
+      <SubmitRunButton
+        run={run}
+        points={subtotal}
+        pending={createRun.isPending}
+      />
+    </form>
   );
 };

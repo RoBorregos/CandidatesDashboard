@@ -4,7 +4,7 @@ import { parse as parseCsv } from "csv-parse/sync";
 import fs from "fs";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { normalize } from "~/lib/name-match";
 import { detectDelimiter, scheduleFromCsvRows } from "~/lib/schedule-csv";
 import {
@@ -52,6 +52,56 @@ function toRoundWindows(
       });
     }
     return { number: w.number, start, end };
+  });
+}
+
+/**
+ * Swaps the stored rounds for these entries in four queries, however many
+ * teams there are. Every team's old row goes, including deactivated teams,
+ * so nothing stale is left behind if a team is reactivated; a round that
+ * was revealed stays revealed.
+ */
+async function replaceRounds(
+  tx: Prisma.TransactionClient,
+  rounds: number[],
+  entries: {
+    teamId: string;
+    round: number;
+    runs: { track: string; start: Date }[];
+  }[],
+) {
+  const revealed = new Set(
+    (
+      await tx.round.findMany({
+        where: { number: { in: rounds }, isVisible: true },
+        select: { number: true },
+        distinct: ["number"],
+      })
+    ).map((round) => round.number),
+  );
+
+  await tx.round.deleteMany({ where: { number: { in: rounds } } });
+
+  const created = await tx.round.createManyAndReturn({
+    data: entries.map((entry) => ({
+      teamId: entry.teamId,
+      number: entry.round,
+      isVisible: revealed.has(entry.round),
+    })),
+    select: { id: true, teamId: true, number: true },
+  });
+  const idOf = new Map(
+    created.map((round) => [`${round.number}|${round.teamId}`, round.id]),
+  );
+
+  await tx.challenge.createMany({
+    data: entries.flatMap((entry) =>
+      entry.runs.map((run) => ({
+        roundId: idOf.get(`${entry.round}|${entry.teamId}`)!,
+        name: run.track,
+        time: run.start,
+      })),
+    ),
   });
 }
 
@@ -236,33 +286,12 @@ export const scheduleManagementRouter = createTRPCRouter({
               WHERE "roundId" IN (SELECT "id" FROM "Round" WHERE "number" = ${window.number})`;
           }
 
-          for (const window of toBuild) {
-            const wasVisible =
-              (await tx.round.count({
-                where: { number: window.number, isVisible: true },
-              })) > 0;
-
-            // Every team's old row goes, including deactivated teams, so
-            // nothing stale is left behind if a team is reactivated.
-            await tx.round.deleteMany({ where: { number: window.number } });
-
-            for (const entry of schedule.filter(
-              (e) => e.round === window.number,
-            )) {
-              await tx.round.create({
-                data: {
-                  teamId: entry.teamId,
-                  number: entry.round,
-                  isVisible: wasVisible,
-                  challenges: {
-                    create: entry.runs.map((run) => ({
-                      name: run.track,
-                      time: run.start,
-                    })),
-                  },
-                },
-              });
-            }
+          if (toBuild.length > 0) {
+            await replaceRounds(
+              tx,
+              toBuild.map((w) => w.number),
+              schedule,
+            );
           }
         },
         { timeout: 60_000 },
@@ -387,31 +416,18 @@ export const scheduleManagementRouter = createTRPCRouter({
       }
 
       await ctx.db.$transaction(
-        async (tx) => {
-          for (const round of rounds) {
-            const wasVisible =
-              (await tx.round.count({
-                where: { number: round, isVisible: true },
-              })) > 0;
-            await tx.round.deleteMany({ where: { number: round } });
-
-            for (const [key, teamRuns] of byRoundTeam) {
-              if (!key.startsWith(`${round}|`)) continue;
-              await tx.round.create({
-                data: {
-                  teamId: teamOf.get(teamRuns[0]!.team)!.id,
-                  number: round,
-                  isVisible: wasVisible,
-                  challenges: {
-                    create: teamRuns
-                      .sort((a, b) => a.start.getTime() - b.start.getTime())
-                      .map((run) => ({ name: run.track, time: run.start })),
-                  },
-                },
-              });
-            }
-          }
-        },
+        (tx) =>
+          replaceRounds(
+            tx,
+            rounds,
+            [...byRoundTeam.values()].map((teamRuns) => ({
+              teamId: teamOf.get(teamRuns[0]!.team)!.id,
+              round: teamRuns[0]!.round,
+              runs: teamRuns.sort(
+                (a, b) => a.start.getTime() - b.start.getTime(),
+              ),
+            })),
+          ),
         { timeout: 60_000 },
       );
 
@@ -472,6 +488,20 @@ export const scheduleManagementRouter = createTRPCRouter({
           windows,
         ),
       };
+    }),
+
+  /**
+   * Deletes every run time of the given rounds. The Round rows stay, so a
+   * revealed round stays revealed (with no times) until it is generated or
+   * uploaded again.
+   */
+  deleteTrackScheduleTimes: adminProcedure
+    .input(z.object({ rounds: z.array(z.number().int().min(1).max(3)).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const { count } = await ctx.db.challenge.deleteMany({
+        where: { round: { number: { in: input.rounds } } },
+      });
+      return { rounds: input.rounds, deleted: count };
     }),
 
   /** Stored 2026 schedule as admin tables: one row per group start time. */

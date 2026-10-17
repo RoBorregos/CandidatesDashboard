@@ -183,6 +183,34 @@ export default function TrackScheduleControl({
     URL.revokeObjectURL(url);
   };
 
+  const deleteTimes = api.admin.deleteTrackScheduleTimes.useMutation({
+    onSuccess(data) {
+      toast.success(
+        `Deleted ${data.deleted} run times from round ${data.rounds.join(", ")}.`,
+      );
+      setConflicts([]);
+      void refetchTables();
+      void refetchScheduleTeams();
+    },
+    onError(error) {
+      toast.error(error.message);
+    },
+  });
+
+  const removeTimes = (rounds: number[]) => {
+    const revealed = rounds.filter(
+      (n) => tables?.find((table) => table.number === n)?.visible,
+    );
+    const ok = window.confirm(
+      `This deletes every team's times for round ${rounds.join(", ")}. Teams keep nothing until you generate or upload the round again.${
+        revealed.length > 0
+          ? ` Round ${revealed.join(", ")} is revealed: teams will see an empty schedule.`
+          : ""
+      } Continue?`,
+    );
+    if (ok) deleteTimes.mutate({ rounds });
+  };
+
   const run = (rounds: number[], rebuild = false) => {
     const existing = rounds.filter((n) =>
       tables?.some((table) => table.number === n),
@@ -311,6 +339,19 @@ export default function TrackScheduleControl({
                       ? `Update Round ${w.number} times`
                       : `Generate Round ${w.number}`}
                 </button>
+                {stored && (
+                  <button
+                    onClick={() => removeTimes([w.number])}
+                    disabled={deleteTimes.isPending}
+                    className="mt-2 w-full rounded border border-red-500 px-3 py-2 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+                  >
+                    {deleteTimes.isPending &&
+                    deleteTimes.variables?.rounds.length === 1 &&
+                    deleteTimes.variables.rounds[0] === w.number
+                      ? "Deleting..."
+                      : `Delete Round ${w.number} times`}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -340,6 +381,15 @@ export default function TrackScheduleControl({
               className="rounded bg-red-700 px-6 py-2 hover:bg-red-800 disabled:opacity-50"
             >
               Rebuild all 3 rounds (new random order)
+            </button>
+          )}
+          {anyStored && (
+            <button
+              onClick={() => removeTimes(tables!.map((t) => t.number))}
+              disabled={deleteTimes.isPending}
+              className="rounded border border-red-500 px-6 py-2 text-red-300 hover:bg-red-950 disabled:opacity-50"
+            >
+              {deleteTimes.isPending ? "Deleting..." : "Delete all times"}
             </button>
           )}
         </div>

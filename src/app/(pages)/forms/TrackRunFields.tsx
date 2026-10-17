@@ -37,6 +37,18 @@ const MAX_RUN_MS = MAX_RUN_SECONDS * 1000;
 const runKey = (run: LaneRun | null) =>
   run ? `${run.lane}:${run.teamId}:${run.round}` : "";
 
+/**
+ * Where a run sits among its round's runs on the lane, so the counter reads
+ * "3 / 18" for the round being judged instead of counting every round.
+ */
+const roundPosition = (laneRuns: LaneRun[], run: LaneRun) => {
+  const inRound = laneRuns.filter((other) => other.round === run.round);
+  const index = inRound.findIndex((other) => runKey(other) === runKey(run));
+  return index >= 0
+    ? { round: run.round, index, total: inRound.length }
+    : null;
+};
+
 /** "1:23.45": minutes, seconds and hundredths. */
 const formatClock = (ms: number) => {
   const hundredths = Math.floor(Math.max(0, ms) / 10);
@@ -206,7 +218,7 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     upcoming: nextOnLane(runs, lane, target?.start ?? now),
     manual,
     browsing: chosen !== null,
-    position: index >= 0 ? { index, total: laneRuns.length } : null,
+    position: target ? roundPosition(laneRuns, target) : null,
     previous,
     following,
     alreadyRan,
@@ -319,7 +331,7 @@ export function RunHeader({
         </button>
         <span className="flex-1 text-center text-xs text-neutral-400">
           {run.position
-            ? `${run.position.index + 1} / ${run.position.total}`
+            ? `Round ${run.position.round} · ${run.position.index + 1} / ${run.position.total}`
             : "—"}
           {(run.browsing || manual) && (
             <button

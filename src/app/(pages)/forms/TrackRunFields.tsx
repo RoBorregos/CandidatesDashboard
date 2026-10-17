@@ -237,6 +237,16 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
       ? 0
       : Math.min(Math.max((timer.stoppedAt ?? at) - anchor, 0), MAX_RUN_MS);
 
+  const upcoming = nextOnLane(runs, lane, target?.start ?? now);
+  /*
+   * When the next match on the lane starts, for the cooldown countdown: the
+   * next scheduled run, or one segment after this one started when there is
+   * none (last run of the day, or a team picked by hand).
+   */
+  const nextMatchAt =
+    (target ? upcoming?.start.getTime() : undefined) ??
+    (segmentStart === null ? null : segmentStart + SEGMENT_MS);
+
   const teamName =
     teams.data?.find((team) => team.id === values.teamId)?.name ??
     target?.teamName ??
@@ -249,7 +259,7 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     now,
     target,
     live,
-    upcoming: nextOnLane(runs, lane, target?.start ?? now),
+    upcoming,
     manual,
     browsing: chosen !== null,
     position: target ? roundPosition(laneRuns, target) : null,
@@ -264,6 +274,7 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     timer,
     segmentStart,
     anchor,
+    nextMatchAt,
     elapsedAt,
     /** Run time to submit, in whole seconds. */
     runSeconds: () =>
@@ -530,19 +541,27 @@ function RanName({ name, judged }: { name: string; judged: boolean }) {
 /**
  * M:SS.d clocks for one 8-minute segment. The big one counts calibration
  * down from 2:00 (green), then the run up to 6:00 (gray); the small one is
- * the total time since the segment started (dark gray). With a scheduled run
- * all of it starts on its own; "Start" begins a segment by hand, with the
- * same 2 minutes of calibration.
+ * the total time since the segment started (dark gray). Once the run is over,
+ * stopped early or at 6:00, the big one turns into the cooldown: a negative
+ * count down to the next match on the lane (blue), with the final run time
+ * on the side. With a scheduled run all of it starts on its own; "Start"
+ * begins a segment by hand, with the same 2 minutes of calibration.
  */
 function RunTimer({ run }: { run: TrackRun }) {
   const at = useClock(run.offset, true);
-  const { anchor, segmentStart, target, timer } = run;
+  const { anchor, segmentStart, nextMatchAt, target, timer } = run;
   const stopped = timer.stoppedAt !== null;
 
-  let phase: "idle" | "waiting" | "calibration" | "run";
+  let phase: "idle" | "waiting" | "calibration" | "run" | "cooldown";
   if (anchor === null || segmentStart === null) phase = "idle";
   else if (at < segmentStart) phase = "waiting";
   else if (!stopped && at < anchor) phase = "calibration";
+  else if (
+    (stopped || run.elapsedAt(at) >= MAX_RUN_MS) &&
+    nextMatchAt !== null &&
+    at < nextMatchAt
+  )
+    phase = "cooldown";
   else phase = "run";
 
   let label = "Stopwatch";
@@ -559,6 +578,11 @@ function RunTimer({ run }: { run: TrackRun }) {
     ms = anchor! - at;
     limit = CALIBRATION_MS;
     tone = "text-green-400";
+  } else if (phase === "cooldown") {
+    label = stopped ? "Cooldown · ended early" : "Cooldown";
+    ms = nextMatchAt! - at;
+    tone = "text-sky-400";
+    labelTone = "text-sky-400";
   } else if (phase === "run") {
     ms = run.elapsedAt(at);
     limit = MAX_RUN_MS;
@@ -591,7 +615,7 @@ function RunTimer({ run }: { run: TrackRun }) {
   const restartRun = () => {
     if (
       window.confirm(
-        `Restart the run timer? ${formatClock(ms)} of run time will be lost and it starts again from 0:00.`,
+        `Restart the run timer? ${formatClock(run.elapsedAt(at))} of run time will be lost and it starts again from 0:00.`,
       )
     ) {
       run.startRunNow();
@@ -620,6 +644,7 @@ function RunTimer({ run }: { run: TrackRun }) {
             tone,
           )}
         >
+          {phase === "cooldown" && "-"}
           {formatClock(ms)}
           {limit !== null && (
             <span className="text-2xl text-neutral-600">
@@ -628,13 +653,22 @@ function RunTimer({ run }: { run: TrackRun }) {
             </span>
           )}
         </p>
-        {total !== null && (
-          <p className="shrink-0 pb-1 text-right font-digital tabular-nums text-neutral-600">
+        {phase === "cooldown" ? (
+          <p className="shrink-0 pb-1 text-right font-digital tabular-nums text-neutral-400">
             <span className="block text-[10px] uppercase tracking-widest">
-              Total
+              Run time
             </span>
-            <span className="text-2xl">{formatClock(total)}</span>
+            <span className="text-2xl">{formatClock(run.elapsedAt(at))}</span>
           </p>
+        ) : (
+          total !== null && (
+            <p className="shrink-0 pb-1 text-right font-digital tabular-nums text-neutral-600">
+              <span className="block text-[10px] uppercase tracking-widest">
+                Total
+              </span>
+              <span className="text-2xl">{formatClock(total)}</span>
+            </p>
+          )
         )}
       </div>
       <div className="mt-2 flex gap-2">
@@ -671,7 +705,7 @@ function RunTimer({ run }: { run: TrackRun }) {
             Stop
           </button>
         )}
-        {phase === "run" && (
+        {(phase === "run" || phase === "cooldown") && (
           <button
             type="button"
             onClick={restartRun}

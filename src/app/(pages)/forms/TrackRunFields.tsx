@@ -44,17 +44,15 @@ const runKey = (run: LaneRun | null) =>
 const roundPosition = (laneRuns: LaneRun[], run: LaneRun) => {
   const inRound = laneRuns.filter((other) => other.round === run.round);
   const index = inRound.findIndex((other) => runKey(other) === runKey(run));
-  return index >= 0
-    ? { round: run.round, index, total: inRound.length }
-    : null;
+  return index >= 0 ? { round: run.round, index, total: inRound.length } : null;
 };
 
-/** "1:23.45": minutes, seconds and hundredths. */
+/** "1:23.4": minutes, seconds and tenths. */
 const formatClock = (ms: number) => {
-  const hundredths = Math.floor(Math.max(0, ms) / 10);
-  const minutes = Math.floor(hundredths / 6000);
-  const seconds = Math.floor(hundredths / 100) % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}.${String(hundredths % 100).padStart(2, "0")}`;
+  const tenths = Math.floor(Math.max(0, ms) / 100);
+  const minutes = Math.floor(tenths / 600);
+  const seconds = Math.floor(tenths / 10) % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${tenths % 10}`;
 };
 
 /** Server-corrected Date.now(), refreshed every second or every frame. */
@@ -79,8 +77,13 @@ function useClock(offset: number, everyFrame = false) {
 type TimerState = {
   /** Run this state belongs to; a new run starts with a fresh timer. */
   key: string;
-  /** Run clock started by hand ("Start" / "Restart now") instead of the schedule. */
+  /** Segment (calibration + run) started by hand instead of by the schedule. */
   startedAt: number | null;
+  /**
+   * Run clock started by hand ("Skip calibration" / "Restart run") instead of
+   * when calibration ends. The segment start, and so the total, stays put.
+   */
+  runStartedAt: number | null;
   /** When the judge pressed "Stop". */
   stoppedAt: number | null;
   /** Run time typed by hand, which wins over the timer. */
@@ -90,6 +93,7 @@ type TimerState = {
 const freshTimer = (key: string): TimerState => ({
   key,
   startedAt: null,
+  runStartedAt: null,
   stoppedAt: null,
   overrideSeconds: null,
 });
@@ -195,9 +199,11 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
   const [timer, setTimer] = useState(() => freshTimer(targetKey));
   if (timer.key !== targetKey) setTimer(freshTimer(targetKey));
 
+  // Every segment, by hand or by the schedule, opens with CALIBRATION_MS.
+  const segmentStart = timer.startedAt ?? target?.start.getTime() ?? null;
   const anchor =
-    timer.startedAt ??
-    (target ? target.start.getTime() + CALIBRATION_MS : null);
+    timer.runStartedAt ??
+    (segmentStart === null ? null : segmentStart + CALIBRATION_MS);
   const elapsedAt = (at: number) =>
     anchor === null
       ? 0
@@ -228,6 +234,7 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     teams: teams.data ?? [],
     teamsLoading: teams.isLoading,
     timer,
+    segmentStart,
     anchor,
     elapsedAt,
     /** Run time to submit, in whole seconds. */
@@ -248,8 +255,18 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
     goPrevious: () => browse(previous),
     goNext: () => browse(following),
 
+    /** Starts a segment now: 2 min of calibration, then the run clock. */
     startTimer: () => {
-      setTimer((t) => ({ ...t, startedAt: clock(), stoppedAt: null }));
+      setTimer((t) => ({
+        ...t,
+        startedAt: clock(),
+        runStartedAt: null,
+        stoppedAt: null,
+      }));
+    },
+    /** Starts the run clock now, skipping (the rest of) calibration. */
+    startRunNow: () => {
+      setTimer((t) => ({ ...t, runStartedAt: clock(), stoppedAt: null }));
     },
     stopTimer: () => {
       setTimer((t) => ({ ...t, stoppedAt: clock() }));
@@ -258,7 +275,12 @@ export function useTrackRun<T extends FieldValues & TrackRunFieldValues>(
       setTimer((t) => ({ ...t, stoppedAt: null }));
     },
     resetTimer: () => {
-      setTimer((t) => ({ ...t, startedAt: null, stoppedAt: null }));
+      setTimer((t) => ({
+        ...t,
+        startedAt: null,
+        runStartedAt: null,
+        stoppedAt: null,
+      }));
     },
     overrideSeconds: (seconds: number | null) => {
       setTimer((t) => ({ ...t, overrideSeconds: seconds }));
@@ -427,44 +449,75 @@ function RanName({ name, judged }: { name: string; judged: boolean }) {
 }
 
 /**
- * M:SS.cc clock. With a scheduled run it counts down to the start and
- * through calibration on its own, then counts the run up to MAX_RUN_SECONDS.
+ * M:SS.d clocks for one 8-minute segment. The big one counts calibration
+ * down from 2:00 (green), then the run up to 6:00 (gray); the small one is
+ * the total time since the segment started (dark gray). With a scheduled run
+ * all of it starts on its own; "Start" begins a segment by hand, with the
+ * same 2 minutes of calibration.
  */
 function RunTimer({ run }: { run: TrackRun }) {
   const at = useClock(run.offset, true);
-  const { anchor, target, timer } = run;
+  const { anchor, segmentStart, target, timer } = run;
   const stopped = timer.stoppedAt !== null;
 
-  let label: string;
-  let ms: number;
-  let tone = "text-white";
-  if (anchor === null) {
-    label = "Stopwatch";
-    ms = 0;
-  } else if (
-    timer.startedAt === null &&
-    target &&
-    at < target.start.getTime()
-  ) {
+  let phase: "idle" | "waiting" | "calibration" | "run";
+  if (anchor === null || segmentStart === null) phase = "idle";
+  else if (at < segmentStart) phase = "waiting";
+  else if (!stopped && at < anchor) phase = "calibration";
+  else phase = "run";
+
+  let label = "Stopwatch";
+  let ms = 0;
+  let limit: number | null = null;
+  let tone = "text-neutral-300";
+  let labelTone = "text-neutral-400";
+  if (phase === "waiting") {
     label = "Starts in";
-    ms = target.start.getTime() - at;
-    tone = "text-neutral-400";
-  } else if (!stopped && at < anchor) {
+    ms = segmentStart! - at;
+    tone = "text-neutral-500";
+  } else if (phase === "calibration") {
     label = "Calibration";
-    ms = anchor - at;
-    tone = "text-yellow-400";
-  } else {
+    ms = anchor! - at;
+    limit = CALIBRATION_MS;
+    tone = "text-green-400";
+  } else if (phase === "run") {
     ms = run.elapsedAt(at);
+    limit = MAX_RUN_MS;
     if (stopped) {
       label = "Stopped";
-      tone = "text-green-400";
     } else if (ms >= MAX_RUN_MS) {
       label = "Time's up";
-      tone = "text-red-400";
+      labelTone = "text-red-400";
     } else {
       label = "Run time";
     }
   }
+
+  // Real time since the segment started, until the run's 6 minutes are up.
+  const total =
+    segmentStart !== null && anchor !== null && at >= segmentStart
+      ? Math.min(at, anchor + MAX_RUN_MS) - segmentStart
+      : null;
+
+  const skipCalibration = () => {
+    if (
+      window.confirm(
+        `Skip the rest of calibration (${formatClock(anchor! - at).slice(0, -2)} left) and start the 6-minute run now?`,
+      )
+    ) {
+      run.startRunNow();
+    }
+  };
+
+  const restartRun = () => {
+    if (
+      window.confirm(
+        `Restart the run timer? ${formatClock(ms)} of run time will be lost and it starts again from 0:00.`,
+      )
+    ) {
+      run.startRunNow();
+    }
+  };
 
   const button =
     "h-12 flex-1 rounded-lg border-2 text-sm font-semibold transition active:scale-[0.98]";
@@ -472,7 +525,7 @@ function RunTimer({ run }: { run: TrackRun }) {
   return (
     <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
       <div className="flex items-baseline justify-between">
-        <span className="text-xs uppercase tracking-widest text-neutral-400">
+        <span className={cn("text-xs uppercase tracking-widest", labelTone)}>
           {label}
         </span>
         {timer.overrideSeconds !== null && (
@@ -481,19 +534,46 @@ function RunTimer({ run }: { run: TrackRun }) {
           </span>
         )}
       </div>
-      <p
-        className={cn("font-digital text-6xl tabular-nums leading-tight", tone)}
-      >
-        {formatClock(ms)}
-      </p>
+      <div className="flex items-end justify-between gap-3">
+        <p
+          className={cn(
+            "font-digital text-6xl tabular-nums leading-tight",
+            tone,
+          )}
+        >
+          {formatClock(ms)}
+          {limit !== null && (
+            <span className="text-2xl text-neutral-600">
+              {" "}
+              / {formatClock(limit).slice(0, -2)}
+            </span>
+          )}
+        </p>
+        {total !== null && (
+          <p className="shrink-0 pb-1 text-right font-digital tabular-nums text-neutral-600">
+            <span className="block text-[10px] uppercase tracking-widest">
+              Total
+            </span>
+            <span className="text-2xl">{formatClock(total)}</span>
+          </p>
+        )}
+      </div>
       <div className="mt-2 flex gap-2">
-        {anchor === null ? (
+        {phase === "idle" || phase === "waiting" ? (
           <button
             type="button"
             onClick={run.startTimer}
             className={cn(button, "border-roboblue bg-roboblue/20")}
           >
-            Start
+            {phase === "idle" ? "Start" : "Start now"}
+          </button>
+        ) : phase === "calibration" ? (
+          <button
+            type="button"
+            onClick={skipCalibration}
+            className={cn(button, "border-green-500 bg-green-500/20")}
+          >
+            Skip calibration
           </button>
         ) : stopped ? (
           <button
@@ -512,16 +592,16 @@ function RunTimer({ run }: { run: TrackRun }) {
             Stop
           </button>
         )}
-        {anchor !== null && (
+        {phase === "run" && (
           <button
             type="button"
-            onClick={run.startTimer}
+            onClick={restartRun}
             className={cn(button, "border-neutral-700 text-neutral-300")}
           >
-            Restart now
+            Restart run
           </button>
         )}
-        {timer.startedAt !== null && (
+        {(timer.startedAt !== null || timer.runStartedAt !== null) && (
           <button
             type="button"
             onClick={run.resetTimer}

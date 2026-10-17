@@ -43,18 +43,16 @@ const COUNT_FIELDS = [
     points: MAZE_POINTS.speedbump,
   },
   {
-    name: "staircases",
-    label: "Staircases climbed and descended",
-    max: MAZE_LIMITS.staircases,
-    points: MAZE_POINTS.staircase,
+    name: "arucoMarkers",
+    label: "BONUS 2: ArUco markers whose ID was reported correctly",
+    max: MAZE_LIMITS.arucoMarkers,
+    points: MAZE_POINTS.arucoMarker,
   },
 ] as const;
 
 const CHECK_FIELDS = [
-  { name: "crossedRamp", label: "Crossed the ramp (up and down)", points: MAZE_POINTS.ramp },
   { name: "reachedFinalCheckpoint", label: "Reached the final checkpoint", points: MAZE_POINTS.finalCheckpoint },
   { name: "returnBonus", label: "BONUS 1: returned along the same path to the start", points: MAZE_POINTS.returnBonus },
-  { name: "arucoBonus", label: "BONUS 2: reported the ArUco marker ID correctly", points: MAZE_POINTS.arucoBonus },
 ] as const;
 
 /** Judge form for Pista A (MAZE), 2026 rubric. */
@@ -68,11 +66,9 @@ export const FormMaze = () => {
       lackOfProgress: 0,
       detectedColors: 0,
       speedbumps: 0,
-      staircases: 0,
-      crossedRamp: false,
       reachedFinalCheckpoint: false,
       returnBonus: false,
-      arucoBonus: false,
+      arucoMarkers: 0,
     },
   });
 
@@ -80,11 +76,9 @@ export const FormMaze = () => {
   const subtotal = computeMazePoints({
     detectedColors: Number(values.detectedColors) || 0,
     speedbumps: Number(values.speedbumps) || 0,
-    staircases: Number(values.staircases) || 0,
-    crossedRamp: values.crossedRamp,
     reachedFinalCheckpoint: values.reachedFinalCheckpoint,
     returnBonus: values.returnBonus,
-    arucoBonus: values.arucoBonus,
+    arucoMarkers: Number(values.arucoMarkers) || 0,
   });
 
   const deleteRun = api.judge.mazeRunDelete.useMutation({

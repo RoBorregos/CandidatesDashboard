@@ -562,11 +562,9 @@ model MazeRun {
 
   detectedColors         Int
   speedbumps             Int
-  staircases             Int
-  crossedRamp            Boolean
   reachedFinalCheckpoint Boolean
   returnBonus            Boolean
-  arucoBonus             Boolean
+  arucoMarkers           Int
 
   lackOfProgress Int
   runSeconds     Int

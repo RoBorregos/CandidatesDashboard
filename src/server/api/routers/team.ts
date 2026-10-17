@@ -209,11 +209,9 @@ export const teamRouter = createTRPCRouter({
                 lackOfProgress: mazeRun.lackOfProgress,
                 detectedColors: mazeRun.detectedColors,
                 speedbumps: mazeRun.speedbumps,
-                staircases: mazeRun.staircases,
-                crossedRamp: mazeRun.crossedRamp,
                 reachedFinalCheckpoint: mazeRun.reachedFinalCheckpoint,
                 returnBonus: mazeRun.returnBonus,
-                arucoBonus: mazeRun.arucoBonus,
+                arucoMarkers: mazeRun.arucoMarkers,
                 counted: countedMaze.some((run) => run.round === round),
               }
             : null,

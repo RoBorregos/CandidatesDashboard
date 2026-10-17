@@ -280,11 +280,12 @@ function mazeDetails(score: MazeScore): [string, string][] {
       `${score.detectedColors} / ${MAZE_LIMITS.detectedColors}`,
     ],
     ["Speedbumps", `${score.speedbumps} / ${MAZE_LIMITS.speedbumps}`],
-    ["Staircases", `${score.staircases} / ${MAZE_LIMITS.staircases}`],
-    ["Ramp", yesNo(score.crossedRamp)],
     ["Final checkpoint", yesNo(score.reachedFinalCheckpoint)],
     ["Return bonus", yesNo(score.returnBonus)],
-    ["ArUco bonus", yesNo(score.arucoBonus)],
+    [
+      "ArUco markers",
+      `${score.arucoMarkers} / ${MAZE_LIMITS.arucoMarkers}`,
+    ],
   ];
 }
 

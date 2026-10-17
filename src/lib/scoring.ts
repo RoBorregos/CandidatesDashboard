@@ -21,35 +21,29 @@
 
 export const MAZE_POINTS = {
   /** Per floor colour detected and shown (LED, display...). */
-  detectedColor: 5,
+  detectedColor: 10,
   /** Per speedbump fully crossed. */
   speedbump: 5,
-  /** Per staircase climbed and descended. */
-  staircase: 15,
-  /** Crossing the ramp (up and down). */
-  ramp: 20,
   /** Reaching the final checkpoint. */
   finalCheckpoint: 25,
   /** BONUS 1: returning along the same path to the starting checkpoint. */
   returnBonus: 35,
-  /** BONUS 2: reporting the ArUco marker's ID correctly. */
-  arucoBonus: 30,
+  /** BONUS 2: per ArUco marker whose ID is reported correctly. */
+  arucoMarker: 15,
 } as const;
 
 export const MAZE_LIMITS = {
-  detectedColors: 4,
-  speedbumps: 4,
-  staircases: 3,
+  detectedColors: 6,
+  speedbumps: 6,
+  arucoMarkers: 3,
 } as const;
 
 export type MazeScoreInput = {
   detectedColors: number;
   speedbumps: number;
-  staircases: number;
-  crossedRamp: boolean;
   reachedFinalCheckpoint: boolean;
   returnBonus: boolean;
-  arucoBonus: boolean;
+  arucoMarkers: number;
 };
 
 export function computeMazePoints(input: MazeScoreInput): number {
@@ -62,27 +56,24 @@ export function computeMazePoints(input: MazeScoreInput): number {
     MAZE_POINTS.detectedColor;
   points +=
     clamp(input.speedbumps, MAZE_LIMITS.speedbumps) * MAZE_POINTS.speedbump;
-  points +=
-    clamp(input.staircases, MAZE_LIMITS.staircases) * MAZE_POINTS.staircase;
-  if (input.crossedRamp) points += MAZE_POINTS.ramp;
   if (input.reachedFinalCheckpoint) points += MAZE_POINTS.finalCheckpoint;
   // The return trip starts at the final checkpoint, so it only counts when
   // the robot got there first.
   if (input.returnBonus && input.reachedFinalCheckpoint) {
     points += MAZE_POINTS.returnBonus;
   }
-  if (input.arucoBonus) points += MAZE_POINTS.arucoBonus;
+  points +=
+    clamp(input.arucoMarkers, MAZE_LIMITS.arucoMarkers) *
+    MAZE_POINTS.arucoMarker;
   return points;
 }
 
 export const MAZE_MAX_POINTS = computeMazePoints({
   detectedColors: MAZE_LIMITS.detectedColors,
   speedbumps: MAZE_LIMITS.speedbumps,
-  staircases: MAZE_LIMITS.staircases,
-  crossedRamp: true,
   reachedFinalCheckpoint: true,
   returnBonus: true,
-  arucoBonus: true,
+  arucoMarkers: MAZE_LIMITS.arucoMarkers,
 });
 
 /* ------------------------------------------------------------------ */

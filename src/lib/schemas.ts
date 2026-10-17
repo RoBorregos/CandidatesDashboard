@@ -142,17 +142,15 @@ export const mazeRunSchema = trackRunBaseSchema
       .max(MAZE_LIMITS.speedbumps, {
         message: `At most ${MAZE_LIMITS.speedbumps} speedbumps`,
       }),
-    staircases: z.coerce
+    reachedFinalCheckpoint: z.boolean(),
+    returnBonus: z.boolean(),
+    arucoMarkers: z.coerce
       .number()
       .int()
       .min(0)
-      .max(MAZE_LIMITS.staircases, {
-        message: `At most ${MAZE_LIMITS.staircases} staircases`,
+      .max(MAZE_LIMITS.arucoMarkers, {
+        message: `At most ${MAZE_LIMITS.arucoMarkers} ArUco markers`,
       }),
-    crossedRamp: z.boolean(),
-    reachedFinalCheckpoint: z.boolean(),
-    returnBonus: z.boolean(),
-    arucoBonus: z.boolean(),
   })
   .refine((run) => !run.returnBonus || run.reachedFinalCheckpoint, {
     message: "The return bonus requires reaching the final checkpoint",

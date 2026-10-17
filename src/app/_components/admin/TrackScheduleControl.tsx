@@ -10,6 +10,7 @@ import {
   SEGMENT_MS,
   trackLayout,
 } from "~/lib/competition-schedule";
+import { SCHEDULE_CSV_HEADER } from "~/lib/schedule-csv";
 
 interface Team {
   id: string;
@@ -108,6 +109,75 @@ export default function TrackScheduleControl({
     setWindows((current) =>
       current.map((w) => (w.number === number ? { ...w, [field]: value } : w)),
     );
+
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
+
+  const importCsv = api.admin.importTrackScheduleCsv.useMutation({
+    onSuccess(data) {
+      toast.success(
+        `Imported ${data.rounds.map((r) => `round ${r.round} (${r.teams} teams)`).join(", ")} from the CSV.`,
+      );
+      // Match the windows to the file so "Update" does not shift it.
+      setWindows((current) =>
+        current.map((w) => {
+          const imported = data.windows.find((i) => i.number === w.number);
+          return imported
+            ? { ...w, start: imported.start, end: imported.end }
+            : w;
+        }),
+      );
+      setCsvErrors([]);
+      setCsvWarnings(data.warnings);
+      setConflicts(data.interviewConflicts);
+      if (data.interviewConflicts.length > 0) {
+        toast.warning(
+          `${data.interviewConflicts.length} interviews now clash with the new times. See the list below.`,
+        );
+      }
+      void refetchTables();
+      void refetchScheduleTeams();
+    },
+    onError(error) {
+      setCsvWarnings([]);
+      setCsvErrors(error.message.split("\n"));
+      toast.error("The CSV was rejected. Nothing was changed.");
+    },
+  });
+
+  const uploadCsv = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setCsvErrors([`${file.name} is not a .csv file.`]);
+      return;
+    }
+    const revealed = tables?.filter((t) => t.visible).map((t) => t.number);
+    const ok = window.confirm(
+      `Every round in ${file.name} replaces the stored one (R1/R2 = round 1, R3/R4 = round 2, R5/R6 = round 3). Rounds not in the file are kept.${
+        revealed && revealed.length > 0
+          ? ` Round ${revealed.join(", ")} is already revealed: teams will see their times change.`
+          : ""
+      } Continue?`,
+    );
+    if (!ok) return;
+    importCsv.mutate({ date, windows, csv: await file.text() });
+  };
+
+  const downloadTemplate = () => {
+    const rows = [
+      SCHEDULE_CSV_HEADER.join(","),
+      "R1.0,9:30:00 AM,9:38:00 AM,Team 1,Team 2,Team 3,Team 4",
+      "R2.0,10:42:00 AM,10:50:00 AM,Team 3,Team 4,Team 1,Team 2",
+    ];
+    const url = URL.createObjectURL(
+      new Blob([rows.join("\n") + "\n"], { type: "text/csv" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "schedule-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const run = (rounds: number[], rebuild = false) => {
     const existing = rounds.filter((n) =>
@@ -267,6 +337,61 @@ export default function TrackScheduleControl({
             >
               Rebuild all 3 rounds (new random order)
             </button>
+          )}
+        </div>
+
+        <div className="mt-6 rounded-lg bg-gray-700 p-4">
+          <h4 className="mb-1 font-semibold">Upload schedule from CSV</h4>
+          <p className="mb-3 text-sm text-gray-300">
+            Sets every team&apos;s times from a hand-made schedule instead of
+            the random order. The first row must be exactly{" "}
+            <code className="rounded bg-gray-800 px-1 text-xs">
+              {SCHEDULE_CSV_HEADER.join(",")}
+            </code>
+            . R1/R2 are round 1, R3/R4 round 2 and R5/R6 round 3; in each
+            round every team must run Reto A once and Reto B once. Team names
+            must match existing teams. The day comes from Competition day
+            above. Any error rejects the whole file.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <label
+              className={`cursor-pointer rounded bg-purple-600 px-6 py-2 hover:bg-purple-700 ${
+                importCsv.isPending ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {importCsv.isPending ? "Uploading..." : "Upload schedule CSV"}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                disabled={importCsv.isPending}
+                onChange={(e) => {
+                  void uploadCsv(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              onClick={downloadTemplate}
+              className="rounded bg-gray-600 px-4 py-2 text-sm hover:bg-gray-500"
+            >
+              Download template
+            </button>
+          </div>
+
+          {csvErrors.length > 0 && (
+            <ul className="mt-3 space-y-1 rounded border border-red-500 bg-red-950 p-3 text-sm text-red-200">
+              {csvErrors.map((e, i) => (
+                <li key={i}>• {e}</li>
+              ))}
+            </ul>
+          )}
+          {csvWarnings.length > 0 && (
+            <ul className="mt-3 space-y-1 rounded border border-yellow-500 bg-yellow-950 p-3 text-sm text-yellow-200">
+              {csvWarnings.map((w, i) => (
+                <li key={i}>• {w}</li>
+              ))}
+            </ul>
           )}
         </div>
 

@@ -1,8 +1,12 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { parse } from "csv-parse";
+import { parse as parseCsv } from "csv-parse/sync";
 import fs from "fs";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { PrismaClient } from "@prisma/client";
+import { normalize } from "~/lib/name-match";
+import { detectDelimiter, scheduleFromCsvRows } from "~/lib/schedule-csv";
 import {
   buildTrackSchedule,
   competitionTime,
@@ -48,6 +52,71 @@ function toRoundWindows(
       });
     }
     return { number: w.number, start, end };
+  });
+}
+
+/**
+ * Checks the interviews already booked for these teams against their whole
+ * stored schedule, as rows for the admin page.
+ */
+async function findInterviewConflicts(
+  db: PrismaClient,
+  teamIds: string[],
+  windows: RoundWindow[],
+) {
+  const stored = await db.round.findMany({
+    where: { teamId: { in: teamIds } },
+    select: { teamId: true, number: true, challenges: true },
+  });
+  const fullSchedule = stored
+    .map((round) =>
+      round.teamId
+        ? scheduleFromStoredRuns(round.teamId, round.number, round.challenges)
+        : null,
+    )
+    .filter((entry): entry is TeamRoundSchedule => entry !== null);
+
+  const interviewed = await db.user.findMany({
+    where: {
+      teamId: { in: teamIds },
+      interviewTime: { not: null },
+      interviewerId: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      teamId: true,
+      interviewArea: true,
+      interviewTime: true,
+      interviewerId: true,
+      team: { select: { name: true } },
+    },
+  });
+  const conflicts = findScheduleConflicts(
+    interviewed.map((u) => ({
+      id: u.id,
+      teamId: u.teamId!,
+      area: (u.interviewArea as Area | null) ?? null,
+    })),
+    interviewed.map((u) => ({
+      candidateId: u.id,
+      interviewerId: u.interviewerId!,
+      start: u.interviewTime!,
+      end: new Date(u.interviewTime!.getTime() + INTERVIEW_MS),
+    })),
+    fullSchedule,
+    windows,
+  );
+  const byId = new Map(interviewed.map((u) => [u.id, u]));
+
+  return conflicts.map((c) => {
+    const user = byId.get(c.candidateId);
+    return {
+      name: user?.name ?? c.candidateId,
+      team: user?.team?.name ?? "",
+      time: user?.interviewTime ? formatTime(user.interviewTime) : "",
+      reason: c.reason,
+    };
   });
 }
 
@@ -199,55 +268,11 @@ export const scheduleManagementRouter = createTRPCRouter({
         { timeout: 60_000 },
       );
 
-      // Check the interviews already booked against the whole new schedule.
-      const stored = await ctx.db.round.findMany({
-        where: { teamId: { in: teamIds } },
-        select: { teamId: true, number: true, challenges: true },
-      });
-      const fullSchedule = stored
-        .map((round) =>
-          round.teamId
-            ? scheduleFromStoredRuns(
-                round.teamId,
-                round.number,
-                round.challenges,
-              )
-            : null,
-        )
-        .filter((entry): entry is TeamRoundSchedule => entry !== null);
-
-      const interviewed = await ctx.db.user.findMany({
-        where: {
-          teamId: { in: teamIds },
-          interviewTime: { not: null },
-          interviewerId: { not: null },
-        },
-        select: {
-          id: true,
-          name: true,
-          teamId: true,
-          interviewArea: true,
-          interviewTime: true,
-          interviewerId: true,
-          team: { select: { name: true } },
-        },
-      });
-      const conflicts = findScheduleConflicts(
-        interviewed.map((u) => ({
-          id: u.id,
-          teamId: u.teamId!,
-          area: (u.interviewArea as Area | null) ?? null,
-        })),
-        interviewed.map((u) => ({
-          candidateId: u.id,
-          interviewerId: u.interviewerId!,
-          start: u.interviewTime!,
-          end: new Date(u.interviewTime!.getTime() + INTERVIEW_MS),
-        })),
-        fullSchedule,
+      const interviewConflicts = await findInterviewConflicts(
+        ctx.db,
+        teamIds,
         windows,
       );
-      const byId = new Map(interviewed.map((u) => [u.id, u]));
 
       // Active teams with no slot in a shifted round (e.g. activated after it
       // was generated). Only a rebuild can give them one.
@@ -277,15 +302,163 @@ export const scheduleManagementRouter = createTRPCRouter({
         // groupsPerRound: Math.ceil(teamIds.length / TEAMS_PER_GROUP),
         minutesPerRound:
           (trackLayout(teamIds.length).segments * SEGMENT_MS) / MINUTE_MS,
-        interviewConflicts: conflicts.map((c) => {
-          const user = byId.get(c.candidateId);
-          return {
-            name: user?.name ?? c.candidateId,
-            team: user?.team?.name ?? "",
-            time: user?.interviewTime ? formatTime(user.interviewTime) : "",
-            reason: c.reason,
-          };
-        }),
+        interviewConflicts,
+      };
+    }),
+
+  /**
+   * Replaces the rounds that appear in an uploaded CSV (see ~/lib/schedule-csv)
+   * with the times and tracks written in it. Rounds missing from the file are
+   * left alone, and a revealed round stays revealed. The whole file is
+   * rejected if any row breaks the format or names an unknown team.
+   */
+  importTrackScheduleCsv: adminProcedure
+    .input(trackScheduleInput.extend({ csv: z.string().min(1).max(500_000) }))
+    .mutation(async ({ ctx, input }) => {
+      const formWindows = toRoundWindows(input);
+
+      let rows: string[][];
+      try {
+        rows = parseCsv(input.csv.replace(/^\uFEFF/, ""), {
+          delimiter: detectDelimiter(input.csv),
+          relax_column_count: true,
+          skip_empty_lines: true,
+        }) as string[][];
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Could not read the CSV: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+
+      const { runs, errors, warnings } = scheduleFromCsvRows(rows, input.date);
+
+      // Names are matched ignoring case, accents and punctuation.
+      const teams = await ctx.db.team.findMany({
+        select: { id: true, name: true, isActive: true },
+      });
+      const byName = new Map<string, (typeof teams)[number] | null>();
+      for (const team of teams) {
+        const key = normalize(team.name);
+        byName.set(key, byName.has(key) ? null : team);
+      }
+      const teamOf = new Map<string, (typeof teams)[number]>();
+      const unknown = new Set<string>();
+      for (const run of runs) {
+        const team =
+          teams.find((t) => t.name.trim() === run.team) ??
+          byName.get(normalize(run.team));
+        if (team) teamOf.set(run.team, team);
+        else unknown.add(run.team);
+      }
+      if (unknown.size > 0) {
+        errors.push(
+          `Unknown teams (create them or fix the spelling): ${[...unknown].join(", ")}.`,
+        );
+      }
+
+      if (errors.length > 0) {
+        const shown = errors.slice(0, 10);
+        if (errors.length > shown.length) {
+          shown.push(`…and ${errors.length - shown.length} more.`);
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: shown.join("\n") });
+      }
+
+      const rounds = [...new Set(runs.map((run) => run.round))].sort(
+        (a, b) => a - b,
+      );
+      const byRoundTeam = new Map<string, typeof runs>();
+      for (const run of runs) {
+        const key = `${run.round}|${teamOf.get(run.team)!.id}`;
+        byRoundTeam.set(key, [...(byRoundTeam.get(key) ?? []), run]);
+      }
+
+      await ctx.db.$transaction(
+        async (tx) => {
+          for (const round of rounds) {
+            const wasVisible =
+              (await tx.round.count({
+                where: { number: round, isVisible: true },
+              })) > 0;
+            await tx.round.deleteMany({ where: { number: round } });
+
+            for (const [key, teamRuns] of byRoundTeam) {
+              if (!key.startsWith(`${round}|`)) continue;
+              await tx.round.create({
+                data: {
+                  teamId: teamOf.get(teamRuns[0]!.team)!.id,
+                  number: round,
+                  isVisible: wasVisible,
+                  challenges: {
+                    create: teamRuns
+                      .sort((a, b) => a.start.getTime() - b.start.getTime())
+                      .map((run) => ({ name: run.track, time: run.start })),
+                  },
+                },
+              });
+            }
+          }
+        },
+        { timeout: 60_000 },
+      );
+
+      const csvTeams = new Set([...teamOf.values()].map((team) => team.id));
+      const inactive = teams.filter(
+        (team) => !team.isActive && csvTeams.has(team.id),
+      );
+      if (inactive.length > 0) {
+        warnings.push(
+          `Inactive teams in the file (hidden until reactivated): ${inactive.map((t) => t.name).join(", ")}.`,
+        );
+      }
+      const missing = teams.filter(
+        (team) => team.isActive && !csvTeams.has(team.id),
+      );
+      if (missing.length > 0) {
+        warnings.push(
+          `Active teams with no slot in the file: ${missing.map((t) => t.name).join(", ")}.`,
+        );
+      }
+
+      // Each imported round's window starts at its first run, so "Update
+      // Round N times" does not move it, and ends no earlier than its last run.
+      const windows = formWindows.map((window) => {
+        const times = runs
+          .filter((run) => run.round === window.number)
+          .map((run) => run.start.getTime());
+        if (times.length === 0) return window;
+        return {
+          number: window.number,
+          start: new Date(Math.min(...times)),
+          end: new Date(
+            Math.max(window.end.getTime(), Math.max(...times) + SEGMENT_MS),
+          ),
+        };
+      });
+
+      const activeIds = teams
+        .filter((team) => team.isActive)
+        .map((team) => team.id);
+
+      return {
+        rounds: rounds.map((round) => ({
+          round,
+          teams: [...byRoundTeam.keys()].filter((k) =>
+            k.startsWith(`${round}|`),
+          ).length,
+        })),
+        windows: windows.map((w) => ({
+          number: w.number,
+          start: formatTime(w.start),
+          end: formatTime(w.end),
+        })),
+        warnings,
+        interviewConflicts: await findInterviewConflicts(
+          ctx.db,
+          activeIds,
+          windows,
+        ),
       };
     }),
 

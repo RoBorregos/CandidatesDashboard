@@ -37,6 +37,7 @@ export const adminRouter = createTRPCRouter({
   getScheduleTables: scheduleManagementRouter.getScheduleTables,
   generateTrackSchedule: scheduleManagementRouter.generateTrackSchedule,
   getTrackScheduleTables: scheduleManagementRouter.getTrackScheduleTables,
+  importTrackScheduleCsv: scheduleManagementRouter.importTrackScheduleCsv,
 
   // Round Control
   getConfig: roundControlRouter.getConfig,

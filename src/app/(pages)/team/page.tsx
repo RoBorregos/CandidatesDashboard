@@ -178,6 +178,7 @@ export default async function TeamPage({
         teamName={team.name}
         rounds={team.rounds}
         interviewTime={me?.interviewTime ?? null}
+        interviewerName={me?.interviewer?.name ?? null}
       />
 
       <Footer />

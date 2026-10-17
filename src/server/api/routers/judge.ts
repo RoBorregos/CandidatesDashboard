@@ -5,7 +5,10 @@ import {
   challengeASchema,
   challengeBSchema,
   challengeCSchema,
+  levelsRunSchema,
+  mazeRunSchema,
 } from "rbrgs/lib/schemas";
+import { computeLevelsPoints, computeMazePoints } from "rbrgs/lib/scoring";
 
 const computePointsLOP = (lackOfProgress: number) => {
   switch (lackOfProgress) {
@@ -114,6 +117,44 @@ export const judgeRouter = createTRPCRouter({
           roundId: input.genericFormSchema.roundId,
         },
       });
+    }),
+
+  // 2026 tracks. Points are always recomputed here from ~/lib/scoring; the
+  // live subtotal the form shows is only a preview.
+  mazeRun: judgeProcedure
+    .input(mazeRunSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.mazeRun.create({
+        data: {
+          ...input,
+          judgeId: ctx.session.user.id,
+          points: computeMazePoints(input),
+        },
+      });
+    }),
+
+  levelsRun: judgeProcedure
+    .input(levelsRunSchema)
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.levelsRun.create({
+        data: {
+          ...input,
+          judgeId: ctx.session.user.id,
+          points: computeLevelsPoints(input),
+        },
+      });
+    }),
+
+  mazeRunDelete: judgeProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.mazeRun.delete({ where: { id: input.id } });
+    }),
+
+  levelsRunDelete: judgeProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return await ctx.db.levelsRun.delete({ where: { id: input.id } });
     }),
 
   getTeamIds: judgeProcedure.query(async ({ ctx }) => {

@@ -13,6 +13,8 @@ import Header from "rbrgs/app/_components/header";
 import { useState } from "react";
 import { FormChallengeB } from "../forms/FormChallengeB";
 import { FormChallengeC } from "../forms/FormChallengeC";
+import { FormMaze } from "../forms/FormMaze";
+import { FormLevels } from "../forms/FormLevels";
 import { useSession } from "next-auth/react";
 import { Role } from "@prisma/client";
 
@@ -58,6 +60,16 @@ export default function JudgePage() {
             </SelectTrigger>
 
             <SelectContent>
+              <SelectItem value="maze" className="cursor-pointer">
+                Pista A - MAZE
+              </SelectItem>
+              <SelectItem value="levels" className="cursor-pointer">
+                Pista B - Niveles
+              </SelectItem>
+              {/*
+                2025 tracks, kept for reference. Their forms and endpoints
+                still exist; uncomment to judge with the old rubric again.
+
               <SelectItem value="challengeA" className="cursor-pointer">
                 Pista A - Pelota
               </SelectItem>
@@ -67,6 +79,7 @@ export default function JudgePage() {
               <SelectItem value="challengeC" className="cursor-pointer">
                 Pista C - Laberinto
               </SelectItem>
+              */}
             </SelectContent>
           </Select>
         </div>
@@ -81,6 +94,18 @@ export default function JudgePage() {
 
 const ShowForm = ({ selection }: { selection: string }) => {
   switch (selection) {
+    case "maze":
+      return (
+        <ChallengeWrapper>
+          <FormMaze />
+        </ChallengeWrapper>
+      );
+    case "levels":
+      return (
+        <ChallengeWrapper>
+          <FormLevels />
+        </ChallengeWrapper>
+      );
     case "challengeA":
       return (
         <ChallengeWrapper>

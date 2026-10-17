@@ -39,7 +39,12 @@ export const interviewManagementRouter = createTRPCRouter({
         },
         interviewer: true,
       },
-      orderBy: [{ team: { name: "asc" } }, { name: "asc" }],
+      // Earliest interview first; students without one go last, by team.
+      orderBy: [
+        { interviewTime: { sort: "asc", nulls: "last" } },
+        { team: { name: "asc" } },
+        { name: "asc" },
+      ],
     });
 
     return users;

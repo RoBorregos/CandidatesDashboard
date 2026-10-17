@@ -7,6 +7,11 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { roleAfterJoiningTeam, roleAfterLeavingTeam } from "~/lib/roles";
+import {
+  countedRuns,
+  latestByTeamAndRound,
+  ROUND_NUMBERS,
+} from "~/lib/scoring";
 
 export const teamRouter = createTRPCRouter({
   createTeam: protectedProcedure
@@ -159,6 +164,76 @@ export const teamRouter = createTRPCRouter({
     return { success: true };
   }),
 
+  getMyTrackScores: protectedProcedure.query(async ({ ctx }) => {
+    // Read from the database, like getTeam: the session can lag behind.
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { teamId: true },
+    });
+    const teamId = user?.teamId;
+    if (!teamId) return null;
+
+    const [mazeRuns, levelsRuns] = await Promise.all([
+      ctx.db.mazeRun.findMany({ where: { edition: 2026, teamId } }),
+      ctx.db.levelsRun.findMany({ where: { edition: 2026, teamId } }),
+    ]);
+    const maze = latestByTeamAndRound(mazeRuns);
+    const levels = latestByTeamAndRound(levelsRuns);
+    const runsOf = <T extends { points: number; runSeconds: number }>(
+      latest: Map<string, T>,
+    ) =>
+      ROUND_NUMBERS.flatMap((round) => {
+        const run = latest.get(`${teamId}:${round}`);
+        return run
+          ? [{ round, points: run.points, seconds: run.runSeconds }]
+          : [];
+      });
+
+    const countedMaze = countedRuns(runsOf(maze));
+    const countedLevels = countedRuns(runsOf(levels));
+    const sum = (runs: { points: number }[]) =>
+      runs.reduce((total, run) => total + run.points, 0);
+
+    return {
+      mazeTotal: sum(countedMaze),
+      levelsTotal: sum(countedLevels),
+      rounds: ROUND_NUMBERS.map((round) => {
+        const mazeRun = maze.get(`${teamId}:${round}`);
+        const levelsRun = levels.get(`${teamId}:${round}`);
+        return {
+          round,
+          maze: mazeRun
+            ? {
+                points: mazeRun.points,
+                runSeconds: mazeRun.runSeconds,
+                lackOfProgress: mazeRun.lackOfProgress,
+                detectedColors: mazeRun.detectedColors,
+                speedbumps: mazeRun.speedbumps,
+                staircases: mazeRun.staircases,
+                crossedRamp: mazeRun.crossedRamp,
+                reachedFinalCheckpoint: mazeRun.reachedFinalCheckpoint,
+                returnBonus: mazeRun.returnBonus,
+                arucoBonus: mazeRun.arucoBonus,
+                counted: countedMaze.some((run) => run.round === round),
+              }
+            : null,
+          levels: levelsRun
+            ? {
+                points: levelsRun.points,
+                runSeconds: levelsRun.runSeconds,
+                lackOfProgress: levelsRun.lackOfProgress,
+                tookBall: levelsRun.tookBall,
+                section1: levelsRun.section1,
+                section2: levelsRun.section2,
+                section3: levelsRun.section3,
+                counted: countedLevels.some((run) => run.round === round),
+              }
+            : null,
+        };
+      }),
+    };
+  }),
+
   // Get visible schedules for all active teams (public access)
   getVisibleSchedules: publicProcedure.query(async ({ ctx }) => {
     const teams = await ctx.db.team.findMany({
@@ -187,7 +262,6 @@ export const teamRouter = createTRPCRouter({
 
     return teams;
   }),
-
 });
 
 export type TeamType =

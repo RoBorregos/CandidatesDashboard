@@ -10,7 +10,7 @@ import {
   SEGMENT_MS,
   trackLayout,
 } from "~/lib/competition-schedule";
-import { SCHEDULE_CSV_HEADER } from "~/lib/schedule-csv";
+import { decodeCsvBytes, SCHEDULE_CSV_HEADER } from "~/lib/schedule-csv";
 
 interface Team {
   id: string;
@@ -160,7 +160,8 @@ export default function TrackScheduleControl({
       } Continue?`,
     );
     if (!ok) return;
-    importCsv.mutate({ date, windows, csv: await file.text() });
+    const csv = decodeCsvBytes(new Uint8Array(await file.arrayBuffer()));
+    importCsv.mutate({ date, windows, csv });
   };
 
   const downloadTemplate = () => {
@@ -170,7 +171,10 @@ export default function TrackScheduleControl({
       "R2.0,10:42:00 AM,10:50:00 AM,Team 3,Team 4,Team 1,Team 2",
     ];
     const url = URL.createObjectURL(
-      new Blob([rows.join("\n") + "\n"], { type: "text/csv" }),
+      // The BOM makes Excel open it as UTF-8, so accents survive a re-save.
+      new Blob(["\uFEFF" + rows.join("\n") + "\n"], {
+        type: "text/csv;charset=utf-8",
+      }),
     );
     const link = document.createElement("a");
     link.href = url;

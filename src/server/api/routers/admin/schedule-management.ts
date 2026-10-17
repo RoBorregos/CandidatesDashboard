@@ -317,6 +317,18 @@ export const scheduleManagementRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const formWindows = toRoundWindows(input);
 
+      // The page decodes the file (see decodeCsvBytes); a replacement
+      // character means it still lost letters, so names would not match.
+      const garbled = input.csv
+        .split(/\r?\n/)
+        .findIndex((line) => line.includes("\uFFFD"));
+      if (garbled !== -1) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Line ${garbled + 1} has unreadable characters. In Excel use Save As → "CSV UTF-8 (Comma delimited)" and upload again.`,
+        });
+      }
+
       let rows: string[][];
       try {
         rows = parseCsv(input.csv.replace(/^\uFEFF/, ""), {

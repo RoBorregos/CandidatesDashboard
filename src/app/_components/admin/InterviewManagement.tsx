@@ -3,6 +3,12 @@
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
+import {
+  INTERVIEW_MS,
+  QUEUE_MS,
+  SEGMENT_MS,
+  TRAVEL_BUFFER_MS,
+} from "~/lib/competition-schedule";
 
 const AREAS = ["MECHANICS", "ELECTRONICS", "PROGRAMMING"] as const;
 type Area = (typeof AREAS)[number];
@@ -229,13 +235,17 @@ export default function InterviewManagement({
       if (!user.interviewTime || !user.team) continue;
 
       const interviewStart = new Date(user.interviewTime);
-      const interviewEnd = new Date(interviewStart.getTime() + 15 * 60 * 1000);
+      const interviewEnd = new Date(interviewStart.getTime() + INTERVIEW_MS);
 
       for (const round of user.team.rounds) {
         for (const challenge of round.challenges) {
-          const challengeStart = new Date(challenge.time);
+          // Queue before the run, the run itself, and travel either side.
+          const runStart = new Date(challenge.time).getTime();
+          const challengeStart = new Date(
+            runStart - QUEUE_MS - TRAVEL_BUFFER_MS,
+          );
           const challengeEnd = new Date(
-            challengeStart.getTime() + 5 * 60 * 1000,
+            runStart + SEGMENT_MS + TRAVEL_BUFFER_MS,
           );
 
           // Check for overlap
@@ -459,8 +469,10 @@ export default function InterviewManagement({
           </div>
         </div>
         <p className="mt-2 text-sm text-gray-400">
-          Optimized parallel scheduling: Up to 9 simultaneous interviews (3 per
-          area) while avoiding team schedule conflicts
+          10-minute interviews with 2 minutes of tolerance, one student per
+          interviewer per slot ({interviewers?.length ?? 0} at a time). Students
+          go to an interviewer of their area first, while avoiding team schedule
+          conflicts.
         </p>
       </div>
 
@@ -617,13 +629,7 @@ export default function InterviewManagement({
         <div className="rounded-lg bg-gray-800 p-4">
           <h4 className="font-semibold">Max Parallel Capacity</h4>
           <p className="text-2xl font-bold text-blue-400">
-            {Math.min(
-              ...AREAS.map(
-                (area) =>
-                  interviewers?.filter((i) => i.areas.includes(area)).length ??
-                  0,
-              ),
-            ) * 3}
+            {interviewers?.length ?? 0}
             /slot
           </p>
         </div>

@@ -1,6 +1,34 @@
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import {
+  INTERVIEW_MS,
+  INTERVIEW_SLOT_MS,
+  assignInterviews,
+  findScheduleConflicts,
+  formatTime,
+  overlaps,
+  scheduleFromStoredRuns,
+  teamBusyIntervals,
+  type Area,
+  type TeamRoundSchedule,
+} from "~/lib/competition-schedule";
+
+/** Stored runs as the schedule helpers expect them. */
+const toSchedule = (
+  rounds: {
+    teamId: string | null;
+    number: number;
+    challenges: { name: string; time: Date }[];
+  }[],
+): TeamRoundSchedule[] =>
+  rounds
+    .map((round) =>
+      round.teamId
+        ? scheduleFromStoredRuns(round.teamId, round.number, round.challenges)
+        : null,
+    )
+    .filter((entry): entry is TeamRoundSchedule => entry !== null);
 
 const AREAS_INPUT = z
   .array(z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]))
@@ -109,35 +137,32 @@ export const interviewManagementRouter = createTRPCRouter({
         });
       }
 
-      const interviewStart = input.interviewTime;
-      const interviewEnd = new Date(interviewStart.getTime() + 15 * 60 * 1000);
+      const interview = {
+        start: input.interviewTime,
+        end: new Date(input.interviewTime.getTime() + INTERVIEW_MS),
+      };
+      const interviewStart = interview.start;
 
-      for (const round of user.team.rounds) {
-        for (const challenge of round.challenges) {
-          const challengeStart = challenge.time;
-          const challengeEnd = new Date(
-            challengeStart.getTime() + 5 * 60 * 1000,
-          );
-
-          const hasOverlap = !(
-            interviewEnd <= challengeStart || interviewStart >= challengeEnd
-          );
-
-          if (hasOverlap) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Interview time conflicts with ${challenge.name} at ${challengeStart.toLocaleTimeString()}`,
-            });
-          }
-        }
+      // Queue, run and travel time around every run, as the checker sees it.
+      const clash = teamBusyIntervals(
+        toSchedule(user.team.rounds),
+        user.team.id,
+      ).find((busy) => overlaps(interview, busy));
+      if (clash) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `The team is queued, on a track or travelling ${formatTime(clash.start)}–${formatTime(clash.end)}`,
+        });
       }
 
+      // The interviewer needs a full slot (interview + tolerance) around it.
       const conflictingInterview = await ctx.db.user.findFirst({
         where: {
+          id: { not: input.userId },
           interviewerId: input.interviewerId,
           interviewTime: {
-            gt: new Date(interviewStart.getTime() - 15 * 60 * 1000),
-            lt: new Date(interviewStart.getTime() + 15 * 60 * 1000),
+            gt: new Date(interviewStart.getTime() - INTERVIEW_SLOT_MS),
+            lt: new Date(interviewStart.getTime() + INTERVIEW_SLOT_MS),
           },
         },
       });
@@ -184,43 +209,17 @@ export const interviewManagementRouter = createTRPCRouter({
     return { success: true, message: "All interviews cleared" };
   }),
 
+  /*
+   * Interviews last INTERVIEW_MS (10 min) and start every INTERVIEW_SLOT_MS
+   * (10 + 2 min tolerance); each interviewer takes one student per slot. The
+   * whole batch is solved at once (see assignInterviews) so that no interview
+   * overlaps its team's queue, track or travel time, as many students as
+   * possible are placed, and areas only cross when nothing else fits.
+   */
   autoScheduleInterviews: adminProcedure
     .input(z.object({ startTime: z.date(), endTime: z.date() }))
     .mutation(async ({ ctx, input }) => {
-      const SLOT_MS = 15 * 60 * 1000;
-      const CHALLENGE_MS = 6 * 60 * 1000;
-
-      const AREAS = ["MECHANICS", "ELECTRONICS", "PROGRAMMING"] as const;
-      type Area = (typeof AREAS)[number];
-      type QueueKey = Area | "UNASSIGNED";
-
-      const toQuarterCeil = (d: Date): Date => {
-        const t = new Date(d);
-        const m = t.getMinutes();
-        const ceil = Math.ceil(m / 15) * 15;
-        t.setMinutes(ceil === 60 ? 0 : ceil, 0, 0);
-        if (ceil === 60) t.setHours(t.getHours() + 1);
-        return t;
-      };
-      const toQuarterFloor = (d: Date): Date => {
-        const t = new Date(d);
-        const m = t.getMinutes();
-        const floor = Math.floor(m / 15) * 15;
-        t.setMinutes(floor, 0, 0);
-        return t;
-      };
-      const buildSlots = (start: Date, end: Date): Date[] => {
-        const out: Date[] = [];
-        let cur = toQuarterCeil(start);
-        const lastStart = new Date(toQuarterFloor(end).getTime() - SLOT_MS);
-        while (cur <= lastStart) {
-          out.push(new Date(cur));
-          cur = new Date(cur.getTime() + SLOT_MS);
-        }
-        return out;
-      };
-      const overlaps = (a1: Date, a2: Date, b1: Date, b2: Date): boolean =>
-        !(a2 <= b1 || a1 >= b2);
+      const MINUTE_MS = 60 * 1000;
 
       const users = await ctx.db.user.findMany({
         where: {
@@ -228,140 +227,112 @@ export const interviewManagementRouter = createTRPCRouter({
           role: { not: "ADMIN" },
           interviewTime: null,
         },
-        include: {
-          team: { include: { rounds: { include: { challenges: true } } } },
-        },
+        select: { id: true, teamId: true, interviewArea: true },
         orderBy: [{ team: { name: "asc" } }, { name: "asc" }],
       });
-      type User = (typeof users)[number];
 
-      const interviewers = await ctx.db.interviewer.findMany();
-      // An interviewer covering several areas appears under each of them; the
-      // per-slot booking below keeps them to one interview at a time.
-      const interviewersOf = (area: Area) =>
-        interviewers
-          .filter((i) => i.areas.includes(area))
-          .map((i) => ({ id: i.id }));
-      const interviewersByArea: Record<Area, { id: string }[]> = {
-        MECHANICS: interviewersOf("MECHANICS"),
-        ELECTRONICS: interviewersOf("ELECTRONICS"),
-        PROGRAMMING: interviewersOf("PROGRAMMING"),
-      };
-
-      const bookedByInterviewer = new Map<string, Set<number>>();
-      const existing = await ctx.db.user.findMany({
-        where: { interviewerId: { not: null }, interviewTime: { not: null } },
-        select: { interviewerId: true, interviewTime: true },
+      const interviewers = await ctx.db.interviewer.findMany({
+        include: {
+          users: {
+            where: { interviewTime: { not: null } },
+            select: { interviewTime: true },
+          },
+        },
       });
-      for (const row of existing) {
-        const interviewerId = row.interviewerId;
-        const time = row.interviewTime;
-        if (!interviewerId || !time) continue;
-        const slotStartTs = toQuarterFloor(new Date(time)).getTime();
-        let set = bookedByInterviewer.get(interviewerId);
-        if (!set) {
-          set = new Set<number>();
-          bookedByInterviewer.set(interviewerId, set);
-        }
-        set.add(slotStartTs);
+      if (interviewers.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Add at least one interviewer before scheduling.",
+        });
       }
 
-      type Interval = { s: Date; e: Date };
-      const userBusy: Record<string, Interval[]> = {};
-      for (const u of users) {
-        const arr: Interval[] = [];
-        for (const r of u.team?.rounds ?? []) {
-          for (const ch of r.challenges) {
-            const s = new Date(ch.time);
-            const e = new Date(s.getTime() + CHALLENGE_MS);
-            arr.push({ s, e });
-          }
-        }
-        arr.sort((a, b) => a.s.getTime() - b.s.getTime());
-        userBusy[u.id] = arr;
+      const slots: Date[] = [];
+      for (
+        let t = Math.ceil(input.startTime.getTime() / MINUTE_MS) * MINUTE_MS;
+        t + INTERVIEW_MS <= input.endTime.getTime();
+        t += INTERVIEW_SLOT_MS
+      ) {
+        slots.push(new Date(t));
       }
-
-      const slots = buildSlots(input.startTime, input.endTime);
       if (slots.length === 0) {
         return {
           success: true,
           scheduledCount: 0,
-          message: "No quarter-hour slots in the window.",
+          message: "The window is too short for a single interview.",
         };
       }
 
-      const queueByArea = {
-        MECHANICS: users.filter((u) => u.interviewArea === "MECHANICS"),
-        ELECTRONICS: users.filter((u) => u.interviewArea === "ELECTRONICS"),
-        PROGRAMMING: users.filter((u) => u.interviewArea === "PROGRAMMING"),
-        UNASSIGNED: users.filter((u) => !u.interviewArea),
-      } satisfies Record<QueueKey, User[]>;
+      const teamIds = [...new Set(users.map((u) => u.teamId!))];
+      const schedule = toSchedule(
+        await ctx.db.round.findMany({
+          where: { teamId: { in: teamIds } },
+          select: { teamId: true, number: true, challenges: true },
+        }),
+      );
 
-      const popNextFreeUser = (arr: User[], slotStart: Date): User | null => {
-        const slotEnd = new Date(slotStart.getTime() + SLOT_MS);
-        for (let i = 0; i < arr.length; i++) {
-          const u = arr[i]!;
-          const busy = userBusy[u.id] ?? [];
-          const hasConflict = busy.some(({ s, e }) =>
-            overlaps(slotStart, slotEnd, s, e),
-          );
-          if (!hasConflict) {
-            arr.splice(i, 1);
-            return u;
-          }
-        }
-        return null;
-      };
+      const candidates = users.map((u) => ({
+        id: u.id,
+        teamId: u.teamId!,
+        area: (u.interviewArea as Area | null) ?? null,
+      }));
+      const { assignments, unassigned } = assignInterviews(
+        candidates,
+        interviewers.map((iv) => ({
+          id: iv.id,
+          areas: iv.areas,
+          booked: iv.users.map((u) => u.interviewTime!),
+        })),
+        schedule,
+        slots,
+      );
 
-      let scheduledCount = 0;
-
-      for (const slotStart of slots) {
-        const slotTs = slotStart.getTime();
-
-        for (const area of AREAS) {
-          const areaInterviewers = interviewersByArea[area];
-          if (areaInterviewers.length === 0) continue;
-
-          const freeInterviewers: string[] = [];
-          for (const iv of areaInterviewers) {
-            const booked = bookedByInterviewer.get(iv.id) ?? new Set<number>();
-            if (!booked.has(slotTs)) freeInterviewers.push(iv.id);
-          }
-          if (freeInterviewers.length === 0) continue;
-
-          while (freeInterviewers.length > 0) {
-            const chosenUser =
-              popNextFreeUser(queueByArea[area], slotStart) ??
-              popNextFreeUser(queueByArea.UNASSIGNED, slotStart);
-            if (!chosenUser) break;
-
-            const interviewerId = freeInterviewers.shift()!;
-
-            await ctx.db.user.update({
-              where: { id: chosenUser.id },
-              data: {
-                interviewTime: slotStart,
-                interviewerId,
-                interviewArea: (chosenUser.interviewArea ?? area) as Area,
-              },
-            });
-
-            let set = bookedByInterviewer.get(interviewerId);
-            if (!set) {
-              set = new Set<number>();
-              bookedByInterviewer.set(interviewerId, set);
-            }
-            set.add(slotTs);
-
-            scheduledCount++;
-          }
-        }
+      // Never save a batch the checker would flag.
+      const conflicts = findScheduleConflicts(
+        candidates,
+        assignments,
+        schedule,
+        [{ number: 0, start: input.startTime, end: input.endTime }],
+      );
+      if (conflicts.length > 0) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Scheduler produced ${conflicts.length} conflict(s); nothing was saved.`,
+        });
       }
+
+      const areasOf = new Map(interviewers.map((iv) => [iv.id, iv.areas]));
+      const areaOf = new Map(candidates.map((c) => [c.id, c.area]));
+      await ctx.db.$transaction(
+        assignments.map((a) =>
+          ctx.db.user.update({
+            where: { id: a.candidateId },
+            data: {
+              interviewTime: a.start,
+              interviewerId: a.interviewerId,
+              interviewArea:
+                areaOf.get(a.candidateId) ?? areasOf.get(a.interviewerId)![0],
+            },
+          }),
+        ),
+      );
+
+      const crossArea = assignments.filter((a) => {
+        const area = areaOf.get(a.candidateId);
+        return area && !areasOf.get(a.interviewerId)!.includes(area);
+      }).length;
 
       return {
         success: true,
-        scheduledCount,
-        message: `Scheduled ${scheduledCount} interviews on quarter-hour slots without colliding with team challenges.`,
+        scheduledCount: assignments.length,
+        message:
+          `Scheduled ${assignments.length} interviews with no team conflicts ` +
+          `(up to ${interviewers.length} at a time).` +
+          (crossArea > 0
+            ? ` ${crossArea} had to go to an interviewer outside their area.`
+            : "") +
+          (unassigned.length > 0
+            ? ` ${unassigned.length} student(s) could not fit in the window.`
+            : ""),
       };
     }),
 });

@@ -46,10 +46,12 @@ export default function MyTeamSchedule({
   teamName,
   rounds,
   interviewTime,
+  interviewerName,
 }: {
   teamName: string;
   rounds: ScheduleRound[];
   interviewTime: Date | string | null;
+  interviewerName: string | null;
 }) {
   const { data: scores, isLoading: scoresLoading } =
     api.team.getMyTrackScores.useQuery();
@@ -73,6 +75,12 @@ export default function MyTeamSchedule({
           Your interview:{" "}
           <span className="font-mono font-semibold text-white">
             {interviewTime ? formatTime(new Date(interviewTime)) : "Pending"}
+          </span>
+        </p>
+        <p className="mt-1 text-gray-300">
+          Your interviewer:{" "}
+          <span className="font-semibold text-white">
+            {interviewerName ?? "Pending"}
           </span>
         </p>
 

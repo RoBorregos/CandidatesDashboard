@@ -135,6 +135,7 @@ export const teamRouter = createTRPCRouter({
       where: { id: ctx.session.user.id },
       include: {
         team: true,
+        interviewer: { select: { name: true } },
       },
     });
   }),

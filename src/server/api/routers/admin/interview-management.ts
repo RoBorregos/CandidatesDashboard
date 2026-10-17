@@ -2,10 +2,15 @@ import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
+const AREAS_INPUT = z
+  .array(z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]))
+  .min(1, "Pick at least one area")
+  .transform((areas) => [...new Set(areas)]);
+
 export const interviewManagementRouter = createTRPCRouter({
   getInterviewers: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.interviewer.findMany({
-      orderBy: [{ area: "asc" }, { name: "asc" }],
+      orderBy: { name: "asc" },
     });
   }),
 
@@ -14,13 +19,37 @@ export const interviewManagementRouter = createTRPCRouter({
       z.object({
         name: z.string(),
         email: z.string().email(),
-        area: z.enum(["MECHANICS", "ELECTRONICS", "PROGRAMMING"]),
+        areas: AREAS_INPUT,
       }),
     )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.interviewer.create({
         data: input,
       });
+    }),
+
+  setInterviewerAreas: adminProcedure
+    .input(z.object({ interviewerId: z.string(), areas: AREAS_INPUT }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.interviewer.update({
+        where: { id: input.interviewerId },
+        data: { areas: input.areas },
+      });
+    }),
+
+  deleteInterviewer: adminProcedure
+    .input(z.object({ interviewerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Their booked interviews go back to pending so they can be rescheduled.
+      const [cleared] = await ctx.db.$transaction([
+        ctx.db.user.updateMany({
+          where: { interviewerId: input.interviewerId },
+          data: { interviewTime: null, interviewerId: null },
+        }),
+        ctx.db.interviewer.delete({ where: { id: input.interviewerId } }),
+      ]);
+
+      return { success: true, clearedInterviews: cleared.count };
     }),
 
   getInterviewSchedule: adminProcedure.query(async ({ ctx }) => {
@@ -206,16 +235,16 @@ export const interviewManagementRouter = createTRPCRouter({
       type User = (typeof users)[number];
 
       const interviewers = await ctx.db.interviewer.findMany();
+      // An interviewer covering several areas appears under each of them; the
+      // per-slot booking below keeps them to one interview at a time.
+      const interviewersOf = (area: Area) =>
+        interviewers
+          .filter((i) => i.areas.includes(area))
+          .map((i) => ({ id: i.id }));
       const interviewersByArea: Record<Area, { id: string }[]> = {
-        MECHANICS: interviewers
-          .filter((i) => i.area === "MECHANICS")
-          .map((i) => ({ id: i.id })),
-        ELECTRONICS: interviewers
-          .filter((i) => i.area === "ELECTRONICS")
-          .map((i) => ({ id: i.id })),
-        PROGRAMMING: interviewers
-          .filter((i) => i.area === "PROGRAMMING")
-          .map((i) => ({ id: i.id })),
+        MECHANICS: interviewersOf("MECHANICS"),
+        ELECTRONICS: interviewersOf("ELECTRONICS"),
+        PROGRAMMING: interviewersOf("PROGRAMMING"),
       };
 
       const bookedByInterviewer = new Map<string, Set<number>>();

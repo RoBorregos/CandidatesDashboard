@@ -4,6 +4,15 @@ import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { useState } from "react";
 
+const AREAS = ["MECHANICS", "ELECTRONICS", "PROGRAMMING"] as const;
+type Area = (typeof AREAS)[number];
+
+const AREA_LABELS: Record<Area, string> = {
+  MECHANICS: "Mechanics",
+  ELECTRONICS: "Electronics",
+  PROGRAMMING: "Programming",
+};
+
 interface InterviewManagementProps {
   refetchAll: () => void;
 }
@@ -11,9 +20,7 @@ interface InterviewManagementProps {
 export default function InterviewManagement({
   refetchAll,
 }: InterviewManagementProps) {
-  const [selectedArea, setSelectedArea] = useState<
-    "MECHANICS" | "ELECTRONICS" | "PROGRAMMING"
-  >("MECHANICS");
+  const [selectedAreas, setSelectedAreas] = useState<Area[]>(["MECHANICS"]);
   const [interviewerName, setInterviewerName] = useState("");
   const [interviewerEmail, setInterviewerEmail] = useState("");
   const [autoScheduleStart, setAutoScheduleStart] = useState("09:00");
@@ -34,6 +41,31 @@ export default function InterviewManagement({
     },
     onError(error) {
       toast.error(`Error creating interviewer: ${error.message}`);
+    },
+  });
+
+  const setInterviewerAreas = api.admin.setInterviewerAreas.useMutation({
+    onSuccess() {
+      void refetchInterviewers();
+    },
+    onError(error) {
+      toast.error(`Error updating areas: ${error.message}`);
+    },
+  });
+
+  const deleteInterviewer = api.admin.deleteInterviewer.useMutation({
+    onSuccess(data) {
+      toast.success(
+        data.clearedInterviews > 0
+          ? `Interviewer removed. ${data.clearedInterviews} interview(s) moved back to pending.`
+          : "Interviewer removed.",
+      );
+      void refetchInterviewers();
+      void refetchSchedule();
+      void refetchAll();
+    },
+    onError(error) {
+      toast.error(`Error removing interviewer: ${error.message}`);
     },
   });
 
@@ -86,11 +118,44 @@ export default function InterviewManagement({
       toast.error("Please fill in all fields");
       return;
     }
+    if (selectedAreas.length === 0) {
+      toast.error("Pick at least one area");
+      return;
+    }
     createInterviewer.mutate({
       name: interviewerName.trim(),
       email: interviewerEmail.trim(),
-      area: selectedArea,
+      areas: selectedAreas,
     });
+  };
+
+  const toggleArea = (areas: Area[], area: Area): Area[] =>
+    areas.includes(area) ? areas.filter((a) => a !== area) : [...areas, area];
+
+  const handleToggleInterviewerArea = (
+    interviewerId: string,
+    areas: Area[],
+    area: Area,
+  ) => {
+    const next = toggleArea(areas, area);
+    if (next.length === 0) {
+      toast.error("An interviewer needs at least one area");
+      return;
+    }
+    setInterviewerAreas.mutate({ interviewerId, areas: next });
+  };
+
+  const handleDeleteInterviewer = (
+    interviewerId: string,
+    name: string,
+    bookedCount: number,
+  ) => {
+    const warning =
+      bookedCount > 0
+        ? ` Their ${bookedCount} scheduled interview(s) will go back to pending.`
+        : "";
+    if (!confirm(`Remove ${name} from the interviewer list?${warning}`)) return;
+    deleteInterviewer.mutate({ interviewerId });
   };
 
   const handleScheduleInterview = (
@@ -236,17 +301,20 @@ export default function InterviewManagement({
             onChange={(e) => setInterviewerEmail(e.target.value)}
             className="rounded border border-gray-600 bg-gray-700 p-2"
           />
-          <select
-            value={selectedArea}
-            onChange={(e) =>
-              setSelectedArea(e.target.value as typeof selectedArea)
-            }
-            className="rounded border border-gray-600 bg-gray-700 p-2"
-          >
-            <option value="MECHANICS">Mechanics</option>
-            <option value="ELECTRONICS">Electronics</option>
-            <option value="PROGRAMMING">Programming</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-3">
+            {AREAS.map((area) => (
+              <label key={area} className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedAreas.includes(area)}
+                  onChange={() =>
+                    setSelectedAreas((prev) => toggleArea(prev, area))
+                  }
+                />
+                {AREA_LABELS[area]}
+              </label>
+            ))}
+          </div>
           <button
             onClick={handleCreateInterviewer}
             disabled={createInterviewer.isPending}
@@ -261,28 +329,80 @@ export default function InterviewManagement({
         <h3 className="mb-4 text-xl font-semibold">
           Interviewers ({interviewers?.length ?? 0})
         </h3>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {["MECHANICS", "ELECTRONICS", "PROGRAMMING"].map((area) => (
-            <div key={area} className={`rounded-lg p-4 ${getAreaColor(area)}`}>
-              <h4 className="mb-2 font-semibold">{area}</h4>
-              <div className="space-y-2">
-                {interviewers
-                  ?.filter((i) => i.area === area)
-                  .map((interviewer) => (
-                    <div
-                      key={interviewer.id}
-                      className="rounded bg-black bg-opacity-20 p-2"
-                    >
-                      <p className="font-medium">{interviewer.name}</p>
-                      <p className="text-xs opacity-75">{interviewer.email}</p>
-                    </div>
-                  ))}
-                {interviewers?.filter((i) => i.area === area).length === 0 && (
-                  <p className="text-sm opacity-75">No interviewers assigned</p>
-                )}
-              </div>
-            </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {AREAS.map((area) => (
+            <span
+              key={area}
+              className={`rounded px-2 py-1 text-xs ${getAreaColor(area)}`}
+            >
+              {AREA_LABELS[area]}:{" "}
+              {interviewers?.filter((i) => i.areas.includes(area)).length ?? 0}
+            </span>
           ))}
+        </div>
+        {interviewers?.length === 0 && (
+          <p className="text-sm text-gray-400">No interviewers yet.</p>
+        )}
+        <div className="space-y-2">
+          {interviewers?.map((interviewer) => {
+            const bookedCount =
+              interviewSchedule?.filter(
+                (u) => u.interviewerId === interviewer.id && u.interviewTime,
+              ).length ?? 0;
+            return (
+              <div
+                key={interviewer.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded bg-gray-700 p-3"
+              >
+                <div>
+                  <p className="font-medium">{interviewer.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {interviewer.email}
+                    {bookedCount > 0 && ` · ${bookedCount} scheduled`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {AREAS.map((area) => {
+                    const active = interviewer.areas.includes(area);
+                    return (
+                      <button
+                        key={area}
+                        onClick={() =>
+                          handleToggleInterviewerArea(
+                            interviewer.id,
+                            interviewer.areas,
+                            area,
+                          )
+                        }
+                        disabled={setInterviewerAreas.isPending}
+                        title={active ? "Remove area" : "Add area"}
+                        className={`rounded px-2 py-1 text-xs disabled:opacity-50 ${
+                          active
+                            ? getAreaColor(area)
+                            : "border border-gray-600 text-gray-400 hover:bg-gray-600"
+                        }`}
+                      >
+                        {AREA_LABELS[area]}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() =>
+                      handleDeleteInterviewer(
+                        interviewer.id,
+                        interviewer.name,
+                        bookedCount,
+                      )
+                    }
+                    disabled={deleteInterviewer.isPending}
+                    className="rounded bg-red-600 px-2 py-1 text-xs hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -438,8 +558,9 @@ export default function InterviewManagement({
 
                           // Find available interviewers for the user's area
                           const availableInterviewers =
-                            interviewers?.filter((i) => i.area === userArea) ??
-                            [];
+                            interviewers?.filter((i) =>
+                              i.areas.includes(userArea),
+                            ) ?? [];
 
                           if (availableInterviewers.length === 0) {
                             toast.error(
@@ -497,9 +618,10 @@ export default function InterviewManagement({
           <h4 className="font-semibold">Max Parallel Capacity</h4>
           <p className="text-2xl font-bold text-blue-400">
             {Math.min(
-              ...["MECHANICS", "ELECTRONICS", "PROGRAMMING"].map(
+              ...AREAS.map(
                 (area) =>
-                  interviewers?.filter((i) => i.area === area).length ?? 0,
+                  interviewers?.filter((i) => i.areas.includes(area)).length ??
+                  0,
               ),
             ) * 3}
             /slot

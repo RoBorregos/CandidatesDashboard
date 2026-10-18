@@ -24,6 +24,7 @@ This is a web page for competitors, visitors and judges to be used during the Ca
 | Oscar Arreola |  | [@Oscar-gg](https://github.com/Oscar-gg) | Programmer |
 | Alejandra Coeto | [alecoetos@gmail.com](mailto:alecoetos@gmail.com) | [@Ale-Coeto](https://github.com/Ale-Coeto) | Programmer |
 | Efrain Vazquez | [efrain.vh.21.12@gmail.com](mailto:efrain.vh.21.12@gmail.com) | [@EfraH2O](https://github.com/EfrainH2O) | Programmer
+| Andrés Rodríguez | [andrescobras2@gmail.com](mailto:andrescobras2@gmail.com) | [@TEC-Andres](https://github.com/TEC-Andres) | Programmer |
 
 ## License
 

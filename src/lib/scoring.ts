@@ -146,13 +146,11 @@ export const ROUND_NUMBERS = [1, 2, 3] as const;
 export const MAX_RUN_SECONDS = 6 * 60;
 
 /**
- * How many of the three rounds count per track: the best two, as in the
- * previous edition's scoreboard.
- *
- * TODO: the 2026 rules do not say how rounds add up; confirm with the
- * committee (3 would count every round).
+ * How many of the three rounds count per track. Every round counts, so a
+ * team's total is the plain sum of the scores shown on the scoreboard (the
+ * 2025 board dropped each track's lowest round; set 2 to go back to that).
  */
-export const COUNTED_ROUNDS_PER_TRACK = 2;
+export const COUNTED_ROUNDS_PER_TRACK = ROUND_NUMBERS.length;
 
 export type TrackRun = { round: number; points: number; seconds: number };
 

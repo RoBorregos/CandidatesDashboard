@@ -44,6 +44,28 @@ export const roundControlRouter = createTRPCRouter({
       return { success: true, config: input };
     }),
 
+  // freeze hides the last round's scores from everyone but admins (see
+  // hiddenScoreRound); unfreezing shows the final scores to all users.
+  setScoreboardFreeze: adminProcedure
+    .input(z.object({ freeze: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const config = await ctx.db.config.findFirst();
+      if (!config) {
+        return ctx.db.config.create({
+          data: {
+            freeze: input.freeze,
+            competitionStarted: false,
+            currentRound: 1,
+            roundsRevealed: 0,
+          },
+        });
+      }
+      return ctx.db.config.update({
+        where: { id: config.id },
+        data: { freeze: input.freeze },
+      });
+    }),
+
   toggleRoundVisibility: adminProcedure
     .input(
       z.object({

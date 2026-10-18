@@ -2,8 +2,10 @@
 
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { ROUND_NUMBERS } from "~/lib/scoring";
 
 interface Config {
+  freeze?: boolean;
   roundsRevealed?: number;
   competitionStarted?: boolean;
 }
@@ -74,6 +76,22 @@ export default function RoundControl({
       }, 500);
     },
   });
+
+  const setScoreboardFreeze = api.admin.setScoreboardFreeze.useMutation({
+    onSuccess(data) {
+      toast.success(
+        data.freeze
+          ? "Final scores hidden from non-admins"
+          : "Final scores visible to everyone",
+      );
+      void refetchConfig();
+    },
+    onError(error) {
+      toast.error(`Error updating final scores: ${error.message}`);
+    },
+  });
+
+  const finalScoresVisible = config ? !config.freeze : false;
 
   const handleToggleRound = (
     roundNumber: number,
@@ -156,6 +174,36 @@ export default function RoundControl({
             className="rounded-lg bg-red-600 px-6 py-2 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-600"
           >
             Hide All Rounds
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-lg bg-gray-700 p-4">
+          <div>
+            <h4 className="font-semibold">Show final scores to everyone</h4>
+            <p className="text-sm text-gray-300">
+              {finalScoresVisible
+                ? `Round ${ROUND_NUMBERS[ROUND_NUMBERS.length - 1]} scores are visible on the scoreboard to all users.`
+                : `Round ${ROUND_NUMBERS[ROUND_NUMBERS.length - 1]} scores are hidden from everyone except admins.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={finalScoresVisible}
+            aria-label="Show final scores to everyone"
+            onClick={() =>
+              setScoreboardFreeze.mutate({ freeze: finalScoresVisible })
+            }
+            disabled={!config || setScoreboardFreeze.isPending}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+              finalScoresVisible ? "bg-green-600" : "bg-gray-500"
+            }`}
+          >
+            <span
+              className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                finalScoresVisible ? "translate-x-5" : ""
+              }`}
+            />
           </button>
         </div>
 

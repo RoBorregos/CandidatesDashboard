@@ -43,6 +43,7 @@ export const adminRouter = createTRPCRouter({
   // Round Control
   getConfig: roundControlRouter.getConfig,
   updateConfig: roundControlRouter.updateConfig,
+  setScoreboardFreeze: roundControlRouter.setScoreboardFreeze,
   toggleRoundVisibility: roundControlRouter.toggleRoundVisibility,
   getRoundVisibilityStatus: roundControlRouter.getRoundVisibilityStatus,
   revealNextRound: roundControlRouter.revealNextRound,
